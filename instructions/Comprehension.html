@@ -1,0 +1,184 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+{% endblock %}
+
+{% block content %}
+<style>
+    .container {
+        justify-content: center;
+        align-items: center;
+        max-width: 90%;
+        font-size: 1.2vw;
+        text-align: center;
+    }
+    .image-container {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+    }
+    p {
+        font-size: 20px;
+    }
+    .hidden {
+        display: none;
+    }
+    .answer-options {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        font-size: 1.2rem;
+    }
+    .answer-options input[type="radio"] {
+        margin-right: 10px;
+    }
+    .correct-answer {
+        background-color: #8AE8A1;
+        padding: 10px;
+        border-radius: 5px;
+    }
+    .incorrect-answer {
+        background-color: #FF9999;
+        padding: 10px;
+        border-radius: 5px;
+    }
+    #question1-options {
+        margin-left: 33.33%;
+    }
+    #question2-options {
+        margin-left: 25%;
+    }
+    #question3-options {
+        margin-left: 10%;
+    }
+</style>
+
+<div class="container">
+    <h2><b>Comprehension Checks</b></h2>
+    <br>
+    <p><b>We will now ask you to complete several comprehension checks. 
+        Please make sure you understand each of the questions, as this is important when engaging in the task, and you will not be able to progress to the next stage unless these are all answered correctly.</b></p>
+
+    <h3>Question 1.</h3>
+
+    <p>You make an initial bet of 2, but change to 3 for your second bet. However you subsequently learn that the image was not rewarded on this trial. How many points do you earn/lose?</p>
+
+    <div class="answer-options" id="question1-options">
+        <label><input type="radio" name="question1" value="1"> 0 points</label>
+        <label><input type="radio" name="question1" value="2"> 40 points</label>
+        <label><input type="radio" name="question1" value="3"> 60 points</label>
+        <label><input type="radio" name="question1" value="4"> minus 60 points</label>
+    </div>
+    <br>
+    <p id="answer1" class="hidden correct-answer">Correct! Because the image was not rewarded, you lose a base of 20 points. This is then multiplied by the second bet (3) so you lose 60 points.</p>
+    <p id="incorrect1" class="hidden incorrect-answer">That is not the correct answer, please try again!</p>
+
+    <h3>Question 2.</h3>
+
+    <br>
+    <p>In the following image, which choices have been made by the computer?</p>
+
+    <div class="image-container">
+        <img src="{% static 'instructions/bet2.BMP' %}" alt="Bet 2" width="400" height="auto">
+    </div>
+    <br>
+    <br>
+
+    <div class="answer-options" id="question2-options">
+        <label><input type="radio" name="question2" value="1"> First Player: Choice 1, Second Player Choice 1</label>
+        <label><input type="radio" name="question2" value="2"> First Player: Choice 2, Second Player Choice 2</label>
+        <label><input type="radio" name="question2" value="3"> First Player: Choice 1, Second Player Choice 2</label>
+        <label><input type="radio" name="question2" value="4"> First Player: Choice 2, Second Player Choice 1</label>
+    </div>
+    <br>
+    <p id="answer2" class="hidden correct-answer">Well done! You can see that the image associated with the second choice for the first player, and the first choice with the second player are dimmer, meaning that they were made by the computer.</p>
+    <p id="incorrect2" class="hidden incorrect-answer">That is not the correct answer, please try again!</p>
+
+    <h3>Question 3.</h3>
+
+    <p>The two images have a reward probability of 70% (image A) and 30% (image B). Which one of the following statements is accurate?</p>
+
+    <div class="answer-options" id="question3-options">
+        <label><input type="radio" name="question3" value="1"> Image A is always rewarded, image B is never rewarded</label>
+        <label><input type="radio" name="question3" value="2"> Image A is rewarded most of the time, image B is rewarded some of the time</label>
+        <label><input type="radio" name="question3" value="3"> Image A is never rewarded, image B is always rewarded</label>
+        <label><input type="radio" name="question3" value="4"> Image A is rewarded some of the time, image B is rewarded most of the time</label>
+    </div>
+    <br>
+    <p id="answer3" class="hidden correct-answer">On a roll! Yes image A is rewarded most of the time but not always. However, remember that in the actual task, these reward probabilities change!</p>
+    <p id="incorrect3" class="hidden incorrect-answer">That is not the correct answer, please try again!</p>
+
+    <p id="play-game" class="hidden">Please now press the button below to play a practice game.</p>
+
+    <div id="next-button-container" class="hidden">
+        {% next_button %}
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var question1 = document.getElementsByName('question1');
+        var question2 = document.getElementsByName('question2');
+        var question3 = document.getElementsByName('question3');
+        var answer1 = document.getElementById('answer1');
+        var answer2 = document.getElementById('answer2');
+        var answer3 = document.getElementById('answer3');
+        var incorrect1 = document.getElementById('incorrect1');
+        var incorrect2 = document.getElementById('incorrect2');
+        var incorrect3 = document.getElementById('incorrect3');
+        var playGame = document.getElementById('play-game');
+        var nextButtonContainer = document.getElementById('next-button-container');
+
+        function checkAnswers() {
+            var isQuestion1Correct = question1[3].checked;
+            var isQuestion2Correct = question2[3].checked;
+            var isQuestion3Correct = question3[1].checked;
+
+            if (isQuestion1Correct) {
+                answer1.classList.remove('hidden');
+                incorrect1.classList.add('hidden');
+            } else {
+                answer1.classList.add('hidden');
+                incorrect1.classList.remove('hidden');
+            }
+
+            if (isQuestion2Correct) {
+                answer2.classList.remove('hidden');
+                incorrect2.classList.add('hidden');
+            } else {
+                answer2.classList.add('hidden');
+                incorrect2.classList.remove('hidden');
+            }
+
+            if (isQuestion3Correct) {
+                answer3.classList.remove('hidden');
+                incorrect3.classList.add('hidden');
+            } else {
+                answer3.classList.add('hidden');
+                incorrect3.classList.remove('hidden');
+            }
+
+            if (isQuestion1Correct && isQuestion2Correct && isQuestion3Correct) {
+                playGame.classList.remove('hidden');
+                nextButtonContainer.classList.remove('hidden');
+            } else {
+                playGame.classList.add('hidden');
+                nextButtonContainer.classList.add('hidden');
+            }
+        }
+
+        for (var i = 0; i < question1.length; i++) {
+            question1[i].addEventListener('change', checkAnswers);
+        }
+
+        for (var i = 0; i < question2.length; i++) {
+            question2[i].addEventListener('change', checkAnswers);
+        }
+
+        for (var i = 0; i < question3.length; i++) {
+            question3[i].addEventListener('change', checkAnswers);
+        }
+    });
+</script>
+{% endblock %}

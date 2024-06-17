@@ -1,0 +1,70 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+{% endblock %}
+
+{% block content %}
+    <style>
+        .container {
+            justify-content: center;
+            align-items: center;
+            max-width: 90%;
+            font-size: 1.2vw;
+            text-align: center;
+        }
+        .image-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        p {
+            font-size: 20px;
+        }
+    </style>
+
+    <div class="container">
+        <h2><b>Second Page</b></h2>
+        <br>
+        <p><b>After the preference choices have been presented, all players will be moved onto the next page, where you will make a second choice and second bet before being presented with the outcomes for yourself and others in the group.</b></p>
+
+        <p>You will firstly make a second choice, which may be the same or different to your initial choice. Again, you will have 2.5 seconds, after which a random bet will be made if you do not choose manually.</p>
+
+        <div class="image-container">
+            <img src="{% static 'instructions/choice2.BMP' %}" alt="Choice 2" width="400" height="auto">
+        </div>
+        <br>
+        <br>
+
+        <p>The image associated with your second choice will subsequently be highlighted with a red box.</p>
+
+        <br>
+        <p>You will then be presented with the second bet, which can be the same or different to your initial bet. Again, this is done by pressing either the '1', '2' or '3' button on your keyboard. This second bet will be highlighted by a red box.
+            You will have 2.5 seconds, after which a random bet will be made if you do not choose manually.</p>
+
+        <div class="image-container">
+            <img src="{% static 'instructions/bet2.BMP' %}" alt="Bet 2" width="400" height="auto">
+        </div>
+        <br>
+        <br>
+
+        <p>Finally, you will receive feedback for your own choice as well as the choices made by others within the group.</p>
+
+        <div class="image-container">
+            <img src="{% static 'instructions/feedback.BMP' %}" alt="Feedback" width="400" height="auto">
+        </div>
+        <br>
+        <br>
+
+        <p>For yourself, you will see a coin, indicating whether you have won or lost points. If the coin is presented by itself, it means that you won points. If there is a red cross through the coin, it represents a loss. You also are provided with the amount of points gained or lost.
+            For the other players in the group, you will see the second image (i.e., whether they changed their choice) and an icon indicating whether they won or lost. You will not see how much they gained or lost, only if they won or lost.</p> 
+        </p>
+
+        <p>We will now ask a number of questions to ensure that you correctly understand the task.</p>
+
+        <button style="color: #fff; background-color: #007bff; border: 1px solid transparent; font-size: 1.5rem; padding: 10px 20px; border-radius: 0.25rem;">
+            Next
+        </button>
+    </div>
+
+{% endblock %}

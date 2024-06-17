@@ -1,0 +1,56 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+{% endblock %}
+
+{% block content %}
+    <style>
+        
+        .container {
+            justify-content: center;
+            align-items: center;
+            max-width: 90%;
+            font-size: 1.2vw;
+            text-align: center;
+        }
+
+        .image-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        p {
+            font-size: 20px;
+        }
+
+    </style>
+
+    <div class="container">
+        <h2><b>General Overview</b></h2>
+        <br>
+        <p>You will need to make a total of six choices within each round: 1) First choice, 2) First bet, 3) First preference, 4) Second preference, 5) Second choice, 6) Second Bet</p>
+
+        <p>Each of these phases has a time restriction. If you do not make your choice within the time limit, then a random choice will be made for you. At the end of each round, you will then be provided with feedback for your and the other players' choices. There are a total of 100 trials.</p>
+
+        <p>After making your first choice and bet, you will then uncover the choices made by other players in the group. After this, you will then be able to make a second choice and bet, where you can either change or keep the choices and bets from your first.
+            There is no co-operation or competition between players, and you will not be able to communicate with others in the group. However, you may either trust their own learning experience through trial and error or take decisions from others into consideration, 
+            as some of them might learn faster than the others. The goal ultimately is to maximize your own points by choosing the image with the higher probability of reward.
+        </p>
+
+        <p>A certain proportion of top scorers will be provided with a bonus payment.</p>
+
+        <p>We will now describe each of the stage of the task, before you will complete a practice game. Please press the next button when you are ready to move onto the next page.</p>
+
+        <div class="image-container">
+            <img src="{% static 'instructions/example.BMP' %}" alt="Example Image" width="400" height="auto">
+        </div>
+        <br>
+        <br>
+        
+        <button style="color: #fff; background-color: #007bff; border: 1px solid transparent; font-size: 1.5rem; padding: 10px 20px; border-radius: 0.25rem;">
+            Next
+        </button>
+    </div>
+{% endblock %}

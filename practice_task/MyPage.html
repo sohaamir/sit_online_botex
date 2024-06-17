@@ -1,0 +1,484 @@
+{% extends "global/Page.html" %}
+{% load staticfiles otree %}
+{% load otree %}
+
+{{ block content }}
+
+<style>
+    body {
+        background-color: black;
+        color: white;
+        font-size: 16px;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        height: 275vh;
+        margin: 0;
+    }
+
+    #option-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: center;
+        width: 600px;
+        height: 400px;
+        border: 5px solid white;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+
+    #options {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        width: 100%;
+        margin-top: 45%;
+        position: relative;
+    }
+
+    #options img {
+        width: 10%;
+        margin: 0;
+    }
+
+    #option_left {
+        position: absolute;
+        left: 25%;
+        transform: translateX(-50%);
+    }
+
+    #option_right {
+        position: absolute;
+        right: 25%;
+        transform: translateX(50%);
+    }
+
+    .title {
+        text-align: center;
+        position: absolute;
+        top: -30px;
+        left: 50%;
+        transform: translateX(-50%);
+        white-space: pre-line;
+    }
+
+    #preference-title {
+        top: -60px;
+    }
+
+    .selected {
+        border: 3px solid yellow;
+    }
+
+    .bet-options {
+        display: flex;
+        justify-content: center;
+        margin-top: 40px;
+    }
+
+    .bet-options div {
+        margin: 0 10px;
+        padding: 5px 10px;
+        cursor: pointer;
+    }
+
+    .bet-options div.selected {
+        border: 2px solid yellow;
+    }
+
+    #avatar-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        top: 70px;
+        left: -170px;
+    }
+
+    .avatar-wrapper {
+        position: relative;
+        display: inline-block;
+        margin: 0 10px;
+    }
+
+    .avatar {
+        width: 50px;
+        height: 50px;
+    }
+
+    .chosen-image {
+        width: 30px;
+        height: 30px;
+        position: absolute;
+        top: 55px;
+        left: 10px;
+    }
+
+    .second-chosen-image {
+    width: 30px;
+    height: 30px;
+    position: absolute;
+    top: 55px;
+    left: 10px;
+    }
+
+    .avatar-selected {
+        border: 3px solid rgb(249, 0, 0);
+    }
+
+    .avatar-selected-second-choice {
+        border: 3px solid rgb(255, 166, 0);
+    }
+</style>
+
+<div id="avatar-container">
+    {% for player_id in other_player_ids %}
+        <div class="avatar-wrapper" data-player-id="{{ player_id }}">
+            <img src="{% static avatar_image %}" alt="Player {{ player_id }} Avatar" class="avatar">
+            <img src="" alt="Player {{ player_id }} Chosen Image" class="chosen-image" style="display: none;">
+            <img src="" alt="Player {{ player_id }} Second Chosen Image" class="second-chosen-image" style="display: none;">
+        </div>
+    {% endfor %}
+</div>
+
+<script>
+    window.otherPlayerIds = {{ other_player_ids|json }};
+</script>
+
+<div id="option-container">
+    <div id="options">
+        <img src="{% static left_image %}" id="option_left" data-option="left">
+        <img src="{% static right_image %}" id="option_right" data-option="right">
+        <div class="title" id="choice-title">Your choice?</div>
+        <div class="title" id="bet-title" style="display: none;">Your bet?</div>
+        <div class="title" id="preference-title" style="display: none;">1.Pref?</div>
+    </div>
+    <div id="bet-container" style="display: none;">
+        <div class="bet-options">
+            <div data-bet="1">1</div>
+            <div data-bet="2">2</div>
+            <div data-bet="3">3</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.js_vars = {
+        player_id: {{ player_id }},
+        preference_choice_displayed: false,
+        preference_second_choice_displayed: false
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        liveSend({my_page_load_time: performance.now()});
+        initialChoiceTimerId = setTimeout(function() {
+            if (currentStage === 'choice') {
+                liveSend({initial_choice_time: 5000});  // Send the time limit if no choice is made
+            }
+        }, 5000);
+
+        window.choicePhaseStartTime = performance.now();  // Store the start time of the choice phase
+    });
+
+    window.betPhaseStartTime = null;
+
+    let initialChoiceTime;
+    let initialBetTime;
+    let preferenceChoiceTime;
+    let preferenceSecondChoiceTime;
+    let currentStage = 'choice'; // Initialize currentStage variable
+    let initialChoiceTimerId;
+    let choiceMade = false;
+    let betMade = false;
+
+    function handleKeyDown(event) {
+        console.log('Key pressed:', event.key);
+        console.log('Current stage:', currentStage);
+        console.log('window.js_vars.preference_choice_made:', window.js_vars.preference_choice_made);
+
+        if (currentStage === 'choice' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !choiceMade) {
+            initialChoiceTime = performance.now() - window.choicePhaseStartTime;
+            liveSend({initial_choice_time: initialChoiceTime, choice: event.key === 'ArrowLeft' ? 'left' : 'right'});
+            choose(event.key === 'ArrowLeft' ? 'left' : 'right');
+            choiceMade = true;
+            clearTimeout(initialChoiceTimerId);  // Clear the timeout when a choice is made manually
+        } else if (currentStage === 'bet' && (event.key >= '1' && event.key <= '3') && !betMade) {
+            const bet = parseInt(event.key);
+            const initialBetTime = performance.now() - window.betPhaseStartTime;  // Calculate the initial_bet_time relative to the start of the bet phase
+            liveSend({initial_bet_time: initialBetTime, bet: bet, id: js_vars.player_id});  // Include the player's ID in the data sent to the server
+            selectBet(bet);
+            betMade = true;
+        } else if (currentStage === 'preference' && (event.key === '1' || event.key === '2') && !window.js_vars.preference_choice_made) {
+            console.log('Preference choice button pressed:', event.key);
+            preferenceChoiceTime = performance.now();
+            const preferenceChoice = event.key;
+            liveSend({preference_choice: preferenceChoice, preference_choice_time: preferenceChoiceTime, button_pressed: true});
+            window.js_vars.preference_choice_made = true;
+            window.js_vars.preference_choice = preferenceChoice;
+            console.log('window.js_vars.preference_choice_made updated:', window.js_vars.preference_choice_made);
+            console.log('window.js_vars.preference_choice updated:', window.js_vars.preference_choice);
+        }
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    function choose(option) {
+        if (currentStage === 'choice' && !choiceMade) {
+            const selectedOption = document.getElementById(`option_${option}`);
+            const otherOption = document.getElementById(`option_${option === 'left' ? 'right' : 'left'}`);
+            selectedOption.classList.add('selected');
+            otherOption.classList.remove('selected');
+            choiceMade = true;
+        }
+    }
+
+    function selectBet(bet) {
+        if (currentStage === 'bet' && !betMade) {
+            const betElements = document.querySelectorAll('.bet-options div');
+            betElements.forEach(element => {
+                element.classList.remove('selected');
+            });
+            document.querySelector(`.bet-options div[data-bet="${bet}"]`).classList.add('selected');
+            liveSend({ bet: bet });
+            betMade = true;
+            document.removeEventListener('keydown', handleKeyDown);  // Remove the event listener after the first bet
+        }
+    }
+
+    function handlePreferenceChoice(event) {
+        if (currentStage === 'preference' && (event.key === '1' || event.key === '2') && !window.js_vars.preference_choice_made) {
+            console.log('Preference choice button pressed:', event.key);
+            const preferenceChoiceTime = performance.now() - window.preferenceChoiceStartTime;
+            const preferenceChoice = event.key;
+            liveSend({preference_choice_button_pressed: preferenceChoice, preference_choice_time: preferenceChoiceTime});
+            window.js_vars.preference_choice_made = true;
+            window.js_vars.preference_choice = preferenceChoice;
+            console.log('window.js_vars.preference_choice_made updated:', window.js_vars.preference_choice_made);
+            console.log('window.js_vars.preference_choice updated:', window.js_vars.preference_choice);
+        }
+    }
+
+    document.addEventListener('keydown', handlePreferenceChoice);
+
+    function handleSecondPreferenceChoice(event) {
+        if (currentStage === 'preference_second' && (event.key === '1' || event.key === '2')) {
+            console.log('Second preference choice button pressed:', event.key);
+            preferenceSecondChoiceTime = performance.now() - window.preferenceSecondChoiceStartTime;
+            const preferenceSecondChoice = event.key;
+            liveSend({preference_second_choice_button_pressed: preferenceSecondChoice, preference_second_choice_time: preferenceSecondChoiceTime});
+            if (preferenceSecondChoice !== window.js_vars.preference_choice && !window.js_vars.preference_second_choice_made) {
+                window.js_vars.preference_second_choice_made = true;
+                window.js_vars.preference_second_choice = preferenceSecondChoice;
+                console.log('window.js_vars.preference_second_choice_made updated:', window.js_vars.preference_second_choice_made);
+                console.log('window.js_vars.preference_second_choice updated:', window.js_vars.preference_second_choice);
+            }
+        }
+    }
+
+    document.addEventListener('keydown', handleSecondPreferenceChoice);
+
+    function liveRecv(data) {
+        console.log('Received data:', data);
+        console.log('Current stage:', currentStage);
+        console.log('window.js_vars.preference_choice_made:', window.js_vars.preference_choice_made);
+
+        if ('my_page_load_time' in data) {
+            window.myPageLoadTime = data.my_page_load_time;
+        }
+
+        if ('start_initial_choice_timer' in data && data.start_initial_choice_timer && !window.initialChoiceTimerStarted) {
+            window.initialChoiceTimerStarted = true;  // Set the flag to indicate that the initial choice timer has started
+            setTimeout(function() {
+                liveSend({initial_choice_timer_ended: true});
+            }, 5000);
+        }
+
+        if ('start_choice_phase_timer' in data && data.start_choice_phase_timer && !window.choicePhaseTimerStarted) {
+            window.choicePhaseTimerStarted = true;  // Set the flag to indicate that the choice phase timer has started
+            setTimeout(function() {
+                liveSend({choice_phase_timer_ended: true});
+            }, 5000);
+        }
+
+        if ('computer_choice' in data) {
+            const selectedOption = document.getElementById(`option_${data.computer_choice}`);
+            const otherOption = document.getElementById(`option_${data.computer_choice === 'left' ? 'right' : 'left'}`);
+            selectedOption.classList.add('selected');
+            otherOption.classList.remove('selected');
+        }
+
+        if ('highlight_selected_choice' in data) {
+            const selectedOption = document.getElementById(`option_${data.highlight_selected_choice}`);
+            const otherOption = document.getElementById(`option_${data.highlight_selected_choice === 'left' ? 'right' : 'left'}`);
+            selectedOption.classList.add('selected');
+            otherOption.classList.remove('selected');
+        }
+
+        if ('highlight_selected_image' in data) {
+            const selectedOption = document.querySelector(`#option_${data.highlight_selected_image.includes('option1A') ? 'left' : 'right'}`);
+            const otherOption = document.querySelector(`#option_${data.highlight_selected_image.includes('option1A') ? 'right' : 'left'}`);
+            selectedOption.classList.add('selected');
+            otherOption.classList.remove('selected');
+        }
+
+        if ('start_bet_timer' in data && data.start_bet_timer && !window.betTimerStarted) {
+            window.betTimerStarted = true; // Set the flag to indicate that the bet timer has started
+            setTimeout(function() {
+                if (!betMade) {
+                    // If no bet is made within 5000ms, send the bet_timer_ended event
+                    liveSend({bet_timer_ended: true});
+                }
+            }, 5000);
+        }
+
+        if ('show_bet_container' in data && data.show_bet_container) {
+            document.getElementById('bet-container').style.display = 'block';
+            document.getElementById('choice-title').style.display = 'none';
+            document.getElementById('bet-title').style.display = 'block';
+            currentStage = 'bet';
+            betMade = false; // Reset the betMade flag when the bet container is shown
+            document.addEventListener('keydown', handleKeyDown); // Add the event listener when the bet container is shown
+            window.betPhaseStartTime = performance.now(); // Record the start time of the bet phase
+            window.betContainerLoadTime = performance.now(); // Store the time when the bet container is shown
+
+            // Start a timer for 5000ms
+            setTimeout(function() {
+                if (!betMade) {
+                    // If no bet is made within 5000ms, send the bet_timer_ended event
+                    liveSend({bet_timer_ended: true});
+                } else {
+                    liveSend({bet_timer_ended: true});
+                }
+                document.removeEventListener('keydown', handleKeyDown); // Remove the event listener after 5000ms
+            }, 5000);
+        }
+
+        if ('highlight_selected_bet' in data) {
+            const betElements = document.querySelectorAll('.bet-options div');
+            betElements.forEach(element => {
+                element.classList.remove('selected');
+            });
+            document.querySelector(`.bet-options div[data-bet="${data.highlight_selected_bet}"]`).classList.add('selected');
+        }
+
+        if ('hide_bet_title' in data && data.hide_bet_title) {
+            document.getElementById('bet-title').style.display = 'none';
+        }
+
+        if ('preference_choice_button_pressed' in data) {
+            console.log('Preference choice button press acknowledged by server');
+            window.js_vars.preference_choice_made = true;
+            window.js_vars.preference_choice = data.preference_choice_button_pressed;
+            console.log('window.js_vars.preference_choice_made updated:', window.js_vars.preference_choice_made);
+            console.log('window.js_vars.preference_choice updated:', window.js_vars.preference_choice);
+        }
+
+        if ('highlight_selected_avatar' in data) {
+            const selectedPlayerId = data.highlight_selected_avatar;
+            const avatarWrappers = document.querySelectorAll('.avatar-wrapper');
+            avatarWrappers.forEach(wrapper => {
+                if (wrapper.dataset.playerId == selectedPlayerId) {
+                    wrapper.classList.add('avatar-selected');
+                } else {
+                    wrapper.classList.remove('avatar-selected');
+                }
+            });
+        }
+
+        if ('highlight_selected_avatar_second_choice' in data) {
+            const selectedPlayerId = data.highlight_selected_avatar_second_choice;
+            const avatarWrappers = document.querySelectorAll('.avatar-wrapper');
+            avatarWrappers.forEach(wrapper => {
+                if (wrapper.dataset.playerId == selectedPlayerId) {
+                    wrapper.classList.add('avatar-selected-second-choice');
+                } else {
+                    wrapper.classList.remove('avatar-selected-second-choice');
+                }
+            });
+        }
+
+        if ('show_preference_choice' in data && data.show_preference_choice) {
+            console.log('Showing preference choice');
+            document.getElementById('preference-title').style.display = 'block';
+            window.js_vars.preference_choice = '';
+            currentStage = 'preference';
+            console.log('Current stage updated:', currentStage);
+            console.log('window.js_vars.preference_choice_made:', window.js_vars.preference_choice_made);
+
+            // Start the preference choice timer
+            liveSend({preference_choice_timer_started: true});
+            window.preferenceChoiceStartTime = performance.now();
+
+            // Start a timer for 5000ms
+            setTimeout(function() {
+                liveSend({preference_choice_timer_ended: true});  // Send the timer ended event
+            }, 5000);
+        }
+
+        if ('show_preference_second_choice' in data && data.show_preference_second_choice && !window.js_vars.show_preference_second_choice_received) {
+            window.js_vars.show_preference_second_choice_received = true;
+            document.getElementById('preference-title').textContent = '2.Pref?';
+            currentStage = 'preference_second';
+
+            // Start the second preference choice timer
+            window.preferenceSecondChoiceStartTime = performance.now();
+
+            // Start a timer for 5000ms
+            setTimeout(function() {
+                liveSend({preference_second_choice_timer_ended: true});
+            }, 5000);
+        }
+
+        if ('start_preference_second_choice_timer' in data && data.start_preference_second_choice_timer) {
+            setTimeout(function() {
+                if (!window.js_vars.preference_second_choice_made) {
+                    liveSend({preference_second_choice_timer_ended: true});
+                }
+            }, 5000);
+        }
+
+        if ('display_chosen_image' in data && data.display_chosen_image) {
+            const selectedPlayerId = data.selected_player_id;
+            const chosenImage = data.chosen_image;
+            console.log('Displaying chosen image for player:', selectedPlayerId, 'Image:', chosenImage);
+            const avatarWrapper = document.querySelector(`.avatar-wrapper[data-player-id="${selectedPlayerId}"]`);
+            if (avatarWrapper) {
+                const chosenImageElement = avatarWrapper.querySelector('.chosen-image');
+                chosenImageElement.src = `/static/${chosenImage}`;
+                chosenImageElement.style.display = 'block';
+
+                // Send image_displayed event after the image is loaded
+                chosenImageElement.onload = function() {
+                    liveSend({image_displayed: true});
+                };
+            }
+        }
+
+        if ('display_second_chosen_image' in data && data.display_second_chosen_image) {
+            const selectedPlayerId = data.selected_player_id;
+            const secondChosenImage = data.second_chosen_image;
+            console.log('Displaying second chosen image for player:', selectedPlayerId, 'Image:', secondChosenImage);
+            const avatarWrapper = document.querySelector(`.avatar-wrapper[data-player-id="${selectedPlayerId}"]`);
+            if (avatarWrapper) {
+                const secondChosenImageElement = avatarWrapper.querySelector('.second-chosen-image');
+                secondChosenImageElement.src = `/static/${secondChosenImage}`;
+                secondChosenImageElement.style.display = 'block';
+
+                // Send second_image_displayed event after the image is loaded
+                secondChosenImageElement.onload = function() {
+                    liveSend({second_image_displayed: true});
+                };
+            }
+        }
+
+        if ('redirect_to_second_choice' in data && data.redirect_to_second_choice) {
+            console.log('Redirecting to SecondChoicePage');
+            setTimeout(() => {
+                document.getElementById('form').submit();
+            }, 500);
+        }
+    }
+</script>
+
+{{ endblock }} 

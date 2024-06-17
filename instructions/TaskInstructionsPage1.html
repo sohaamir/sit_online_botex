@@ -1,0 +1,95 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+{% endblock %}
+
+{% block content %}
+    <style>
+        .container {
+            justify-content: center;
+            align-items: center;
+            max-width: 90%;
+            font-size: 1.2vw;
+            text-align: center;
+        }
+        .image-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        p {
+            font-size: 20px;
+        }
+    </style>
+
+    <div class="container">
+        <h2><b>First Page</b></h2>
+        <br>
+        <p>At the beginning of each round, you will be presented with the screen below:</p>
+
+        <div class="image-container">
+            <img src="{% static 'instructions/choice1.BMP' %}" alt="Choice 1" width="400" height="auto">
+        </div>
+        <br>
+        <br>
+
+        <p>The other two players in the group are represented by the avatars.<b>The position of the other players does not change throughout the experiment.</b></p>
+
+        <p>You will have 2.5 seconds to make a choice between the two images. This is done by either pressing the 'Left' or 'Right' keys on your keyboard. Importantly, you cannot change your choice once it is made.
+            If you do not make a choice, an image will be selected at random for you. 
+            Even if you take less time to make your choice, you will still wait until the 2.5 seconds have elapsed before the next part of the task</p>
+
+        <br>
+        <p>The chosen image is highlighted with a yellow box when you make your choice.</p>
+
+        <div class="image-container">
+            <img src="{% static 'instructions/choice1_result.BMP' %}" alt="Choice 1 Result" width="400" height="auto">
+        </div>
+        <br>
+        <br>
+
+        <p>After 2.5 seconds, you will be asked to place a 'bet' as to how confident you are that the image selected is the image with the higher probability of reward. This is done by pressing either the '1', '2' or '3' button on your keyboard.
+            You cannot change your bet once it is made.</p>
+
+        <div class="image-container">
+            <img src="{% static 'instructions/bet1.BMP' %}" alt="Bet 1" width="400" height="auto">
+        </div>
+        <br>
+        <br>
+
+        <p>It is important that you answer truthfully, because the total number of points received per round is multiplied by the bet placed. This means that you win more if you are correct, but lose more if you are incorrect.
+            Again, you have 2.5 seconds to make your bet. If you do not make a bet within this time, a random bet will be placed for you.</p>
+        </p>
+
+        <p>The chosen number is highlighted with a yellow box when the bet is made.</p>
+
+        <div class="image-container">
+            <img src="{% static 'instructions/bet1_result.BMP' %}" alt="Bet 1 Result" width="400" height="auto">
+        </div>
+        <br>
+        <br>
+
+        <p>You will then be asked to choose one of the other two players choices to uncover first, by pressing either '1' or '2'. Their choice will be presented below their corresponding avatar. Whilst you will see both players' choices eventually, please first select the player who you think...</p>
+
+        <div class="image-container">
+            <img src="{% static 'instructions/first_pref.BMP' %}" alt="First Preference" width="400" height="auto">
+        </div>
+        <br>
+        <br>
+
+        <p>Where players' do not make their first choice within the time-limit, the image displayed below their avatar choice is dimmer. Subsequently, other players will know when players' choices were not made by the player themselves.</p>
+
+        <div class="image-container">
+            <img src="{% static 'instructions/first_pref_computer.BMP' %}" alt="First Preference Computer" width="400" height="auto">
+        </div>
+        <br>
+        <br>
+
+        <p>Please press the next button to move onto the next page which will describe the second part of the task. Please only do so when you understand the contents of the page, as you will not be able to return back.</p>
+
+        <button style="color: #fff; background-color: #007bff; border: 1px solid transparent; font-size: 1.5rem; padding: 10px 20px; border-radius: 0.25rem;">
+            Next
+        </button>
+    </div>
+{% endblock %}

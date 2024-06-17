@@ -1,0 +1,30 @@
+{{ block title }}{{ endblock }}
+{{ block content }}
+<style>
+    body {
+        background-color: black;
+        color: white;
+        font-size: 24px;
+    }
+    #option-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 800px;
+        height: 600px;
+        margin: 0 auto;
+    }
+    button {
+        font-size: 24px;
+        padding: 10px 20px;
+        margin-top: 20px;
+    }
+</style>
+
+<div id="results-container">
+    <h2>Final Results</h2>
+    <p>Player {{ player_id }}, your total reward earnings are: {{ total_reward_earnings }} pence</p>
+    <button onclick="window.location.href='/'">Finish</button>
+</div>
+{{ endblock }}

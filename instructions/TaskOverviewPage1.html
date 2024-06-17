@@ -1,0 +1,47 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+{% endblock %}
+
+{% block content %}
+    <style>
+        .container {
+            justify-content: center;
+            align-items: center;
+            max-width: 90%;
+            font-size: 1.2vw;
+            text-align: center;
+        }
+        .image-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        p {
+            font-size: 20px;
+        }
+    </style>
+
+    <div class="container">
+        <h2><b>Welcome to the social learning task!</b></h2>
+        <br>
+        <p>In the task you will be presented with choosing between two images, which have different probabilities of giving a reward. Importantly, if you select an image which does not provide a reward, then you will lose points for that trial. 
+            It is therefore important, in order to gain as many points as possible, to try and select the image which is more likely to give you a reward.</p>
+
+        <p>However, the image more likely to provide the reward will switch at certain points throughout the task, so it is important that you do not select the same image repeatedly throughout the entire task, as you will lose more points that way.</p>
+
+        <p>We will now describe each of the stage of the task, after which you will complete a practice game.</p>
+
+        <p>Please press the next button when you are ready to move onto the task instructions.</p>
+
+        <div class="image-container">
+            <img src="{% static 'instructions/example.BMP' %}" alt="Example Image" width="600" height="auto">
+        </div>
+        <br>
+        <br>
+        <button style="color: #fff; background-color: #007bff; border: 1px solid transparent; font-size: 1.5rem; padding: 10px 20px; border-radius: 0.25rem;">
+            Next
+        </button>
+    </div>
+{% endblock %}
