@@ -46,6 +46,8 @@ class Group(BaseGroup):
     reward_probability_B = models.FloatField(initial=0.3)
     seventy_percent_image = models.StringField(initial='option1A.bmp')
     reversal_rounds = models.StringField(initial='')
+    redirect_triggered = models.BooleanField(initial=False)
+    second_preference_choices_displayed = models.BooleanField(initial=False)
 
     def set_round_reward(self):
         self.round_reward_A = 1 if random.random() < self.reward_probability_A else 0
@@ -544,12 +546,11 @@ class MyPage(Page):
             if all(p.field_maybe_none('preference_second_choice_time') for p in players):
                 group.all_players_preference_second_choice_time = round(max(p.preference_second_choice_time for p in players), 2)
 
-        if 'image_displayed' in data:
-            player.image_displayed = True
-
-            if all(p.field_maybe_none('image_displayed') for p in players) and player.id_in_group == 1:
+        def display_second_preference_choices(player, players):
+            if not player.group.second_preference_choices_displayed:
+                player.group.second_preference_choices_displayed = True
                 print(f'All players have their first preference images displayed.')
-                time.sleep(2)
+                time.sleep(2)  # Add a 2-second delay
                 print(f'Displaying second preference choices.')
                 response = {}
                 for p in players:
@@ -562,17 +563,30 @@ class MyPage(Page):
                         selected_player_id=selected_player_id
                     )
                 return response
+            return {}
+
+        def trigger_redirect_to_second_choice(player, players):
+            if not player.group.redirect_triggered:
+                player.group.redirect_triggered = True
+                print(f'All players have their second preference images displayed.')
+                time.sleep(3)  # Add a 3-second delay
+                print(f'Sending redirect_to_second_choice event.')
+                for p in players:
+                    p.participant.vars['preference_choices_displayed'] = True
+                return {p.id_in_group: dict(redirect_to_second_choice=True) for p in players}
+            return {}
+
+        if 'image_displayed' in data:
+            player.image_displayed = True
+
+            if all(p.field_maybe_none('image_displayed') for p in players):
+                return display_second_preference_choices(player, players)
 
         if 'second_image_displayed' in data:
             player.second_image_displayed = True
 
             if all(p.field_maybe_none('second_image_displayed') for p in players):
-                print(f'All players have their second preference images displayed.')
-                time.sleep(3)
-                print(f'Sending redirect_to_second_choice event.')
-                for p in players:
-                    p.participant.vars['preference_choices_displayed'] = True
-                return {p.id_in_group: dict(redirect_to_second_choice=True) for p in players}
+                return trigger_redirect_to_second_choice(player, players)
 
         return {}
 
