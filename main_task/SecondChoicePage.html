@@ -213,8 +213,8 @@
     function handleKeyDown(event) {
         if (currentStage === 'choice' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !choiceMade) {
             const secondChoiceTime = Math.round((performance.now() - secondChoiceStartTime) * 100) / 100;
-            liveSend({second_choice: event.key === 'ArrowLeft' ? 'left' : 'right', second_choice_time: secondChoiceTime});
             choose(event.key === 'ArrowLeft' ? 'left' : 'right');
+            liveSend({second_choice_time: secondChoiceTime});
             choiceMade = true;
         } else if (currentStage === 'bet' && (event.key >= '1' && event.key <= '3') && !betMade) {
             const secondBetTime = Math.round((performance.now() - secondBetStartTime) * 100) / 100;
@@ -235,9 +235,10 @@
             otherOption.classList.remove('selected');
             otherOption.classList.remove('selected-from-previous');
             document.getElementById('choice2_field').value = option;
+            const secondChoiceTime = Math.round((performance.now() - secondChoiceStartTime) * 100) / 100;
             liveSend({
                 second_choice: option === 'left' ? '{{ player.left_image }}' : '{{ player.right_image }}',
-                second_choice_time: performance.now()
+                second_choice_time: secondChoiceTime
             });
             choiceMade = true;
         }
