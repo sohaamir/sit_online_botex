@@ -174,9 +174,9 @@
         liveSend({my_page_load_time: performance.now()});
         initialChoiceTimerId = setTimeout(function() {
             if (currentStage === 'choice') {
-                liveSend({initial_choice_time: 5000});  // Send the time limit if no choice is made
+                liveSend({initial_choice_time: 2000});  // Send the time limit if no choice is made
             }
-        }, 5000);
+        }, 2000);
 
         window.choicePhaseStartTime = performance.now();  // Store the start time of the choice phase
     });
@@ -291,14 +291,14 @@
             window.initialChoiceTimerStarted = true;  // Set the flag to indicate that the initial choice timer has started
             setTimeout(function() {
                 liveSend({initial_choice_timer_ended: true});
-            }, 5000);
+            }, 2000);
         }
 
         if ('start_choice_phase_timer' in data && data.start_choice_phase_timer && !window.choicePhaseTimerStarted) {
             window.choicePhaseTimerStarted = true;  // Set the flag to indicate that the choice phase timer has started
             setTimeout(function() {
                 liveSend({choice_phase_timer_ended: true});
-            }, 5000);
+            }, 2000);
         }
 
         if ('computer_choice' in data) {
@@ -326,10 +326,10 @@
             window.betTimerStarted = true; // Set the flag to indicate that the bet timer has started
             setTimeout(function() {
                 if (!betMade) {
-                    // If no bet is made within 5000ms, send the bet_timer_ended event
+                    // If no bet is made within 2000ms, send the bet_timer_ended event
                     liveSend({bet_timer_ended: true});
                 }
-            }, 5000);
+            }, 2000);
         }
 
         if ('show_bet_container' in data && data.show_bet_container) {
@@ -342,16 +342,16 @@
             window.betPhaseStartTime = performance.now(); // Record the start time of the bet phase
             window.betContainerLoadTime = performance.now(); // Store the time when the bet container is shown
 
-            // Start a timer for 5000ms
+            // Start a timer for 2000ms
             setTimeout(function() {
                 if (!betMade) {
-                    // If no bet is made within 5000ms, send the bet_timer_ended event
+                    // If no bet is made within 2000ms, send the bet_timer_ended event
                     liveSend({bet_timer_ended: true});
                 } else {
                     liveSend({bet_timer_ended: true});
                 }
-                document.removeEventListener('keydown', handleKeyDown); // Remove the event listener after 5000ms
-            }, 5000);
+                document.removeEventListener('keydown', handleKeyDown); // Remove the event listener after 2000ms
+            }, 2000);
         }
 
         if ('highlight_selected_bet' in data) {
@@ -410,10 +410,10 @@
             liveSend({preference_choice_timer_started: true});
             window.preferenceChoiceStartTime = performance.now();
 
-            // Start a timer for 5000ms
+            // Start a timer for 2000ms
             setTimeout(function() {
                 liveSend({preference_choice_timer_ended: true});  // Send the timer ended event
-            }, 5000);
+            }, 2000);
         }
 
         if ('show_preference_second_choice' in data && data.show_preference_second_choice && !window.js_vars.show_preference_second_choice_received) {
@@ -424,10 +424,10 @@
             // Start the second preference choice timer
             window.preferenceSecondChoiceStartTime = performance.now();
 
-            // Start a timer for 5000ms
+            // Start a timer for 2000ms
             setTimeout(function() {
                 liveSend({preference_second_choice_timer_ended: true});
-            }, 5000);
+            }, 2000);
         }
 
         if ('start_preference_second_choice_timer' in data && data.start_preference_second_choice_timer) {
@@ -435,7 +435,7 @@
                 if (!window.js_vars.preference_second_choice_made) {
                     liveSend({preference_second_choice_timer_ended: true});
                 }
-            }, 5000);
+            }, 2000);
         }
 
         if ('display_chosen_image' in data && data.display_chosen_image) {
