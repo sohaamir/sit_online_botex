@@ -23,8 +23,7 @@ class Consent(Page):
     @staticmethod              
     def js_vars(player):
         return dict(
-            completionlink=
-              player.subsession.session.config['completionlink']
+            noconsentlink=player.subsession.session.config['noconsentlink']
         )
     pass
 
@@ -60,6 +59,13 @@ class WaitPage1(WaitPage):
         return {
             'title_text': 'Waiting for Other Players',
         }
+    
+    @staticmethod              
+    def js_vars(player):
+        return dict(
+            waitpagelink=player.subsession.session.config['waitpagelink']
+        )
+    pass
     
 class TransitionToPracticeTask(Page):
     def vars_for_template(self):

@@ -20,8 +20,7 @@ class PlayerLeft(Page):
     @staticmethod              
     def js_vars(player):
         return dict(
-            completionlink=
-              player.subsession.session.config['completionlink']
+            playerleftlink=player.subsession.session.config['playerleftlink']
         )
     pass
 

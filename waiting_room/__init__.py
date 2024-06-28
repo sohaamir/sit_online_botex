@@ -26,6 +26,13 @@ class WaitPage2(WaitPage):
         return {
             'title_text': 'Waiting for Other Players',
         }
+    
+    @staticmethod              
+    def js_vars(player):
+        return dict(
+            waitpagelink=player.subsession.session.config['waitpagelink']
+        )
+    pass
 
 class TransitionToMainTask(Page):
     def vars_for_template(self):

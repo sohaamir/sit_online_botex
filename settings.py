@@ -14,11 +14,14 @@ load_dotenv()
 
 SESSION_CONFIGS = [
      dict(
-         name='main_task',
+         name='social_influence_task',
          app_sequence=['instructions', 'practice_task', 'main_task_instructions', 'waiting_room', 'main_task', 'player_left'],
          num_demo_participants=3,
          # use_browser_bots=True,
-         completionlink='https://app.prolific.co/submissions/complete?cc=11111111',
+         completionlink='https://app.prolific.com/submissions/complete?cc=CKMY5BJS',
+         noconsentlink='https://app.prolific.com/submissions/complete?cc=CDVJRJBR',
+         playerleftlink='https://app.prolific.com/submissions/complete?cc=CXG9SKDC',
+         waitpagelink='https://app.prolific.com/submissions/complete?cc=C1J67YK4',
      ),
 ]
 

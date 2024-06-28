@@ -40,8 +40,11 @@
     <script>
         let returnButton = document.getElementById('return-button');
 
+        // Get the wait page exit link from js_vars
+        var waitpagelink = js_vars.waitpagelink;
+
         returnButton.addEventListener('click', () => {
-            window.location.href = 'YOUR_PROLIFIC_RETURN_URL';
+            window.location.href = waitpagelink;
         });
 
         // Snake Game
