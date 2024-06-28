@@ -1,6 +1,6 @@
-otree>=5.0.0a21
+otree=5.10.4
 psycopg2>=2.8.4
-dotenv
+python-dotenv==1.0.1
 websockets
 requests
 ws4py
