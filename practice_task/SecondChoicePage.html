@@ -64,11 +64,11 @@
     }
 
     .selected, .selected-from-previous {
-        border: 2px solid yellow;
+        border: 3px solid yellow;
     }
 
     .selected-second {
-        border: 2px solid red;
+        border: 3px solid red;
     }
 
     .bet-options {
@@ -213,8 +213,13 @@
     function handleKeyDown(event) {
         if (currentStage === 'choice' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !choiceMade) {
             const secondChoiceTime = Math.round((performance.now() - secondChoiceStartTime) * 100) / 100;
-            liveSend({second_choice: event.key === 'ArrowLeft' ? 'left' : 'right', second_choice_time: secondChoiceTime});
-            choose(event.key === 'ArrowLeft' ? 'left' : 'right');
+            const choice = event.key === 'ArrowLeft' ? 'left' : 'right';
+            const chosenImage = choice === 'left' ? '{{ player.left_image }}' : '{{ player.right_image }}';
+            liveSend({
+                second_choice: chosenImage,
+                second_choice_time: secondChoiceTime
+            });
+            choose(choice);
             choiceMade = true;
         } else if (currentStage === 'bet' && (event.key >= '1' && event.key <= '3') && !betMade) {
             const secondBetTime = Math.round((performance.now() - secondBetStartTime) * 100) / 100;
@@ -237,10 +242,6 @@
             otherOption.classList.remove('selected');
             otherOption.classList.remove('selected-from-previous');
             document.getElementById('choice2_field').value = option;
-            liveSend({
-                second_choice: option === 'left' ? '{{ player.left_image }}' : '{{ player.right_image }}',
-                second_choice_time: performance.now()
-            });
             choiceMade = true;
         }
     }
@@ -272,7 +273,7 @@
                 if (currentStage === 'choice') {
                     liveSend({second_choice_timer_ended: true});
                 }
-            }, 2000);
+            }, 4000);
         }
 
         if ('highlight_selected_image' in data) {
@@ -297,13 +298,13 @@
                 secondBetStartTime = performance.now();
                 console.log('Second bet phase start time:', secondBetStartTime);
 
-                // Start the second bet timer for 2000ms
+                // Start the second bet timer for 4000ms
                 setTimeout(function() {
                     if (currentStage === 'bet' && !betMade) {
-                        // If no bet is made within 2000ms, send the second_bet_timer_ended event
+                        // If no bet is made within 4000ms, send the second_bet_timer_ended event
                         liveSend({second_bet_timer_ended: true});
                     }
-                }, 2000);
+                }, 4000);
 
                 // Print the correct choice2 value based on whether it was made manually or assigned by the computer
                 if (choiceMade) {
@@ -321,9 +322,18 @@
             currentStage = 'bet';
             betMade = false;
             secondBetStartTime = performance.now();
+
+            // Highlight the selected image for the current player
+            const selectedOption = document.querySelector(`#option_${data.highlight_selected_image === '{{ player.left_image }}' ? 'left' : 'right'}`);
+            const otherOption = document.querySelector(`#option_${data.highlight_selected_image === '{{ player.left_image }}' ? 'right' : 'left'}`);
+            selectedOption.classList.add('selected-second');
+            selectedOption.classList.remove('selected-from-previous');
+            otherOption.classList.remove('selected-second');
+            otherOption.classList.remove('selected-from-previous');
+
             setTimeout(function() {
                 liveSend({second_bet_timer_ended: true});
-            }, 2000);
+            }, 4000);
         }
 
         // Add this condition to check if show_results has already been received

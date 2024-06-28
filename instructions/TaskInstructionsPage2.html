@@ -6,6 +6,10 @@
 
 {% block content %}
     <style>
+        body {
+            margin: 0 20%;  /* Add margins to the sides of the page */
+        }
+
         .container {
             justify-content: center;
             align-items: center;
@@ -13,54 +17,250 @@
             font-size: 1.2vw;
             text-align: center;
         }
+
         .image-container {
             display: flex;
             justify-content: center;
             margin-top: 20px;
         }
+
+        .dual-image-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .dual-image-container img {
+            width: 500px;
+            height: auto;
+        }
+
+        .image-with-caption {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 48%;
+        }
+
+        .image-with-caption img {
+            width: 100%;
+            height: auto;
+            max-width: 300px;
+        }
+
+        .image-caption {
+            margin-top: 10px;
+            text-align: center;
+            font-style: italic;
+            max-width: 300px;
+        }
+
         p {
-            font-size: 20px;
+            font-size: 24px;
+        }
+
+        .boxes-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .box-container {
+            width: 48%;
+            max-width: 400px;
+        }
+
+        .green-box, .red-box {
+            width: 100%;
+            padding: 20px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            height: 300px;
+        }
+
+        .green-box {
+            background-color: #b8ffba;
+            border: 2px solid #29571f;
+            color: rgb(0, 0, 0);
+        }
+
+        .red-box {
+            background-color: #ff766c;
+            border: 2px solid #7e0d05;
+            color: rgb(0, 0, 0);
+        }
+
+        .box-image {
+            max-width: 100%;
+            max-height: 150px;
+            margin-top: 20px;
+        }
+
+        .red-highlight-box {
+            background-color: #ffebee;
+            border: 2px solid #f44336;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .blue-highlight-box {
+            background-color: #e3f2fd;
+            border: 2px solid #2196f3;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .green-highlight-box {
+            background-color: #e8f5e9;
+            border: 2px solid #4caf50;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .green-highlight-box p {
+            font-weight: bold;
+        }
+
+        .red-highlight-box p, .blue-highlight-box p {
+            font-weight: bold;
+        }
+
+        .normal-weight {
+            font-weight: normal !important;
+        }
+
+        .blue-highlight-box-left-aligned {
+            background-color: #e3f2fd;
+            border: 2px solid #2196f3;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: left;
         }
     </style>
 
     <div class="container">
-        <h2><b>Second Page</b></h2>
+        <h2><b>Second Choice/Bet and Feedback</b></h2>
         <br>
-        <p><b>After the preference choices have been presented, all players will be moved onto the next page, where you will make a second choice and second bet before being presented with the outcomes for yourself and others in the group.</b></p>
-
-        <p>You will firstly make a second choice, which may be the same or different to your initial choice. Again, you will have 2.5 seconds, after which a random bet will be made if you do not choose manually.</p>
-
-        <div class="image-container">
-            <img src="{% static 'instructions/choice2.BMP' %}" alt="Choice 2" width="400" height="auto">
+        <div class="blue-highlight-box">
+        <p><b>After the two choices for the other players have been presented, you are presented with the opportunity to revise your choice 
+            and/or bet by making a second choice and second bet, before being presented with the outcomes for yourself and others in the group.</b></p>
         </div>
         <br>
-        <br>
-
-        <p>The image associated with your second choice will subsequently be highlighted with a red box.</p>
-
-        <br>
-        <p>You will then be presented with the second bet, which can be the same or different to your initial bet. Again, this is done by pressing either the '1', '2' or '3' button on your keyboard. This second bet will be highlighted by a red box.
-            You will have 2.5 seconds, after which a random bet will be made if you do not choose manually.</p>
-
-        <div class="image-container">
-            <img src="{% static 'instructions/bet2.BMP' %}" alt="Bet 2" width="400" height="auto">
+        <p>You will firstly be asked to make a second choice, which may be the same or different to your initial choice.</p>
+        <div class="red-highlight-box">
+            <p>Remember that the second choice is the image used when determining your win/loss, not your first choice.</p>
         </div>
         <br>
+        <p>Again, you will have 2.5 seconds, after which a random choice will be made if you do not choose manually.</p>
+        <br>
+        <p>The image associated with your second choice will subsequently be highlighted with a red box, <b>regardless if it is different to or the same as your first choice.</b></p>
         <br>
 
+        <div class="dual-image-container">
+            <img src="{% static 'instructions/TaskInstructionsPage2/choice2.png' %}" alt="Choice 2">
+            <img src="{% static 'instructions/TaskInstructionsPage2/choice2_highlighted.png' %}" alt="Choice 2 Highlighted">
+        </div>
+
+        <br>
+        <p>You will then be asked to make your second bet, <b>which can be the same or different to your initial bet.</b> To help with this, your first bet will be highlighted in yellow. 
+            Again, the second bet is made by pressing either the '1', '2' or '3' button on your keyboard.
+        <br>
+        <br>
+            This second bet will be highlighted by a red box, regardless if it is the same or different to your first.
+            You will have 2.5 seconds, after which a random bet will be made for you if you do not choose manually within the time frame.</p>
+            <div class="dual-image-container">
+                <img src="{% static 'instructions/TaskInstructionsPage2/bet2.png' %}" alt="Bet 2">
+                <img src="{% static 'instructions/TaskInstructionsPage2/bet2_highlighted.png' %}" alt="Bet 2 Highlighted">
+            </div>
+        <br>
+        <div class="red-highlight-box">
+            <p>Please remember that only the second bet is taken into account when calculating your points, the first bet is not.</p>
+            <p class="normal-weight">It is important that you answer truthfully because the total number of points received per round is multiplied by the bet placed. This means that you win more if you are correct, but lose more if you are incorrect.</p>
+            <p>For example, if you bet 3 and win, you will receive 60 points, but if you bet 3 and lose, you will lose 60 points.</p>
+        </div>
+        <br>
         <p>Finally, you will receive feedback for your own choice as well as the choices made by others within the group.</p>
 
         <div class="image-container">
-            <img src="{% static 'instructions/feedback.BMP' %}" alt="Feedback" width="400" height="auto">
+            <img src="{% static 'instructions/TaskInstructionsPage2/feedback.png' %}" alt="Feedback" width="600" height="auto">
         </div>
         <br>
         <br>
 
-        <p>For yourself, you will see a coin, indicating whether you have won or lost points. If the coin is presented by itself, it means that you won points. If there is a red cross through the coin, it represents a loss. You also are provided with the amount of points gained or lost.
-            For the other players in the group, you will see the second image (i.e., whether they changed their choice) and an icon indicating whether they won or lost. You will not see how much they gained or lost, only if they won or lost.</p> 
-        </p>
+        <p>For yourself, you will see a coin, indicating whether you have won or lost points.</p>
 
-        <p>We will now ask a number of questions to ensure that you correctly understand the task.</p>
+        <div class="boxes-container">
+            <div class="box-container">
+                <div class="green-box">
+                    <p><b>If the coin is presented by itself, it means that you won points in that round.</b></p>
+                    <img src="{% static 'instructions/win.BMP' %}" class="box-image">
+                </div>
+            </div>
+            <div class="box-container">
+                <div class="red-box">
+                    <p><b>If there is a red cross through the coin, it means that you lost points in that round.</b></p>
+                    <img src="{% static 'instructions/loss.BMP' %}" class="box-image">
+                </div>
+            </div>
+        </div>
+        <br>
+        <p>You also are provided with the <b>amount of points</b> gained or lost for that round. The amount of points is determined by the second choice and second bet only, 
+            where one image is more likely to give a gain, and one is more likely to give a loss (although this switches throughout).</p>
+        <div class="image-container">
+            <img src="{% static 'instructions/TaskInstructionsPage2/points.png' %}" alt="Points" width="200" height="auto">
+        </div>
+        <br>
+        <br>
+        <p>Specifically, the number of points is the second bet multiplied by 20, of which the amount is either positive or negative depending on whether the image gives you a reward or loss.</p>
+        <br>
+        <div class="blue-highlight-box">
+            <p>However, the probability of each image giving a reward will alternate throughout the task such that at certain points, the image that previously was more likely to reward you, is now more likely to give you a loss, and vice versa. 
+                This will continue for a certain number of trials where it will switch again. It is therefore important to pay attention to the feedback and adjust your choices accordingly.</p>
+        </div>
+        <br>
+        <p>For the other players in the group, you will also see their second choice (so you can determine whether they changed their choice) and an icon indicating whether they won or lost.
+            <b>However, you will <b>not see how much they gained or lost</b>, only if they won or lost.</b></p>
+        <br>
+            <p>Again, the images will depict whether or not the second choices were made by the players themselves, or by the computer.</p>
+            <br>
+            <div class="dual-image-container">
+                <div class="image-with-caption">
+                    <img src="{% static 'instructions/TaskInstructionsPage2/feedback_manual.png' %}" alt="Feedback Manual">
+                    <p class="image-caption">In this example both players made both choices manually</p>
+                </div>
+                <div class="image-with-caption">
+                    <img src="{% static 'instructions/TaskInstructionsPage2/feedback_automatic.png' %}" alt="Feedback Automatic">
+                    <p class="image-caption">However, in this example Player 1's second choice was made by the computer.</p>
+                </div>
+            </div>
+
+        <p>After this, you will move onto the next round, where you will start again by making a new choice.</p>
+        <br>
+
+        <div class="green-highlight-box">
+            <p>After completing 100 rounds, the total number of points you earned will be displayed, and you can return to Prolific.</p>
+        
+            <div class="image-container">
+                <img src="{% static 'instructions/TaskInstructionsPage2/final_results.png' %}" alt="Final Results" width="600" height="auto">
+            </div>
+        </div>
+        <br>
+        <p>Please make sure that you understand how the task works, and what is expected.</p>
+        <br>
+        <p>When you are ready, please press the button below to move onto the next page of instructions.</p>
 
         <button style="color: #fff; background-color: #007bff; border: 1px solid transparent; font-size: 1.5rem; padding: 10px 20px; border-radius: 0.25rem;">
             Next

@@ -174,9 +174,9 @@
         liveSend({my_page_load_time: performance.now()});
         initialChoiceTimerId = setTimeout(function() {
             if (currentStage === 'choice') {
-                liveSend({initial_choice_time: 2000});  // Send the time limit if no choice is made
+                liveSend({initial_choice_time: 4000});  // Send the time limit if no choice is made
             }
-        }, 2000);
+        }, 4000);
 
         window.choicePhaseStartTime = performance.now();  // Store the start time of the choice phase
     });
@@ -291,14 +291,21 @@
             window.initialChoiceTimerStarted = true;  // Set the flag to indicate that the initial choice timer has started
             setTimeout(function() {
                 liveSend({initial_choice_timer_ended: true});
-            }, 2000);
+            }, 4000);
         }
 
         if ('start_choice_phase_timer' in data && data.start_choice_phase_timer && !window.choicePhaseTimerStarted) {
-            window.choicePhaseTimerStarted = true;  // Set the flag to indicate that the choice phase timer has started
+            window.choicePhaseTimerStarted = true;
             setTimeout(function() {
                 liveSend({choice_phase_timer_ended: true});
-            }, 2000);
+            }, 4000);
+        }
+
+        if ('choice_phase_timer_ended' in data) {
+            console.log("Choice phase timer ended for all players in the group");
+            
+            // Move to the next phase regardless of whether all players have made their choices
+            liveSend({show_bet_container: true});
         }
 
         if ('computer_choice' in data) {
@@ -326,10 +333,10 @@
             window.betTimerStarted = true; // Set the flag to indicate that the bet timer has started
             setTimeout(function() {
                 if (!betMade) {
-                    // If no bet is made within 2000ms, send the bet_timer_ended event
+                    // If no bet is made within 4000ms, send the bet_timer_ended event
                     liveSend({bet_timer_ended: true});
                 }
-            }, 2000);
+            }, 4000);
         }
 
         if ('show_bet_container' in data && data.show_bet_container) {
@@ -342,16 +349,16 @@
             window.betPhaseStartTime = performance.now(); // Record the start time of the bet phase
             window.betContainerLoadTime = performance.now(); // Store the time when the bet container is shown
 
-            // Start a timer for 2000ms
+            // Start a timer for 4000ms
             setTimeout(function() {
                 if (!betMade) {
-                    // If no bet is made within 2000ms, send the bet_timer_ended event
+                    // If no bet is made within 4000ms, send the bet_timer_ended event
                     liveSend({bet_timer_ended: true});
                 } else {
                     liveSend({bet_timer_ended: true});
                 }
-                document.removeEventListener('keydown', handleKeyDown); // Remove the event listener after 2000ms
-            }, 2000);
+                document.removeEventListener('keydown', handleKeyDown); // Remove the event listener after 4000ms
+            }, 4000);
         }
 
         if ('highlight_selected_bet' in data) {
@@ -386,6 +393,14 @@
             });
         }
 
+        if ('preference_second_choice_button_pressed' in data) {
+            console.log('Second preference choice button press acknowledged by server');
+            window.js_vars.preference_second_choice_made = true;
+            window.js_vars.preference_second_choice = data.preference_second_choice_button_pressed;
+            console.log('window.js_vars.preference_second_choice_made updated:', window.js_vars.preference_second_choice_made);
+            console.log('window.js_vars.preference_second_choice updated:', window.js_vars.preference_second_choice);
+        }
+
         if ('highlight_selected_avatar_second_choice' in data) {
             const selectedPlayerId = data.highlight_selected_avatar_second_choice;
             const avatarWrappers = document.querySelectorAll('.avatar-wrapper');
@@ -398,7 +413,8 @@
             });
         }
 
-        if ('show_preference_choice' in data && data.show_preference_choice) {
+        if ('show_preference_choice' in data && data.show_preference_choice && !window.js_vars.preference_choice_displayed) {
+            window.js_vars.preference_choice_displayed = true;
             console.log('Showing preference choice');
             document.getElementById('preference-title').style.display = 'block';
             window.js_vars.preference_choice = '';
@@ -407,13 +423,18 @@
             console.log('window.js_vars.preference_choice_made:', window.js_vars.preference_choice_made);
 
             // Start the preference choice timer
-            liveSend({preference_choice_timer_started: true});
             window.preferenceChoiceStartTime = performance.now();
 
-            // Start a timer for 2000ms
+            // Start a timer for 4000ms
             setTimeout(function() {
-                liveSend({preference_choice_timer_ended: true});  // Send the timer ended event
-            }, 2000);
+                liveSend({preference_choice_timer_ended: true});
+            }, 4000);
+        }
+
+        if ('preference_choice_timer_ended' in data) {
+            console.log('Preference choice timer ended');
+            // Move to the next phase regardless of whether all players have made their choices
+            liveSend({show_preference_second_choice: true});
         }
 
         if ('show_preference_second_choice' in data && data.show_preference_second_choice && !window.js_vars.show_preference_second_choice_received) {
@@ -424,10 +445,11 @@
             // Start the second preference choice timer
             window.preferenceSecondChoiceStartTime = performance.now();
 
-            // Start a timer for 2000ms
+            // Start a timer for 4000ms
             setTimeout(function() {
+                console.log("Second preference choice timer ended");
                 liveSend({preference_second_choice_timer_ended: true});
-            }, 2000);
+            }, 4000);
         }
 
         if ('start_preference_second_choice_timer' in data && data.start_preference_second_choice_timer) {
@@ -435,7 +457,13 @@
                 if (!window.js_vars.preference_second_choice_made) {
                     liveSend({preference_second_choice_timer_ended: true});
                 }
-            }, 2000);
+            }, 4000);
+        }
+
+        if ('preference_second_choice_timer_ended' in data) {
+            console.log('Second preference choice timer ended');
+            // Move to the next phase regardless of whether all players have made their choices
+            liveSend({display_chosen_image: true});
         }
 
         if ('display_chosen_image' in data && data.display_chosen_image) {

@@ -1,0 +1,81 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+{% endblock %}
+
+{% block content %}
+    <style>
+        body {
+            margin: 0 12%;  /* Add margins to the sides of the page */
+        }
+
+        .container {
+            justify-content: center;
+            align-items: center;
+            max-width: 90%;
+            font-size: 1.2vw;
+            text-align: center;
+        }
+        .image-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        p {
+            font-size: 24px;
+        }
+        .blue-highlight-box {
+            background-color: #e3f2fd;
+            border: 2px solid #2196f3;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .otree-btn-next {
+            font-size: 28px;
+            padding: 15px 40px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            margin-top: 30px;
+        }
+        .otree-btn-next:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+        .green-highlight-box {
+            background-color: #d0ffc6;
+            border: 2px solid #07790b;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+    </style>
+
+    <div class="container">
+        <h2><b>Main Task Instructions</b></h2>
+        <br>
+        <div class="blue-highlight-box">
+            <p>You will now play the main task. This will last around 45 minutes, and consists of 100 rounds.</p>
+            <p><b>Pay attention, as the probabilities of the rewards will switch at certain points within the task.</b></p>
+        </div>
+        <br>
+        <p>The time provided for each of the individual sections is shorter compared to the practice that you just completed, so <b>please remember to provide your responses in time!</b> 
+            If you do not, remember that a random choice will be made for you at the time limit.</p>
+
+        <p>Please press the next button when you are ready to play the main game. You will be placed into another waiting room, and <b>again it may take a minute or two for the group to be formed</b> (which is factored into your payment).</p>
+        <p><b>The players in your group may be the same, or different from the players you just played with in the practice game.</b> 
+            Again, you may choose to return to Prolific by pressing the button provided on the waiting page; you will still be paid for your time and your Prolific completion rate will be unaffected. 
+            However, you will miss out on the opportunity to win a bonus payment, and to take part in the study.</p> 
+        <br>
+        <div class="green-highlight-box">
+            <p><b>Although hopefully if you have come this far, you are quite motivated to complete the task!</b></p>
+        </div>
+        
+        {% next_button %}
+    </div>
+{% endblock %}

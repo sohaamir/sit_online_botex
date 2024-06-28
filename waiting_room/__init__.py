@@ -4,6 +4,7 @@ class C(BaseConstants):
     NAME_IN_URL = 'waiting_room'
     PLAYERS_PER_GROUP = 3
     NUM_ROUNDS = 1
+    TRANSITION_TIME = 15  # 15 seconds
 
 class Subsession(BaseSubsession):
     pass
@@ -15,10 +16,21 @@ class Player(BasePlayer):
     pass
 
 # PAGES
-class MainTaskInstructions(Page):
-    pass
+class WaitPage2(WaitPage):
+    template_name = 'waiting_room/WaitPage2.html'
 
-class WaitPage3(WaitPage):
-    pass
+    group_by_arrival_time = True
 
-page_sequence = [MainTaskInstructions, WaitPage3]
+    @staticmethod
+    def vars_for_template(player):
+        return {
+            'title_text': 'Waiting for Other Players',
+        }
+
+class TransitionToMainTask(Page):
+    def vars_for_template(self):
+        return {
+            'transition_time': C.TRANSITION_TIME,
+        }
+
+page_sequence = [WaitPage2, TransitionToMainTask]

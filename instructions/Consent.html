@@ -18,37 +18,54 @@
             margin-top: 20px;
         }
         .button-container button {
-            margin-left: 10px;
+            margin: 0 10px;
+            padding: 15px 30px;
+            font-size: 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
         .next-button {
             background-color: #007bff;
             color: #fff;
             border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
+        }
+        .next-button:hover {
+            background-color: #0056b3;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: #fff;
+            border: none;
+        }
+        .btn-secondary:hover {
+            background-color: #545b62;
         }
         p {
             font-size: 18px;
         }
+        li {
+            font-size: 24px;
+        }
     </style>
 
     <h1>PARTICIPANT CONSENT</h1>
+    <br>
     <div class="container">
-        <p><b>Please read and confirm the following statements:</b></p>
+        <h2>Please read and confirm the following statements:</h2>
         <p></p>
         <br>
         <br>
         <ol style="text-align: left;">
             <li>I confirm that I have read and understand the information sheet for this study. I have had the opportunity to consider the information, ask questions and have had these answered satisfactorily. 
                 If you still have questions about the research, please ask the experimenter or email axs2210@bham.ac.uk before completing this form.</li>
-
+            <br>
             <li>I understand that my participation is voluntary and that I am free to withdraw at any time without giving any reason.</li>
-
+            <br>
             <li>I understand that once my data have been included in analysis, after approximately one month, I will not be able to withdraw my data.</li>
-
+            <br>
             <li>I understand that my data will be treated confidentially and any publication resulting from this work will report only data that does not identify me. My anonymised responses may be shared with other researchers or made available in online data repositories.</li>
-
+            <br>
             <li>I freely agree to participate in this study.</li>
         </ol>
         <p></p>
@@ -58,6 +75,15 @@
 
     <div class="button-container">
         <button type="submit" class="next-button">I Agree</button>
-        <button type="button" class="btn btn-secondary">I Do Not Agree</button>
+        <button type="button" class="btn btn-secondary" onclick="goToProlific()">I Do Not Agree</button>
     </div>
+
+    <script>
+        // Get the completion link from js_vars
+        var completionlink = js_vars.completionlink;
+
+        function goToProlific() {
+            window.location.href = completionlink;
+        }
+    </script>
 {% endblock %}

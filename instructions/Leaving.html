@@ -1,0 +1,118 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+{% endblock %}
+
+{% block content %}
+    <style>
+        body {
+            margin: 0 8%;  /* Add margins to the sides of the page */
+        }
+
+        .container {
+            justify-content: center;
+            align-items: center;
+            max-width: 90%;
+            font-size: 1.2vw;
+            text-align: center;
+        }
+
+        .image-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .bordered-image {
+            border: 3px solid black;
+            box-shadow: 0 0 0 3px black; /* This creates an additional border effect */
+        }
+
+        p {
+            font-size: 24px;
+        }
+
+        h3 {
+            font-size: 32px;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 40px;
+            padding: 0 25%;
+        }
+
+        button {
+            font-size: 24px;
+            padding: 10px 20px;
+            background-color: #f33303;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .next-button {
+            background-color: #007bff;
+            border: 1px solid transparent;
+            border-radius: 0.25rem;
+        }
+
+        .red-highlight-box {
+            background-color: #ffebee;
+            border: 2px solid #f44336;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .red-highlight-box h2, .red-highlight-box h3, .red-highlight-box p {
+            margin: 10px 0;
+        }
+
+        .green-highlight-box {
+            background-color: #e8f5e9;
+            border: 2px solid #4caf50;
+            padding: 10px;
+            margin: 20px 0;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .green-highlight-box h3 {
+            margin: 0;
+            color: #2e7d32;
+        }
+    </style>
+
+    <h1><b>Exiting the session</b></h1>
+    <br>
+    <div class="container">
+        <div class="red-highlight-box">
+            <h3>Please do not close or refresh the browser at any point during the experiment.</h3>
+            <p>Doing so will cause the task to end for yourself and the other players in the group, with the data not being used.</p>
+        </div>
+        <br>
+        <p><b>In the case that another player in your group does end up leaving during the task itself</b>, the task will seem to stop suddenly. 
+            If this happens, <b>please do not refresh your browser</b>. After about 10 seconds you will see the screen below where you will be re-directed to Prolific.</p>
+        <br>
+            <div class="image-container">
+                <img src="{% static 'instructions/exit.png' %}" alt="Bet 2" width="800" height="auto" class="bordered-image">
+            </div>
+        <br>
+        <p>If this happens, you will be paid for your time accordingly and your submission rate will not be affected.</p>
+        <br>
+        <div class="green-highlight-box">
+            <h3>If you decide to participate, please try to complete the entire task!</h3>
+        </div>
+        <br>
+        <p><b>We will now ask a number of questions to ensure that you correctly understand the task.</b></p>
+        <p>Please press the button below to proceed when you are ready.</p>
+        <br>
+        <button class="next-button">Next</button>
+    </div>
+
+{% endblock %}

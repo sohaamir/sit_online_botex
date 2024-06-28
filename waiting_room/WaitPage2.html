@@ -1,0 +1,196 @@
+{% extends "global/WaitPage.html" %}
+{% load otree static %}
+
+{% block title %}{% endblock %}
+
+{% block content %}
+
+    <style>
+        .center-text {
+            text-align: center;
+        }
+        p {
+            font-size: 20px;
+        }
+    </style>
+
+    <div style="text-align: center;">
+        <h2>Waiting for other players to join...</h2>
+        <br>
+        <p>Each game is made up of 3 live participants, please wait to be matched.</p>
+        <p>Please stay on this screen so that you are ready to start as soon as your group is complete.</p>
+        <p>If you would like to return to Prolific at any point, please press the button below.</p>
+        <img src="{% static 'instructions/waiting.gif' %}" alt="Waiting">
+        <br><br>
+        <button id="return-button" style="font-size: 18px; padding: 10px 20px; background-color: red; color: white; border: none; cursor: pointer;">Return to Prolific</button>
+    </div>
+
+    <div style="text-align: center; margin-top: 30px;">
+        <h3>Back for more???</h3>
+        <p>Use WASD keys to control the snake.</p>
+        <p>Again, the page may reload periodically, resetting your score.</p>
+        <p>But this doesn't affect how long it will take to be placed into a group.</p>
+        <p>Press 'W', 'A', 'S', or 'D' to begin!</p>
+
+        <canvas id="snakeCanvas" width="300" height="300" style="border:2px solid #333; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);"></canvas>
+        <p>Your score: <span id="score" style="font-weight: bold; font-size: 24px; color: #4CAF50;">0</span></p>
+    </div>
+
+    <script>
+        let returnButton = document.getElementById('return-button');
+
+        returnButton.addEventListener('click', () => {
+            window.location.href = 'YOUR_PROLIFIC_RETURN_URL';
+        });
+
+        // Snake Game
+        const canvas = document.getElementById('snakeCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+        const gridSize = 15;
+        const tileCount = 20;
+
+        let snake, food, dx, dy, gameStarted, score, gameLoop, gameSpeed;
+
+        function initGame() {
+            snake = [{x: Math.floor(Math.random() * tileCount) * gridSize, y: Math.floor(Math.random() * tileCount) * gridSize}];
+            food = {x: 0, y: 0};
+            dx = 0;
+            dy = 0;
+            gameStarted = false;
+            score = 0;
+            gameSpeed = 70;
+            scoreDisplay.textContent = score;
+            generateFood();
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(step, gameSpeed);
+        }
+
+        function drawSnakePart(snakePart, index) {
+            const hue = (120 + index * 3) % 360;  // Gradual color change
+            ctx.fillStyle = `hsl(${hue}, 100%, 40%)`;
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 1;
+            ctx.fillRect(snakePart.x, snakePart.y, gridSize, gridSize);
+            ctx.strokeRect(snakePart.x, snakePart.y, gridSize, gridSize);
+            
+            // Add eye to the head
+            if (index === 0) {
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(snakePart.x + gridSize * 0.3, snakePart.y + gridSize * 0.3, gridSize * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(snakePart.x + gridSize * 0.3, snakePart.y + gridSize * 0.3, gridSize * 0.1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function drawSnake() {
+            snake.forEach(drawSnakePart);
+        }
+
+        function drawFood() {
+            ctx.fillStyle = '#FF6347';  // Tomato red
+            ctx.beginPath();
+            ctx.arc(food.x + gridSize/2, food.y + gridSize/2, gridSize/2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#8B0000';  // Dark red
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        function moveSnake() {
+            if (!gameStarted) return;
+            const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+            snake.unshift(head);
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                scoreDisplay.textContent = score;
+                generateFood();
+                increaseSpeed();
+            } else {
+                snake.pop();
+            }
+        }
+
+        function generateFood() {
+            food.x = Math.floor(Math.random() * tileCount) * gridSize;
+            food.y = Math.floor(Math.random() * tileCount) * gridSize;
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = '#F0F8FF';  // Light blue background
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function checkCollision() {
+            const head = snake[0];
+            if (head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height) {
+                return true;
+            }
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function step() {
+            if (checkCollision()) {
+                initGame();
+                return;
+            }
+            clearCanvas();
+            drawFood();
+            moveSnake();
+            drawSnake();
+        }
+
+        function increaseSpeed() {
+            gameSpeed *= 0.98;
+            clearInterval(gameLoop);
+            gameLoop = setInterval(step, gameSpeed);
+        }
+
+        document.addEventListener('keydown', changeDirection);
+
+        function changeDirection(event) {
+            const key = event.key.toLowerCase();
+            const goingUp = dy === -gridSize;
+            const goingDown = dy === gridSize;
+            const goingRight = dx === gridSize;
+            const goingLeft = dx === -gridSize;
+
+            if (key === 'a' && !goingRight) {
+                dx = -gridSize;
+                dy = 0;
+                if (!gameStarted) gameStarted = true;
+            }
+            if (key === 'w' && !goingDown) {
+                dx = 0;
+                dy = -gridSize;
+                if (!gameStarted) gameStarted = true;
+            }
+            if (key === 'd' && !goingLeft) {
+                dx = gridSize;
+                dy = 0;
+                if (!gameStarted) gameStarted = true;
+            }
+            if (key === 's' && !goingUp) {
+                dx = 0;
+                dy = gridSize;
+                if (!gameStarted) gameStarted = true;
+            }
+        }
+
+        initGame();
+    </script>
+    <br>
+    <br>
+    <body>
+        <h2 class="center-text">Still waiting for players to join...</h2>
+    </body>
+{% endblock %}

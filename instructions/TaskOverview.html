@@ -1,0 +1,119 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+{% endblock %}
+
+{% block content %}
+    <style>
+        body {
+            margin: 0 25%;  /* Add margins to the sides of the page */
+        }
+        .container {
+            justify-content: center;
+            align-items: center;
+            max-width: 100%;  /* Changed from 90% to 100% to account for body margins */
+            font-size: 1.2vw;
+            text-align: center;
+        }
+        
+        .image-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        p {
+            font-size: 20px;
+        }
+
+        .blue-highlight-box, .red-highlight-box {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .blue-highlight-box {
+            background-color: #e3f2fd;
+            border: 2px solid #2196f3;
+        }
+
+        .red-highlight-box {
+            background-color: #ffebee;
+            border: 2px solid #f44336;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .red-highlight-box p {
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .blue-highlight-box p, .red-highlight-box p {
+            font-weight: bold;
+            margin: 0;
+        }
+
+        button {
+            color: #fff;
+            background-color: #007bff;
+            border: 1px solid transparent;
+            font-size: 1.5rem;
+            padding: 10px 20px;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+
+    <div class="container">
+        <h2><b>Welcome to the social learning task!</b></h2>
+        <br>
+
+        <div class="image-container">
+            <img src="{% static 'instructions/TaskInstructionsPage2/feedback.png' %}" alt="Feedback" width="800" height="auto">
+        </div>
+        <br>
+        <br>
+
+        <div class="blue-highlight-box">
+            <p>In this experiment you will be presented with choosing between two images, which have different probabilities of giving a reward. 
+                Importantly, if you select an image which does not provide a reward, then you will lose points for that trial. 
+                It is therefore important, in order to gain as many points as possible, to try and select the image which is more likely to give you a reward.</p>
+        </div>
+        <br>
+        <p>However, the image more likely to provide the reward <b>will switch at certain points throughout,</b> as will the position of the images on the screen.
+            It is therefore important that you <b>do not repeatedly press the same button,</b> as you will lose more points that way.</p>
+        
+        <p>You will be playing with <b>two other players of the same gender</b>, who will also make the same choices at the same time. You may or may not choose to take their choices into account when making your own.</p>
+
+        <p>The experiment will be split into two parts: <b>a practice game and the main task</b>. 
+            The practice game will allow you to familiarise yourself with the task and how it works, 
+            while the main task will be the part of the task where you will earn points <b>of which a certain proportion of top scorers will be rewarded with a bonus payment.</b></p>
+        <br>
+        <div class="red-highlight-box">
+            <p>The practice game will last approximately 3 minutes, and the main task approximately 35 minutes. In total, the experiment will last around 50 minutes.
+            <br>
+            <br>
+             Please ensure that the browser window covers your entire screen so the experiment runs smoothly.</p>
+        </div>
+        <br>
+        <p>We will now describe how the main task works. Please press the next button when you are ready to move onto the task instructions.</p>
+
+        <br>
+        <button>
+            Next
+        </button>
+    </div>
+{% endblock %}

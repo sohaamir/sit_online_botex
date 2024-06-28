@@ -1,0 +1,46 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}{% endblock %}
+
+{% block content %}
+
+    <style>
+        .center-text {
+            text-align: center;
+        }
+        p {
+            font-size: 20px;
+        }
+    </style>
+
+    <div style="text-align: center;">
+        <p style="font-size: 30px;">You have been matched into a group of three players. The task will begin when the countdown expires. Please be ready to make your initial choice by pressing the left or right arrow key on your keyboard.</p>
+        <div id="timer" style="font-size: 36px; margin-top: 20px;"></div>
+    </div>
+
+    <div style="display: none;">
+        {% next_button %}
+    </div>
+
+    <script>
+        let countdown = {{ transition_time }};
+        let timerElement = document.getElementById('timer');
+
+        function startCountdown() {
+            let countdownInterval = setInterval(() => {
+                countdown--;
+                timerElement.innerText = countdown;
+
+                if (countdown === 0) {
+                    clearInterval(countdownInterval);
+                    setTimeout(() => {
+                        document.getElementById('form').submit();
+                    }, 500);
+                }
+            }, 1000);
+        }
+
+        startCountdown();
+    </script>
+{% endblock %}

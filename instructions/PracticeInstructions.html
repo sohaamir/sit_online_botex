@@ -6,6 +6,10 @@
 
 {% block content %}
     <style>
+        body {
+            margin: 0 12%;  /* Add margins to the sides of the page */
+        }
+
         .container {
             justify-content: center;
             align-items: center;
@@ -19,25 +23,49 @@
             margin-top: 20px;
         }
         p {
-            font-size: 20px;
+            font-size: 28px;
+        }
+        .blue-highlight-box {
+            background-color: #e3f2fd;
+            border: 2px solid #2196f3;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .otree-btn-next {
+            font-size: 28px;
+            padding: 15px 40px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            margin-top: 30px;
+        }
+        .otree-btn-next:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
         }
     </style>
 
     <div class="container">
-        <h2><b>Practice Game Instructions</b></h2>
+        <h1><b>Practice Game Instructions</b></h1>
         <br>
-        <p>To get familiar with the task, you will now get to play 10 practice rounds. <b>Importantly, you will be playing against two computers and not other players.</b>
-            Subsequently, the images will be dimmer in all cases for other players, indicative of when the choices are made by the computer.</p>
-    <br>
-        <p>In this practice game, the probability of reward is different for the two images, with one more likely to give reward than the other, but this does not switch, as there are only 10 trials.</p>
+        <p><b>To get familiar with the task, you will now get to play 10 practice rounds with two other players.</b></p>
         <br>
-
-        <p>The time provided for each of the individual sections is also longer in the practice game (approximately 3-4 seconds per decision), compared to the actual game (between 2-3 seconds per decision), so you can understand the different components.</p>
-
-        <p>Please press the next button when you are ready to play the practice game. It should take no longer than 2 minutes.</p>
-
+        <div class="blue-highlight-box">
+            <p>In this practice game, as with the main task, <b>the probability of reward is different for the two images,</b> with one more likely to give reward than the other.
+                However unlike the main task, <b>this does not switch,</b> as there are only 10 trials.</p>
+            <br>
+            <p>The <b>time provided for each of the individual sections is also longer</b> in the practice game (approximately 3-4 seconds per decision), 
+                compared to the actual game (between 2-3 seconds per decision), so you can understand the different components and have more time to make your decisions.</p>
+        </div>
         <br>
+        <p>Please press the next button when you are ready to play the practice game. We will put you into a waiting room where you will be matched with two other players.</p> 
+        <p><b>It should take no longer than a few minutes to be matched (which is factored into your payment).</b></p> 
         <br>
+        <p>The practice task itself will last approximately 3 minutes.</p>
         {% next_button %}
     </div>
 {% endblock %}

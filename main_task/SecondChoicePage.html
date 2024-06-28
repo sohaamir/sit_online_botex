@@ -64,11 +64,11 @@
     }
 
     .selected-from-previous {
-    border: 2px solid yellow;
-}
+        border: 3px solid yellow;
+    }
 
     .selected {
-        border: 2px solid red;
+        border: 3px solid red;
     }
 
     .bet-options {
@@ -271,7 +271,7 @@
                 if (currentStage === 'choice') {
                     liveSend({second_choice_timer_ended: true});
                 }
-            }, 2000);
+            }, 4000);
         }
 
         if ('highlight_selected_image' in data) {
@@ -296,13 +296,13 @@
                 secondBetStartTime = performance.now();
                 console.log('Second bet phase start time:', secondBetStartTime);
 
-                // Start the second bet timer for 2000ms
+                // Start the second bet timer for 4000ms
                 setTimeout(function() {
                     if (currentStage === 'bet' && !betMade) {
-                        // If no bet is made within 2000ms, send the second_bet_timer_ended event
+                        // If no bet is made within 4000ms, send the second_bet_timer_ended event
                         liveSend({second_bet_timer_ended: true});
                     }
-                }, 2000);
+                }, 4000);
 
                 // Print the correct choice2 value based on whether it was made manually or assigned by the computer
                 if (choiceMade) {
@@ -314,15 +314,18 @@
         }
 
         if ('show_bet_container' in data && data.show_bet_container) {
-            document.getElementById('bet-container').style.display = 'block';
-            document.getElementById('choice-title').style.display = 'none';
-            document.getElementById('bet-title').style.display = 'block';
-            currentStage = 'bet';
-            betMade = false;
-            secondBetStartTime = performance.now();
-            setTimeout(function() {
-                liveSend({second_bet_timer_ended: true});
-            }, 2000);
+            if (!window.betContainerDisplayed) {
+                window.betContainerDisplayed = true;
+                document.getElementById('bet-container').style.display = 'block';
+                document.getElementById('choice-title').style.display = 'none';
+                document.getElementById('bet-title').style.display = 'block';
+                currentStage = 'bet';
+                betMade = false;
+                secondBetStartTime = performance.now();
+                setTimeout(function() {
+                    liveSend({second_bet_timer_ended: true});
+                }, 4000);
+            }
         }
 
         // Add this condition to check if show_results has already been received

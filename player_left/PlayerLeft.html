@@ -1,0 +1,71 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+{% endblock %}
+
+{% block content %}
+    <style>
+        .container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            max-width: 100%;
+            margin: 0 auto;
+            text-align: center;
+            font-size: 1.2vw;
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .button-container button {
+            margin-left: 10px;
+        }
+        p {
+            font-size: 24px;
+        }
+        li {
+            font-size: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        h2 {
+            font-size: 24px;
+        }
+        .gif-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+    </style>
+
+    <div class="container">
+        <h1>OH NO! A PARTICIPANT HAS EXITED THE SESSION!</h1>
+        <br>
+        <div class="gif-container">
+            <img src="{% static 'instructions/sad_face.gif' %}" alt="Waiting">
+        </div>
+        <div>
+            <p>Unfortunately a member of your group has left the session.</p>
+            <p>This means that the session has been terminated and you will not be able to continue with the task.</p>
+            <p>Please press the button below to return to Prolific, where you will be paid accordingly.</p>
+        </div>
+        <br>
+
+        <div class="button-container">
+            <button type="button" class="btn btn-secondary" onclick="goToProlific()">Return to Prolific</button>
+        </div>
+    </div>
+
+    <script>
+        let completionlink = js_vars.completionlink;
+        
+        function goToProlific() {
+            window.location.href = completionlink;
+        }
+    </script>
+{% endblock %}

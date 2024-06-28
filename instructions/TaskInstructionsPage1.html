@@ -6,6 +6,10 @@
 
 {% block content %}
     <style>
+        body {
+            margin: 0 20%;  /* Add margins to the sides of the page */
+        }
+
         .container {
             justify-content: center;
             align-items: center;
@@ -13,80 +17,147 @@
             font-size: 1.2vw;
             text-align: center;
         }
+
         .image-container {
             display: flex;
             justify-content: center;
             margin-top: 20px;
         }
+
+        .dual-image-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .dual-image-container img {
+            width: 500px;
+            height: auto;
+        }
+
         p {
-            font-size: 20px;
+            font-size: 25px;
+        }
+
+        .blue-box {
+            background-color: #e6f3ff;
+            border: 2px solid #007bff;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .red-box {
+            background-color: #ffebee;
+            border: 2px solid #f44336;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .image-with-caption {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .image-caption {
+            margin-top: 10px;
+            text-align: center;
+            font-style: italic;
         }
     </style>
 
     <div class="container">
-        <h2><b>First Page</b></h2>
+        <h2><b>First Choice, Bet and Preference Choices</b></h2>
         <br>
-        <p>At the beginning of each round, you will be presented with the screen below:</p>
+        <p>At the beginning of each round, you will be presented with the screen below, where you will make your first choice for <b>which image you think will give a reward:</b></p>
 
         <div class="image-container">
-            <img src="{% static 'instructions/choice1.BMP' %}" alt="Choice 1" width="400" height="auto">
+            <img src="{% static 'instructions/TaskInstructionsPage1/choice1.png' %}" alt="Choice 1" width="600" height="auto">
         </div>
         <br>
         <br>
 
-        <p>The other two players in the group are represented by the avatars.<b>The position of the other players does not change throughout the experiment.</b></p>
-
-        <p>You will have 2.5 seconds to make a choice between the two images. This is done by either pressing the 'Left' or 'Right' keys on your keyboard. Importantly, you cannot change your choice once it is made.
-            If you do not make a choice, an image will be selected at random for you. 
-            Even if you take less time to make your choice, you will still wait until the 2.5 seconds have elapsed before the next part of the task</p>
-
+        <p>The other two players in the group are represented by the avatars, <b>with each group consisting of same-gender participants.</b></p>
         <br>
-        <p>The chosen image is highlighted with a yellow box when you make your choice.</p>
+        <div class="blue-box">
+            <p><b>The position of the other players on the screen does not change throughout the experiment such that Player 1 is always on the left and Player 2 is always on the right.</b></p>
 
-        <div class="image-container">
-            <img src="{% static 'instructions/choice1_result.BMP' %}" alt="Choice 1 Result" width="400" height="auto">
+            <div class="image-container">
+                <img src="{% static 'instructions/TaskInstructionsPage1/avatars.png' %}" alt="avatars" width="300" height="auto">
+            </div>
         </div>
         <br>
+        <p>You will have 2.5 seconds to make this first choice between the two images. This is done by either pressing the 'Left' or 'Right' keys on your keyboard. <b>Importantly, you cannot change your choice once it is made</b>.
+            If you do not make a choice within this time limit, an image will be selected at random for you.</p>
+
         <br>
+        <p>The chosen image is highlighted with a yellow box when you make your choice, or when it has been made for you.</p>
 
-        <p>After 2.5 seconds, you will be asked to place a 'bet' as to how confident you are that the image selected is the image with the higher probability of reward. This is done by pressing either the '1', '2' or '3' button on your keyboard.
-            You cannot change your bet once it is made.</p>
-
-        <div class="image-container">
-            <img src="{% static 'instructions/bet1.BMP' %}" alt="Bet 1" width="400" height="auto">
+        <div class="dual-image-container">
+            <img src="{% static 'instructions/TaskInstructionsPage1/choice1.png' %}" alt="Choice 1">
+            <img src="{% static 'instructions/TaskInstructionsPage1/choice1_highlighted.png' %}" alt="Choice 1 Highlighted">
         </div>
+        <br>   
         <br>
-        <br>
+        <p>You will then be asked to place a 'bet' as to how confident you are that the image selected is the image with the higher probability of reward. This is done by pressing either the '1', '2' or '3' button on your keyboard.
+            <b>You cannot change your bet once it is made.</b></p>
 
-        <p>It is important that you answer truthfully, because the total number of points received per round is multiplied by the bet placed. This means that you win more if you are correct, but lose more if you are incorrect.
-            Again, you have 2.5 seconds to make your bet. If you do not make a bet within this time, a random bet will be placed for you.</p>
-        </p>
+        <p><b>Again, you have 2.5 seconds to make your bet. If you do not make a bet within this time, a random bet will be placed for you.</b></p>
 
         <p>The chosen number is highlighted with a yellow box when the bet is made.</p>
 
-        <div class="image-container">
-            <img src="{% static 'instructions/bet1_result.BMP' %}" alt="Bet 1 Result" width="400" height="auto">
+        <div class="dual-image-container">
+            <img src="{% static 'instructions/TaskInstructionsPage1/bet1.png' %}" alt="Bet 1">
+            <img src="{% static 'instructions/TaskInstructionsPage1/bet1_highlighted.png' %}" alt="Bet 1 Highlighted">
         </div>
         <br>
         <br>
+        <p>You will then be asked to choose one of the other two players choices to uncover first, by pressing either '1' or '2'. <b>Pressing '1' will select the avatar on the left, pressing '2' will select the avatar on the right</b>.
+        <br>
+        <p>You then select the other player's choice to uncover second by pressing the remaining button.
+        You will have 2 seconds to choose each, a random choice will be made for you if you do not make either choice within this time.</p>
+        <br>
+        <p>The avatar for the player selected as the 'first preference' is subsequently highlighted with a red box, whilst the avatar for the player selected as the 'second preference' is highlighted with an orange box.</p>
 
-        <p>You will then be asked to choose one of the other two players choices to uncover first, by pressing either '1' or '2'. Their choice will be presented below their corresponding avatar. Whilst you will see both players' choices eventually, please first select the player who you think...</p>
+        <div class="dual-image-container">
+            <div class="image-with-caption">
+                <img src="{% static 'instructions/TaskInstructionsPage1/first_preference.png' %}" alt="Pref 1">
+                <p class="image-caption">The first preference is highlighted in red</p>
+            </div>
+            <div class="image-with-caption">
+                <img src="{% static 'instructions/TaskInstructionsPage1/second_preference.png' %}" alt="Pref 2">
+                <p class="image-caption">Followed by the second preference in orange</p>
+            </div>
+        </div>
+        <br>
+        <p><b>The choices made by each player is then uncovered in turn below their avatar,</b> starting with the player selected as the 'first preference', followed by the player selected as the 'second preference'.</p>
+        
+        <div class="dual-image-container">
+            <img src="{% static 'instructions/TaskInstructionsPage1/first_preference_highlighted.png' %}" alt="Pref 1 Highighted">
+            <img src="{% static 'instructions/TaskInstructionsPage1/second_preference_highlighted.png' %}" alt="Pref 2 Highlighted">
+        </div>
 
-        <div class="image-container">
-            <img src="{% static 'instructions/first_pref.BMP' %}" alt="First Preference" width="400" height="auto">
+        <div class="blue-box">
+            <p><b>Whilst you will see both players' choices eventually, it is important to carefully select the order in which you uncover the other players' choices based upon who's choice you value more.</b></p>
         </div>
         <br>
         <br>
-
-        <p>Where players' do not make their first choice within the time-limit, the image displayed below their avatar choice is dimmer. Subsequently, other players will know when players' choices were not made by the player themselves.</p>
+        <p><b>Where players' do not make their first choice within the time-limit, the image displayed below their avatar choice will be dimmer.</b> 
+            Therefore, you will know when players' choices were not made by the player themselves but were made by the computer.</p>
+        <p>In the example below, the player on the lefts' first choice was made by themselves, whilst it was made for them by the computer for the player on the right.</p>
 
         <div class="image-container">
-            <img src="{% static 'instructions/first_pref_computer.BMP' %}" alt="First Preference Computer" width="400" height="auto">
+            <img src="{% static 'instructions/TaskInstructionsPage1/first_pref_computer.png' %}" alt="First Preference Computer" width="400" height="auto">
         </div>
         <br>
-        <br>
-
-        <p>Please press the next button to move onto the next page which will describe the second part of the task. Please only do so when you understand the contents of the page, as you will not be able to return back.</p>
+        
+        <div class="red-box">
+            <p><b>Please press the next button to move onto the next page which will describe the second part of the task. Please only do so when you are confident that you understand the contents of the page, as you will not be able to return back.</b></p>
+        </div>
 
         <button style="color: #fff; background-color: #007bff; border: 1px solid transparent; font-size: 1.5rem; padding: 10px 20px; border-radius: 0.25rem;">
             Next
