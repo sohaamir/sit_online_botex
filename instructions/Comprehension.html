@@ -87,44 +87,48 @@
     <h2><b>Comprehension Checks</b></h2>
     <br>
     <p><b>We will now ask you to complete several comprehension checks. 
-        Please make sure you understand each of the questions, as this is important when engaging in the task, and you will not be able to progress to the next stage unless these are all answered correctly.</b></p>
+        Please make sure you understand each of the questions, as this is important when engaging in the task, 
+        and you will not be able to progress to the next stage unless these are all answered correctly.</b></p>
     <br>
     <br>
     <h3>Question 1.</h3>
 
-    <p>You make an initial bet of 2, but change to 3 for your second bet. You do not change your choice. During the trial feedback you learn that the image chosen was not rewarded on this trial.</p>
+    <p>You make an initial bet of 2, but change to 3 for your second bet. You do not change your choice. 
+        During the trial feedback you learn that the image chosen was <b>not rewarded</b> on this trial.</p>
     <p>How many points do you earn/lose?</p>
         
     <div class="answer-options" id="question1-options">
-        <label><input type="radio" name="question1" value="1"> 0 points</label>
-        <label><input type="radio" name="question1" value="2"> 40 points</label>
+        <label><input type="radio" name="question1" value="1"> 40 points</label>
+        <label><input type="radio" name="question1" value="2"> minus 40 points</label>
         <label><input type="radio" name="question1" value="3"> 60 points</label>
         <label><input type="radio" name="question1" value="4"> minus 60 points</label>
     </div>
     <br>
-    <p id="answer1" class="hidden correct-answer">Correct! Because the image was not rewarded, you lose a base of 20 points. This is then multiplied by the second bet (3) so you lose 60 points.</p>
+    <p id="answer1" class="hidden correct-answer">Correct! Because the image was not rewarded, you lose a base of 20 points. 
+        This is then multiplied by the second bet (3) so you lose 60 points.</p>
     <p id="incorrect1" class="hidden incorrect-answer">That is not the correct answer, please try again!</p>
 
     <br>
     <h3>Question 2.</h3>
 
     <br>
-    <p>In this image, which choices for the other players in the group have been made by the computer?</p>
+    <p>In this image, which choices for the other players in the group have been <b>made by the computer?</b></p>
 
     <div class="image-container">
-        <img src="{% static 'instructions/comprehension.png' %}" alt="Bet 2" width="300" height="auto">
+        <img src="{% static 'instructions/comprehension2.png' %}" alt="Bet 2" width="600" height="auto">
     </div>
     <br>
     <br>
 
     <div class="answer-options" id="question2-options">
-        <label><input type="radio" name="question2" value="1"> First Player: Choice 1, Second Player: Choice 1</label>
-        <label><input type="radio" name="question2" value="2"> First Player: Choice 2, Second Player: Choice 2</label>
-        <label><input type="radio" name="question2" value="3"> First Player: Choice 1, Second Player: Choice 2</label>
-        <label><input type="radio" name="question2" value="4"> First Player: Choice 2, Second Player: Choice 1</label>
+        <label><input type="radio" name="question2" value="1"> Player 1: Choice 1, Player 2: Choice 1</label>
+        <label><input type="radio" name="question2" value="2"> Player 2: Choice 1, Player 2: Choice 2</label>
+        <label><input type="radio" name="question2" value="3"> Player 2: Choice 1, Player 4: Choice 1</label>
+        <label><input type="radio" name="question2" value="4"> Player 2: Choice 1, Player 4: Choice 2</label>
     </div>
     <br>
-    <p id="answer2" class="hidden correct-answer">Well done! You can see that the image associated with the second choice for the first player, and the first choice with the second player are dimmer, meaning that they were made by the computer.</p>
+    <p id="answer2" class="hidden correct-answer">Well done! You can see that the image associated with the first choice for Player 2, 
+        and the second choice for Player 4 player are dimmer, meaning that they were made by the computer.</p>
     <p id="incorrect2" class="hidden incorrect-answer">That is not the correct answer, please try again!</p>
 
     <br>
@@ -140,7 +144,8 @@
         <label><input type="radio" name="question3" value="4"> Image A is rewarded some of the time, image B is rewarded most of the time</label>
     </div>
     <br>
-    <p id="answer3" class="hidden correct-answer">On a roll! Yes image A is rewarded most of the time but not always. However, remember that in the actual task, these reward probabilities change!</p>
+    <p id="answer3" class="hidden correct-answer">On a roll! Yes image A is rewarded most of the time but not always. 
+        However, remember that in the actual task, these reward probabilities change!</p>
     <p id="incorrect3" class="hidden incorrect-answer">That is not the correct answer, please try again!</p>
     <br>
     <p id="play-game" class="hidden">Please now press the button below to play a practice game.</p>

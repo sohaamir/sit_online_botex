@@ -32,16 +32,6 @@
         margin-bottom: 20px;
     }
 
-    .gif-container {
-        width: 300px;
-        margin-top: 20px;
-    }
-
-    .gif-container img {
-        width: 100%;
-        height: auto;
-    }
-
     button {
         font-size: 24px;
         padding: 10px 20px;
@@ -58,25 +48,14 @@
     }
 </style>
 
-
-<script>
-    // Get the completion link from js_vars
-    var completionlink = js_vars.completionlink;
-</script>
-
 <div id="content-container">
     <h1>Thank you for completing the task!</h1>
     
-    <div class="gif-container">
-        <img src="{% static 'instructions/hogan_money.gif' %}" alt="Money">
-    </div>
-
     <div id="results-container">
         <p>You earned {{ total_reward_earnings }} points!</p>
-        <p>Click the button below to complete the study on Prolific.</p>
-        <button id="completeButton">Complete Study on Prolific</button>
+        <p>Click the button below to continue.</p>
+        {% next_button label="Continue" %}
     </div>
-
 </div>
 
 <script>
@@ -84,13 +63,6 @@
     history.pushState(null, null, document.URL);
     window.addEventListener('popstate', function () {
         history.pushState(null, null, document.URL);
-    });
-
-    // Handle button click for Prolific completion
-    document.getElementById('completeButton').addEventListener('click', function(e) {
-        e.preventDefault();  // Prevent default form submission
-        window.location.href = completionlink;
-        return false;  // Prevent event propagation
     });
 </script>
 

@@ -81,13 +81,13 @@
         <br>
         <br>
 
-        <p>The other two players in the group are represented by the avatars, <b>with each group consisting of same-gender participants.</b></p>
+        <p>The other four players in the group are represented by the avatars, <b>with each group consisting of same-gender participants.</b></p>
         <br>
         <div class="blue-box">
-            <p><b>The position of the other players on the screen does not change throughout the experiment such that Player 1 is always on the left and Player 2 is always on the right.</b></p>
+            <p><b>The position of the other players on the screen does not change throughout the experiment such that Player 1 is always on the far left followed by Players 2 and 3, and Player 4 on the far right.</b></p>
 
             <div class="image-container">
-                <img src="{% static 'instructions/TaskInstructionsPage1/avatars.png' %}" alt="avatars" width="300" height="auto">
+                <img src="{% static 'instructions/TaskInstructionsPage1/avatars.png' %}" alt="avatars" width="600" height="auto">
             </div>
         </div>
         <br>
@@ -96,62 +96,88 @@
 
         <br>
         <p>The chosen image is highlighted with a yellow box when you make your choice, or when it has been made for you.</p>
-
         <div class="dual-image-container">
-            <img src="{% static 'instructions/TaskInstructionsPage1/choice1.png' %}" alt="Choice 1">
-            <img src="{% static 'instructions/TaskInstructionsPage1/choice1_highlighted.png' %}" alt="Choice 1 Highlighted">
-        </div>
-        <br>   
+            <div class="image-with-caption">
+                <img src="{% static 'instructions/TaskInstructionsPage1/choice1.png' %}" alt="Choice 1">
+                <p class="image-caption">Before making the first choice</p>
+            </div>
+            <div class="image-with-caption">
+                <img src="{% static 'instructions/TaskInstructionsPage1/choice1_highlighted.png' %}" alt="Choice 1 Highlighted">
+                <p class="image-caption">After choosing the image on the left</p>
+            </div>
+        </div> 
         <br>
-        <p>You will then be asked to place a 'bet' as to how confident you are that the image selected is the image with the higher probability of reward. This is done by pressing either the '1', '2' or '3' button on your keyboard.
+        <p>You will then be asked to place a 'bet' as to <b>how confident you are</b> that the image selected is the image with the higher probability of reward. 
+            This is done by pressing either the '1', '2' or '3' button on your keyboard.
             <b>You cannot change your bet once it is made.</b></p>
 
         <p><b>Again, you have 2.5 seconds to make your bet. If you do not make a bet within this time, a random bet will be placed for you.</b></p>
 
-        <p>The chosen number is highlighted with a yellow box when the bet is made.</p>
-
-        <div class="dual-image-container">
-            <img src="{% static 'instructions/TaskInstructionsPage1/bet1.png' %}" alt="Bet 1">
-            <img src="{% static 'instructions/TaskInstructionsPage1/bet1_highlighted.png' %}" alt="Bet 1 Highlighted">
-        </div>
-        <br>
-        <br>
-        <p>You will then be asked to choose one of the other two players choices to uncover first, by pressing either '1' or '2'. <b>Pressing '1' will select the avatar on the left, pressing '2' will select the avatar on the right</b>.
-        <br>
-        <p>You then select the other player's choice to uncover second by pressing the remaining button.
-        You will have 2 seconds to choose each, a random choice will be made for you if you do not make either choice within this time.</p>
-        <br>
-        <p>The avatar for the player selected as the 'first preference' is subsequently highlighted with a red box, whilst the avatar for the player selected as the 'second preference' is highlighted with an orange box.</p>
+        <p>The chosen bet is highlighted with a yellow box when the bet is made.</p>
 
         <div class="dual-image-container">
             <div class="image-with-caption">
-                <img src="{% static 'instructions/TaskInstructionsPage1/first_preference.png' %}" alt="Pref 1">
-                <p class="image-caption">The first preference is highlighted in red</p>
+                <img src="{% static 'instructions/TaskInstructionsPage1/bet1.png' %}" alt="Bet 1">
+                <p class="image-caption">Before making a bet</p>
             </div>
             <div class="image-with-caption">
-                <img src="{% static 'instructions/TaskInstructionsPage1/second_preference.png' %}" alt="Pref 2">
-                <p class="image-caption">Followed by the second preference in orange</p>
+                <img src="{% static 'instructions/TaskInstructionsPage1/bet1_highlighted.png' %}" alt="Bet 1 Highlighted">
+                <p class="image-caption">After making a bet of 2</p>
             </div>
         </div>
         <br>
-        <p><b>The choices made by each player is then uncovered in turn below their avatar,</b> starting with the player selected as the 'first preference', followed by the player selected as the 'second preference'.</p>
+        <p>You will then be asked to choose one of the other players choices to uncover first, by pressing either '1', '2', '3', or '4'. <b> 
+            Pressing '1' will select Player 1, pressing '2' will select Player 2, '3' Player 3, and '4' Player 4.</b>
+            The avatar for the player selected as the 'first preference' is subsequently highlighted with a red box.</p>
+        <br>
+        <p>You then select another player's choice to uncover second by pressing either '1', '2', '3' or '4'. The avatar for this second player is highlighted with an orange box. 
+            <b>You must select two different players and cannot choose the same player twice.</b></p>
+        <p>You will have 2 seconds to choose each, a random choice will be made for you if you do not make either choice within this time.</p>
+        <br>
+
+        <div class="dual-image-container">
+            <div class="image-with-caption">
+                <img src="{% static 'instructions/TaskInstructionsPage1/first_preference_highlighted.png' %}" alt="Pref 1">
+                <p class="image-caption">The first player chosen is highlighted in red</p>
+            </div>
+            <div class="image-with-caption">
+                <img src="{% static 'instructions/TaskInstructionsPage1/second_preference_highlighted.png' %}" alt="Pref 2">
+                <p class="image-caption">Followed by the second player in orange</p>
+            </div>
+        </div>
+        <br>
+        <p><b>The choices made by each player is then uncovered in turn below their avatar,</b> starting with the player selected as the 'first preference', 
+            followed by the player selected as the 'second preference'.</p>
         
         <div class="dual-image-container">
-            <img src="{% static 'instructions/TaskInstructionsPage1/first_preference_highlighted.png' %}" alt="Pref 1 Highighted">
-            <img src="{% static 'instructions/TaskInstructionsPage1/second_preference_highlighted.png' %}" alt="Pref 2 Highlighted">
-        </div>
-
-        <div class="blue-box">
-            <p><b>Whilst you will see both players' choices eventually, it is important to carefully select the order in which you uncover the other players' choices based upon who's choice you value more.</b></p>
+            <div class="image-with-caption">
+                <img src="{% static 'instructions/TaskInstructionsPage1/first_display_phase.png' %}" alt="Pref 1 Highighted">
+                <p class="image-caption">In this case, Player 1's choice is uncovered first</p>
+            </div>
+            <div class="image-with-caption">
+                <img src="{% static 'instructions/TaskInstructionsPage1/second_display_phase.png' %}" alt="Pref 2 Highlighted">
+                <p class="image-caption">Followed by Player 3</p>
+            </div>
         </div>
         <br>
         <br>
-        <p><b>Where players' do not make their first choice within the time-limit, the image displayed below their avatar choice will be dimmer.</b> 
-            Therefore, you will know when players' choices were not made by the player themselves but were made by the computer.</p>
-        <p>In the example below, the player on the lefts' first choice was made by themselves, whilst it was made for them by the computer for the player on the right.</p>
+        <p>The choices for the two remaining players are then uncovered.</p>
 
         <div class="image-container">
-            <img src="{% static 'instructions/TaskInstructionsPage1/first_pref_computer.png' %}" alt="First Preference Computer" width="400" height="auto">
+            <img src="{% static 'instructions/TaskInstructionsPage1/third_display_phase.png' %}" alt="Third Display Phase" width="600" height="auto">
+        </div>
+        <br>
+
+        <div class="blue-box">
+            <p><b>Whilst you will see all players' choices eventually, it is important to carefully select the order in which you uncover the other players' choices based upon who's choice you value more.</b></p>
+        </div>
+        <br>
+        <br>
+        <p><b>Where players' do not make their first choice with in the time-limit, and are therefore made by the computer, 
+            the image displayed below their avatar choice will be dimmer.</b></p>
+        <p>In the example below, the choice for Player 1 and 2 was made by themselves, whilst it was made for Player 3 and 4 by the computer.</p>
+        <div class="image-container">
+            <img src="{% static 'instructions/TaskInstructionsPage1/preference_computer.png' %}" alt="First Preference Computer" width="400" height="auto">
         </div>
         <br>
         

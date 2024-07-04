@@ -123,6 +123,14 @@
     left: 10px;
     }
 
+    .remaining-image {
+        width: 30px;
+        height: 30px;
+        position: absolute;
+        top: 55px;
+        left: 10px;
+    }
+
     .avatar-selected {
         border: 3px solid rgb(249, 0, 0);
     }
@@ -143,6 +151,7 @@
             <img src="{% static avatar_image %}" alt="Player {{ player_id }} Avatar" class="avatar">
             <img src="" alt="Player {{ player_id }} Chosen Image" class="chosen-image" style="display: none;">
             <img src="" alt="Player {{ player_id }} Second Chosen Image" class="second-chosen-image" style="display: none;">
+            <img src="" alt="Player {{ player_id }} Remaining Image" class="remaining-image" style="display: none;">
         </div>
     {% endfor %}
 </div>
@@ -252,7 +261,7 @@
     }
 
     function handlePreferenceChoice(event) {
-        if (currentStage === 'preference' && (event.key === '1' || event.key === '2') && !window.js_vars.preference_choice_made) {
+        if (currentStage === 'preference' && (event.key === '1' || event.key === '2' || event.key === '3' || event.key === '4') && !window.js_vars.preference_choice_made) {
             console.log('Preference choice button pressed:', event.key);
             const preferenceChoiceTime = performance.now() - window.preferenceChoiceStartTime;
             const preferenceChoice = event.key;
@@ -267,7 +276,7 @@
     document.addEventListener('keydown', handlePreferenceChoice);
 
     function handleSecondPreferenceChoice(event) {
-        if (currentStage === 'preference_second' && (event.key === '1' || event.key === '2')) {
+        if (currentStage === 'preference_second' && (event.key === '1' || event.key === '2' || event.key === '3' || event.key === '4')) {
             console.log('Second preference choice button pressed:', event.key);
             preferenceSecondChoiceTime = performance.now() - window.preferenceSecondChoiceStartTime;
             const preferenceSecondChoice = event.key;
@@ -479,18 +488,47 @@
             }
         }
 
+        if ('display_all_images' in data && data.display_all_images) {
+            const allImages = data.all_images;
+            console.log('Displaying all images:', allImages);
+            
+            Object.entries(allImages).forEach(([playerId, imagePath]) => {
+                const avatarWrapper = document.querySelector(`.avatar-wrapper[data-player-id="${playerId}"]`);
+                if (avatarWrapper) {
+                    const chosenImageElement = avatarWrapper.querySelector('.chosen-image');
+                    const secondChosenImageElement = avatarWrapper.querySelector('.second-chosen-image');
+                    const remainingImageElement = avatarWrapper.querySelector('.remaining-image');
+                    
+                    remainingImageElement.src = `/static/${imagePath}`;
+                    remainingImageElement.style.display = 'block';
+                    
+                    chosenImageElement.style.display = 'none';
+                    secondChosenImageElement.style.display = 'none';
+                    
+                    console.log(`Displayed image for player ${playerId}: ${imagePath}`);
+                } else {
+                    console.error(`No avatar wrapper found for player ${playerId}`);
+                }
+            });
+
+            // Send all_images_displayed event after images are loaded
+            console.log('Sending all_images_displayed event');
+            liveSend({all_images_displayed: true});
+        }
+
         if ('redirect_to_second_choice' in data && data.redirect_to_second_choice) {
-            console.log('Redirecting to SecondChoicePage');
+            console.log('Received redirect signal, waiting 3 seconds before redirecting');
             setTimeout(() => {
+                console.log('Redirecting to SecondChoicePage');
                 document.getElementById('form').submit();
-            }, 500);
+            }, 3000);
         }
     }
 
-    // Add this at the end of the existing script
+    // Time players out after 50 seconds spent on MyPage (this assumes that a player has left the session)
     document.addEventListener('DOMContentLoaded', function() {
         const pageStartTime = js_vars.page_start_time;
-        const timeoutDuration = 500000; // 20 seconds in milliseconds
+        const timeoutDuration = 50000; // 50 seconds in milliseconds
 
         function checkTimeout() {
             const currentTime = new Date().getTime();

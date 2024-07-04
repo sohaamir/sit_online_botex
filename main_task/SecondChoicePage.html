@@ -128,22 +128,22 @@
     }
     
     .win-loss-image {
-    width: 30px;
-    height: 30px;
-    position: absolute;
-    top: 95px;
-    left: 20px;
+        width: 25px;
+        height: 25px;
+        position: absolute;
+        top: 105px;
+        left: 20px;
     }
 
     #player-win-loss-container {
-    display: flex;
-    justify-content: center;
-    margin-top: -10px;
+        display: flex;
+        justify-content: center;
+        margin-top: -10px;
     }
 
     #player-win-loss-image {
-    width: 50px;
-    height: 50px;
+        width: 50px;
+        height: 50px;
     }
 </style>
 
@@ -209,6 +209,8 @@
     let currentStage = 'choice'; // Initialize currentStage variable
     let choiceMade = false;
     let betMade = false; // Define the betMade variable
+    let betPhaseEnded = false;
+    let resultsShown = false;
 
     function handleKeyDown(event) {
         if (currentStage === 'choice' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !choiceMade) {
@@ -216,7 +218,7 @@
             choose(event.key === 'ArrowLeft' ? 'left' : 'right');
             liveSend({second_choice_time: secondChoiceTime});
             choiceMade = true;
-        } else if (currentStage === 'bet' && (event.key >= '1' && event.key <= '3') && !betMade) {
+        } else if (currentStage === 'bet' && (event.key >= '1' && event.key <= '3') && !betMade && !betPhaseEnded) {
             const secondBetTime = Math.round((performance.now() - secondBetStartTime) * 100) / 100;
             liveSend({second_bet: parseInt(event.key), second_bet_time: secondBetTime});
             selectBet(parseInt(event.key));
@@ -245,7 +247,7 @@
     }
 
     function selectBet(bet) {
-        if (currentStage === 'bet' && !betMade) {
+        if (currentStage === 'bet' && !betMade && !betPhaseEnded) {
             const betElements = document.querySelectorAll('.bet-options div');
             betElements.forEach(element => {
                 element.classList.remove('selected');
@@ -254,11 +256,10 @@
             document.querySelector(`.bet-options div[data-bet="${bet}"]`).classList.add('selected');
             document.getElementById('bet2_field').value = bet;
 
-            // Calculate the second_bet_time relative to the start of the second bet phase
             const secondBetTime = Math.round((performance.now() - secondBetStartTime) * 100) / 100;
 
             liveSend({choice: document.getElementById('choice2_field').value, bet: bet, second_bet_time: secondBetTime});
-            betMade = true; // Set betMade to true when a bet is selected
+            betMade = true;
         }
     }
 
@@ -321,8 +322,10 @@
                 document.getElementById('bet-title').style.display = 'block';
                 currentStage = 'bet';
                 betMade = false;
+                betPhaseEnded = false;
                 secondBetStartTime = performance.now();
                 setTimeout(function() {
+                    betPhaseEnded = true;
                     liveSend({second_bet_timer_ended: true});
                 }, 4000);
             }
@@ -333,7 +336,9 @@
             return;
         }
 
-        if ('show_results' in data && data.show_results) {
+        if ('show_results' in data && data.show_results && !resultsShown) {
+            resultsShown = true;
+            betPhaseEnded = true;
             window.showResultsReceived = true;
 
             const chosenImagesSecondChoicePage = data.chosen_images;

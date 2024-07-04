@@ -2,9 +2,11 @@ import os
 import sys
 import logging
 import asyncio
+import warnings
 import websockets
 from os import environ
 from dotenv import load_dotenv
+from websockets.exceptions import ConnectionClosedError, WebSocketProtocolError
 
 # Load environment variables from .env file
 load_dotenv()
@@ -15,8 +17,8 @@ load_dotenv()
 SESSION_CONFIGS = [
      dict(
          name='social_influence_task',
-         app_sequence=['instructions', 'practice_task', 'main_task_instructions', 'waiting_room', 'main_task', 'player_left'],
-         num_demo_participants=3,
+         app_sequence=['instructions', 'practice_task', 'main_task_instructions', 'waiting_room', 'main_task', 'player_left', 'submission'],
+         num_demo_participants=5,
          # use_browser_bots=True,
          completionlink='https://app.prolific.com/submissions/complete?cc=CKMY5BJS',
          noconsentlink='https://app.prolific.com/submissions/complete?cc=CDVJRJBR',
@@ -45,7 +47,7 @@ ROOMS = [
     ),
 ]
 
-PARTICIPANT_FIELDS = []
+PARTICIPANT_FIELDS = ['finished']
 SESSION_FIELDS = []
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -85,14 +87,16 @@ def custom_websocket_error_handler(loop, context):
     
     ignored_exceptions = (
         OSError,
-        websockets.exceptions.ConnectionClosedError,
-        websockets.exceptions.WebSocketProtocolError,
+        ConnectionClosedError,
+        WebSocketProtocolError,
+        asyncio.CancelledError,
     )
     
     ignored_messages = (
         "[Errno 57] Socket is not connected",
         "task exception was never retrieved",
         "closing handshake failed",
+        "Socket is not connected",
     )
     
     if isinstance(exception, ignored_exceptions) or any(msg in message for msg in ignored_messages):
@@ -102,11 +106,16 @@ def custom_websocket_error_handler(loop, context):
     loop.default_exception_handler(context)
 
 # Set up logging
-logging.basicConfig(level=logging.ERROR)  # Changed from WARNING to ERROR
-
-# Set the custom error handler
-asyncio.get_event_loop().set_exception_handler(custom_websocket_error_handler)
+logging.basicConfig(level=logging.ERROR)
 
 # Disable oTree's built-in logging for websocket errors
 logging.getLogger('websockets').setLevel(logging.CRITICAL)
 logging.getLogger('asyncio').setLevel(logging.CRITICAL)
+logging.getLogger('django.channels').setLevel(logging.CRITICAL)
+
+# Set the custom error handler
+loop = asyncio.get_event_loop()
+loop.set_exception_handler(custom_websocket_error_handler)
+
+# Suppress ResourceWarning
+warnings.simplefilter("ignore", ResourceWarning)

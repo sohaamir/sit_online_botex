@@ -9,7 +9,7 @@ Practice social influence task with 10 trials and fixed reward probabilities.
 
 class C(BaseConstants):
     NAME_IN_URL = 'practice_task'
-    PLAYERS_PER_GROUP = 3
+    PLAYERS_PER_GROUP = 5
     NUM_ROUNDS = 5
     REWARD_PROBABILITY_A = 0.7
     REWARD_PROBABILITY_B = 0.3
@@ -45,6 +45,7 @@ class Group(BaseGroup):
     redirect_triggered = models.BooleanField(initial=False)
     second_preference_choices_displayed = models.BooleanField(initial=False)
     all_players_preference_second_choice_time = models.FloatField()
+    remaining_images_displayed = models.BooleanField(initial=False)
 
     def set_round_reward(self):
         self.round_reward_A = 1 if random.random() < C.REWARD_PROBABILITY_A else 0
@@ -121,13 +122,22 @@ class Player(BasePlayer):
     computer_choice_two = models.BooleanField(initial=True)
     computer_bet_two = models.BooleanField(initial=False)
     player_1_choice_one = models.IntegerField()
-    player_1_choice_two = models.IntegerField()
     player_2_choice_one = models.IntegerField()
+    player_3_choice_one = models.IntegerField()  # Added
+    player_4_choice_one = models.IntegerField()  # Added
+    player_1_choice_two = models.IntegerField()
     player_2_choice_two = models.IntegerField()
+    player_3_choice_two = models.IntegerField()  # Added
+    player_4_choice_two = models.IntegerField()  # Added
     player_1_computer_choice_one = models.BooleanField()
-    player_1_computer_choice_two = models.BooleanField()
     player_2_computer_choice_one = models.BooleanField()
+    player_3_computer_choice_one = models.BooleanField()  # Added
+    player_4_computer_choice_one = models.BooleanField()  # Added
+    player_1_computer_choice_two = models.BooleanField()
     player_2_computer_choice_two = models.BooleanField()
+    player_3_computer_choice_two = models.BooleanField()  # Added
+    player_4_computer_choice_two = models.BooleanField()  # Added
+    all_images_displayed = models.BooleanField(initial=False)
 
     def reset_fields(self):
         self.choice1 = ''
@@ -174,6 +184,14 @@ class Player(BasePlayer):
         self.player_1_computer_choice_two = None  # Changed to None
         self.player_2_computer_choice_one = None  # Changed to None
         self.player_2_computer_choice_two = None  # Changed to None
+        self.player_3_choice_one = None  # Added
+        self.player_4_choice_one = None  # Added
+        self.player_3_choice_two = None  # Added
+        self.player_4_choice_two = None  # Added
+        self.player_3_computer_choice_one = None  # Added
+        self.player_4_computer_choice_one = None  # Added
+        self.player_3_computer_choice_two = None  # Added
+        self.player_4_computer_choice_two = None  # Added
 
 # PAGES 
 class MyPage(Page):
@@ -317,7 +335,7 @@ class MyPage(Page):
 
         if 'preference_choice' in data:
             preference_choice = data['preference_choice']
-            if preference_choice in ['1', '2']:
+            if preference_choice in ['1', '2', '3', '4']:
                 player.preference_choice = preference_choice
                 player.preference_choice_made = True
                 player.computer_preference_choice_one = False
@@ -357,7 +375,7 @@ class MyPage(Page):
                 if p.preference_choice == '0':
                     p.preference_choice_time = 4.0
                     # Randomly assign '1' or '2' to preference_choice for players who haven't made a choice
-                    p.preference_choice = random.choice(['1', '2'])
+                    p.preference_choice = random.choice(['1', '2', '3', '4'])
                     p.preference_choice_made = True
                     p.computer_preference_choice_one = True  # Record that the choice was made by the computer
                     print(f"Player {p.id_in_group} did not make a preference choice within 4000ms. Computer randomly selected: {p.preference_choice}")
@@ -484,6 +502,29 @@ class MyPage(Page):
                 return response
             return {}
 
+        def display_remaining_images(player, players):
+            if not player.group.remaining_images_displayed:
+                player.group.remaining_images_displayed = True
+                print('Displaying all images for all players.')
+                time.sleep(3)  # Add a 3-second delay
+                response = {}
+                for p in players:
+                    other_players = p.get_others_in_group()
+                    all_images = {}
+                    for other_player in other_players:
+                        if other_player.computer_choice_one:
+                            image = 'option1A_tr.bmp' if other_player.chosen_image_one == 'option1A.bmp' else 'option1C_tr.bmp'
+                        else:
+                            image = other_player.chosen_image_one
+                        all_images[other_player.id_in_group] = f'practice_task/{image}'
+                    
+                    response[p.id_in_group] = dict(
+                        display_all_images=True,
+                        all_images=all_images
+                    )
+                return response
+            return {}
+
         def trigger_redirect_to_second_choice(player, players):
             if not player.group.redirect_triggered:
                 player.group.redirect_triggered = True
@@ -503,8 +544,12 @@ class MyPage(Page):
 
         if 'second_image_displayed' in data:
             player.second_image_displayed = True
-
             if all(p.field_maybe_none('second_image_displayed') for p in players):
+                return display_remaining_images(player, players)
+
+        if 'all_images_displayed' in data:
+            player.all_images_displayed = True
+            if all(p.field_maybe_none('all_images_displayed') for p in players):
                 return trigger_redirect_to_second_choice(player, players)
 
         return {}

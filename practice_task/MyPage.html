@@ -123,6 +123,14 @@
     left: 10px;
     }
 
+    .remaining-image {
+        width: 30px;
+        height: 30px;
+        position: absolute;
+        top: 55px;
+        left: 10px;
+    }
+
     .avatar-selected {
         border: 3px solid rgb(249, 0, 0);
     }
@@ -138,6 +146,7 @@
             <img src="{% static avatar_image %}" alt="Player {{ player_id }} Avatar" class="avatar">
             <img src="" alt="Player {{ player_id }} Chosen Image" class="chosen-image" style="display: none;">
             <img src="" alt="Player {{ player_id }} Second Chosen Image" class="second-chosen-image" style="display: none;">
+            <img src="" alt="Player {{ player_id }} Remaining Image" class="remaining-image" style="display: none;">
         </div>
     {% endfor %}
 </div>
@@ -247,7 +256,7 @@
     }
 
     function handlePreferenceChoice(event) {
-        if (currentStage === 'preference' && (event.key === '1' || event.key === '2') && !window.js_vars.preference_choice_made) {
+        if (currentStage === 'preference' && (event.key === '1' || event.key === '2' || event.key === '3' || event.key === '4') && !window.js_vars.preference_choice_made) {
             console.log('Preference choice button pressed:', event.key);
             const preferenceChoiceTime = performance.now() - window.preferenceChoiceStartTime;
             const preferenceChoice = event.key;
@@ -262,7 +271,7 @@
     document.addEventListener('keydown', handlePreferenceChoice);
 
     function handleSecondPreferenceChoice(event) {
-        if (currentStage === 'preference_second' && (event.key === '1' || event.key === '2')) {
+        if (currentStage === 'preference_second' && (event.key === '1' || event.key === '2' || event.key === '3' || event.key === '4')) {
             console.log('Second preference choice button pressed:', event.key);
             preferenceSecondChoiceTime = performance.now() - window.preferenceSecondChoiceStartTime;
             const preferenceSecondChoice = event.key;
@@ -498,6 +507,28 @@
                     liveSend({second_image_displayed: true});
                 };
             }
+        }
+
+        if ('display_all_images' in data && data.display_all_images) {
+            console.log('Displaying all images for all players');
+            const allImages = data.all_images;
+            Object.keys(allImages).forEach(playerId => {
+                const avatarWrapper = document.querySelector(`.avatar-wrapper[data-player-id="${playerId}"]`);
+                if (avatarWrapper) {
+                    const remainingImageElement = avatarWrapper.querySelector('.remaining-image');
+                    remainingImageElement.src = `/static/${allImages[playerId]}`;
+                    remainingImageElement.style.display = 'block';
+
+                    // Hide previously displayed images
+                    avatarWrapper.querySelector('.chosen-image').style.display = 'none';
+                    avatarWrapper.querySelector('.second-chosen-image').style.display = 'none';
+                }
+            });
+
+            // Send all_images_displayed event after a short delay to ensure images are loaded
+            setTimeout(() => {
+                liveSend({all_images_displayed: true});
+            }, 100);
         }
 
         if ('redirect_to_second_choice' in data && data.redirect_to_second_choice) {
