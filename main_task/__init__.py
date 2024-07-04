@@ -318,7 +318,7 @@ class MyPage(Page):
     @staticmethod
     def app_after_this_page(player: Player, upcoming_apps):
         if player.participant.vars.get('timed_out', False):
-            return upcoming_apps[-1]  # This will return 'player_left' if a player leaves during the main task
+            return 'player_left'  # This will return 'player_left' if a player leaves during the main task
 
     @staticmethod
     def vars_for_template(player: Player):
