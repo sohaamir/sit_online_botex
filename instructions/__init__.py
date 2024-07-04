@@ -2,7 +2,7 @@ from otree.api import *
 
 class C(BaseConstants):
     NAME_IN_URL = 'instructions'
-    PLAYERS_PER_GROUP = 3
+    PLAYERS_PER_GROUP = 5
     NUM_ROUNDS = 1
     TRANSITION_TIME = 15  # transition time to practice task when players are matched
 
