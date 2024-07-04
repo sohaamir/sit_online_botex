@@ -28,7 +28,7 @@ ADMIN_PASSWORD = environ.get('OTREE_ADMIN_PASSWORD')
 # OTREE-SPECIFIC SETTINGS
 # ----------------------------------------------------------------
 # Flag to indicate production environment. This affects various oTree behaviors.
-OTREE_PRODUCTION = 1
+OTREE_PRODUCTION = os.environ.get('OTREE_PRODUCTION') == '1'
 
 # Custom fields for storing data at the participant and session level.
 # These allow you to store additional data not covered by oTree's default fields.
@@ -85,8 +85,7 @@ ROOMS = [
 
 # LOCALIZATION SETTINGS
 # ----------------------------------------------------------------
-# Language code for this installation. This affects things like date formatting.
-# All choices can be found here: http://www.i18nguy.com/unicode/language-identifiers.html
+# Language code for this installation. This affects the language of the admin interface.
 LANGUAGE_CODE = 'en'
 
 # Currency code for real-world currency. This is used in oTree's money formatting.
