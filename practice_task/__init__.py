@@ -199,7 +199,21 @@ class MyPage(Page):
     form_fields = []
 
     @staticmethod
+    def js_vars(player: Player):
+        return dict(
+            page_start_time=int(time.time() * 1000)
+        )
+
+    # Time players out after 30 seconds spent on MyPage (this assumes that a player has left the session)
+    @staticmethod
+    def get_timeout_seconds(player: Player):
+        return 30
+
+    @staticmethod
     def before_next_page(player: Player, timeout_happened):
+        if timeout_happened:
+            player.participant.vars['timed_out'] = True
+
         if player.field_maybe_none('choice1') is None:
             # Set choice1 if it is None (i.e., no manual choice was made)
             player.choice1 = 'left' if player.chosen_image_one == player.left_image else 'right'
@@ -207,6 +221,11 @@ class MyPage(Page):
             # Ensure chosen_image_one is set based on the manual choice
             player.chosen_image_one = player.left_image if player.choice1 == 'left' else player.right_image
             player.participant.vars['chosen_image_one'] = player.chosen_image_one
+
+    @staticmethod
+    def app_after_this_page(player: Player, upcoming_apps):
+        if player.participant.vars.get('timed_out', False):
+            return 'main_task_instructions'  # Send players to the next app if a player leaves
 
     @staticmethod
     def vars_for_template(player: Player):

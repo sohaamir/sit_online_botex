@@ -1,0 +1,161 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+{% endblock %}
+
+{% block content %}
+    <style>
+        body {
+            margin: 0 8%;  /* Add margins to the sides of the page */
+        }
+
+        .container {
+            justify-content: center;
+            align-items: center;
+            max-width: 90%;
+            font-size: 1.2vw;
+            text-align: center;
+        }
+
+        .image-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .bordered-gif {
+            border: 3px solid black;
+            box-shadow: 0 0 0 3px black; /* This creates an additional border effect */
+            width: 800px; /* Fixed width */
+            height: auto; /* Maintain aspect ratio */
+        }
+
+        .caption-container {
+            margin-top: 10px;
+            font-size: 24px; /* Increased font size */
+            min-height: 36px; /* Adjusted for larger font */
+        }
+
+        .green-highlight-box {
+            background-color: #e8f5e9;
+            border: 2px solid #4caf50;
+            padding: 10px;
+            margin: 20px 0;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .green-highlight-box p {
+            margin: 0;
+            color: #2e7d32;
+            font-size: 24px; /* Increased font size */
+        }
+
+        p {
+            font-size: 24px;
+        }
+
+        h3 {
+            font-size: 32px;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 40px;
+            padding: 0 25%;
+        }
+
+        button {
+            font-size: 24px;
+            padding: 10px 20px;
+            background-color: #f33303;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .next-button {
+            background-color: #007bff;
+            border: 1px solid transparent;
+            border-radius: 0.25rem;
+        }
+    </style>
+
+    <h1><b>Exiting the session</b></h1>
+    <br>
+        <p>Here is a demonstration of a round.</p>
+        <br>
+        <div class="image-container">
+            <img id="taskGif" src="{% static 'instructions/task_video.gif' %}" alt="Task demonstration" class="bordered-gif">
+        </div>
+        <div id="captionContainer" class="caption-container green-highlight-box">
+            <p id="captionText"></p>
+        </div>
+        <br>
+        <p>Please press the button below to proceed when you are ready.</p>
+        <br>
+        <button class="next-button">Next</button>
+    </div>
+
+    <script>
+        const gif = document.getElementById('taskGif');
+        const captionContainer = document.getElementById('captionContainer');
+        const captionText = document.getElementById('captionText');
+        const captions = [
+            { time: 0, text: "The left image is chosen" },
+            { time: 4, text: "A bet of 3 is made" },
+            { time: 8, text: "Player 2 is their first preference" },
+            { time: 12, text: "Player 4 is their second preference" },
+            { time: 16, text: "Player 2's choice is revealed" },
+            { time: 19, text: "Player 4's choice is revealed" },
+            { time: 22, text: "The remaining choices are revealed" },
+            { time: 26, text: "The player changes to the right image" },
+            { time: 30, text: "The player changes their bet to 2" },
+            { time: 34, text: "The feedback and outcomes are provided" }
+        ];
+
+        let currentCaptionIndex = 0;
+        let startTime;
+
+        function updateCaption(elapsed) {
+            for (let i = 0; i < captions.length; i++) {
+                if (elapsed < captions[i].time) {
+                    currentCaptionIndex = i;
+                    break;
+                }
+            }
+            if (currentCaptionIndex > 0) {
+                captionText.textContent = captions[currentCaptionIndex - 1].text;
+                captionContainer.style.display = 'block';
+            } else {
+                captionText.textContent = '';
+                captionContainer.style.display = 'none';
+            }
+        }
+
+        function animate(timestamp) {
+            if (!startTime) startTime = timestamp;
+            const elapsed = (timestamp - startTime) / 1000;
+
+            if (currentCaptionIndex < captions.length && elapsed >= captions[currentCaptionIndex].time) {
+                captionText.textContent = captions[currentCaptionIndex].text;
+                currentCaptionIndex++;
+            }
+
+            if (elapsed >= 38) {  // Assuming the GIF is 38 seconds long
+                startTime = timestamp;
+                currentCaptionIndex = 0;
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        gif.addEventListener('load', function() {
+            requestAnimationFrame(animate);
+        });
+    </script>
+
+{% endblock %}

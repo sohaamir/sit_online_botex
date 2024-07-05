@@ -11,7 +11,7 @@ Multiplayer Social Task
 class C(BaseConstants):
     NAME_IN_URL = 'main_task'
     PLAYERS_PER_GROUP = 5
-    NUM_ROUNDS = 2
+    NUM_ROUNDS = 3
     REWARD_PROBABILITY_A = 0.7
     REWARD_PROBABILITY_B = 0.3
     IMAGES = ['option1A.bmp', 'option1B.bmp']
@@ -297,10 +297,10 @@ class MyPage(Page):
             page_start_time=int(time.time() * 1000)
         )
 
-    # Time players out after 50 seconds spent on MyPage (this assumes that a player has left the session)
+    # Time players out after 40 seconds spent on MyPage (this assumes that a player has left the session)
     @staticmethod
     def get_timeout_seconds(player: Player):
-        return 50
+        return 40
 
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
@@ -318,7 +318,7 @@ class MyPage(Page):
     @staticmethod
     def app_after_this_page(player: Player, upcoming_apps):
         if player.participant.vars.get('timed_out', False):
-            return 'player_left'  # This will return 'player_left' if a player leaves during the main task
+            return 'player_left'  # This will return 'player_left' if a player leaves
 
     @staticmethod
     def vars_for_template(player: Player):
@@ -649,7 +649,7 @@ class MyPage(Page):
                         display_all_images=True,
                         all_images=all_images
                     )
-                print(f"Response for all images: {response}")  # Debug print
+                pass
                 return response
             return {}
 

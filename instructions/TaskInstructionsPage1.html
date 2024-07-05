@@ -73,12 +73,14 @@
     <div class="container">
         <h2><b>First Choice, Bet and Preference Choices</b></h2>
         <br>
-        <p>At the beginning of each round, you will be presented with the screen below, where you will make your first choice for <b>which image you think will give a reward:</b></p>
+        <p>At the beginning of each round, you will be presented with the screen below, where you will make your first choice for <b>which image you think will give a reward.</b></p>
 
         <div class="image-container">
             <img src="{% static 'instructions/TaskInstructionsPage1/choice1.png' %}" alt="Choice 1" width="600" height="auto">
         </div>
         <br>
+        <p>The two images have different probabilities of giving a reward, with one being more likely to give a reward, and the other more likely to give a loss.
+            Which image gives which is randomly determined at the start, but they will switch at certain points throughout the task.</p>
         <br>
 
         <p>The other four players in the group are represented by the avatars, <b>with each group consisting of same-gender participants.</b></p>
@@ -138,11 +140,11 @@
         <div class="dual-image-container">
             <div class="image-with-caption">
                 <img src="{% static 'instructions/TaskInstructionsPage1/first_preference_highlighted.png' %}" alt="Pref 1">
-                <p class="image-caption">The first player chosen is highlighted in red</p>
+                <p class="image-caption">The first player chosen is highlighted in red (in this case Player 1)</p>
             </div>
             <div class="image-with-caption">
                 <img src="{% static 'instructions/TaskInstructionsPage1/second_preference_highlighted.png' %}" alt="Pref 2">
-                <p class="image-caption">Followed by the second player in orange</p>
+                <p class="image-caption">Followed by the second player in orange <br>(in this case Player 3)</p>
             </div>
         </div>
         <br>
@@ -152,7 +154,7 @@
         <div class="dual-image-container">
             <div class="image-with-caption">
                 <img src="{% static 'instructions/TaskInstructionsPage1/first_display_phase.png' %}" alt="Pref 1 Highighted">
-                <p class="image-caption">In this case, Player 1's choice is uncovered first</p>
+                <p class="image-caption">Player 1's choice is uncovered first</p>
             </div>
             <div class="image-with-caption">
                 <img src="{% static 'instructions/TaskInstructionsPage1/second_display_phase.png' %}" alt="Pref 2 Highlighted">
@@ -173,11 +175,11 @@
         </div>
         <br>
         <br>
-        <p><b>Where players' do not make their first choice with in the time-limit, and are therefore made by the computer, 
+        <p><b>Where players do not make their first choice with in the time-limit, and are therefore made by the computer, 
             the image displayed below their avatar choice will be dimmer.</b></p>
         <p>In the example below, the choice for Player 1 and 2 was made by themselves, whilst it was made for Player 3 and 4 by the computer.</p>
         <div class="image-container">
-            <img src="{% static 'instructions/TaskInstructionsPage1/preference_computer.png' %}" alt="First Preference Computer" width="400" height="auto">
+            <img src="{% static 'instructions/TaskInstructionsPage1/preference_computer.png' %}" alt="First Preference Computer" width="600" height="auto">
         </div>
         <br>
         

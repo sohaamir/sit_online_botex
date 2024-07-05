@@ -138,6 +138,10 @@
     .avatar-selected-second-choice {
         border: 3px solid rgb(255, 166, 0);
     }
+
+    .otree-timer {
+        display: none;
+    }
 </style>
 
 <div id="avatar-container">
@@ -538,6 +542,24 @@
             }, 500);
         }
     }
+
+    // Time players out after 30 seconds spent on MyPage (this assumes that a player has left the session)
+    document.addEventListener('DOMContentLoaded', function() {
+        const pageStartTime = js_vars.page_start_time;
+        const timeoutDuration = 30000; // 30 seconds in milliseconds
+
+        function checkTimeout() {
+            const currentTime = new Date().getTime();
+            if (currentTime - pageStartTime >= timeoutDuration) {
+                document.getElementById('form').submit();
+            } else {
+                setTimeout(checkTimeout, 1000); // Check every second
+            }
+        }
+
+        setTimeout(checkTimeout, 1000); // Start checking after 1 second
+    });
+
 </script>
 
 {{ endblock }} 

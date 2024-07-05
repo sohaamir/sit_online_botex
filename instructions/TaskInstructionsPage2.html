@@ -156,6 +156,24 @@
             border-radius: 5px;
             text-align: left;
         }
+
+        .feedback-image {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .feedback-image img {
+            width: 750px;
+            height: auto;
+        }
+
+        .feedback-image .image-caption {
+            margin-top: 10px;
+            text-align: center;
+            font-style: italic;
+            max-width: 750px; /* Match the width of the image */
+        }
     </style>
 
     <div class="container">
@@ -163,10 +181,10 @@
         <br>
         <div class="blue-highlight-box">
         <p><b>After the choices for the other players have been presented, you are presented with the opportunity to revise your choice 
-            and/or bet by making a second choice and second bet, before being presented with the results for yourself and others in the group.</b></p>
+            and bet by making a second choice and second bet, before being presented with the results for yourself and others in the group.</b></p>
         </div>
         <br>
-        <p>You will firstly be asked to make a second choice, which may be the same or different to your initial choice.
+        <p>You will firstly be asked to make a second choice, <b>which may be the same or different to your initial choice.</b>
             To help with this, your first choice will be highlighted in yellow.
         </p>
         <div class="red-highlight-box">
@@ -189,7 +207,8 @@
             </div>
         </div>
         <br>
-        <p>You will then be asked to make your second bet, <b>which can be the same or different to your initial bet.</b> To help with this, your first bet will be highlighted in yellow. 
+        <p>You will then be asked to make your second bet, <b>which can be the same or different to your initial bet.</b> 
+            To help with this, your first bet will be highlighted in yellow. 
             Again, the second bet is made by pressing either the '1', '2' or '3' button on your keyboard.
         <br>
         <br>
@@ -208,8 +227,11 @@
         <br>
         <div class="red-highlight-box">
             <p>Please remember that only the second bet is taken into account when calculating your points, the first bet is not.</p>
-            <p class="normal-weight">It is important that you answer truthfully because the total number of points received per round is multiplied by the bet placed. This means that you win more if you are correct, but lose more if you are incorrect.</p>
-            <p>For example, if you bet 3 and win, you will receive 60 points, but if you bet 3 and lose, you will lose 60 points.</p>
+            <p class="normal-weight">It is important that you answer based on how confident you are because the number of points is multiplied by the second bet, 
+                and is either positive or negative depending on whether the image gives you a reward or loss.</p>
+                This means that you win more if you are correct, but lose more if you are incorrect.</p>
+            <p>For example, if you bet 3 and win, you will receive 60 points, but if you bet 3 and lose, you will lose 60 points (as the bet is multiplied by 20).</p>
+            <p>Conversely, if you bet 1 and win, you will receive 20 points, but if you bet 1 and lose, you will lose 20 points.</p>
         </div>
         <br>
         <p>Finally, you will receive feedback for your own choice as well as the choices made by others within the group.</p>
@@ -238,35 +260,29 @@
         </div>
         <br>
         <p>You also are provided with the <b>amount of points</b> gained or lost for that round. <b>The amount of points is determined by the second choice and second bet only,</b> 
-            where one image is more likely to give a gain, and one is more likely to give a loss (although this switches throughout).</p>
+            where one image is more likely to give a gain, and one is more likely to give a loss <br> (although this switches throughout).</p>
         <div class="image-container">
             <img src="{% static 'instructions/TaskInstructionsPage2/points.png' %}" alt="Points" width="200" height="auto">
         </div>
         <br>
-        <br>
-        <p>Specifically, the number of points is the second bet multiplied by 20, of which the amount is either positive or negative depending on whether the image gives you a reward or loss.</p>
         <br>
         <div class="blue-highlight-box">
             <p>However, the probability of each image giving a reward will alternate throughout the task such that at certain points, the image that previously was more likely to reward you, is now more likely to give you a loss, and vice versa. 
                 This will continue for a certain period where it will switch again. It is therefore important to pay attention to the feedback and adjust your choices accordingly.</p>
         </div>
         <br>
-        <p>For the other players in the group, you will also see their second choice (so you can determine whether they changed their choice) and an icon indicating whether they won or lost.
+        <p>You will also see their second choice for all the other players in the group, (so you can determine whether they changed their choice) and an icon indicating whether they won or lost.
             <b>However, you will <b>not see how much they gained or lost</b>, only if they won or lost.</b></p>
+            <p>You do not get to choose who's second choice to see first, they are all revealed at the same time, along with your feedback.</p>
         <br>
-            <p>Again, the images will depict whether or not the second choices were made by the players themselves, or by the computer.</p>
-            <br>
-            <div class="dual-image-container">
-                <div class="image-with-caption">
-                    <img src="{% static 'instructions/TaskInstructionsPage2/feedback_manual.png' %}" alt="Feedback Manual">
-                    <p class="image-caption">In this example all players made both choices manually</p>
-                </div>
-                <div class="image-with-caption">
-                    <img src="{% static 'instructions/TaskInstructionsPage2/feedback_automatic.png' %}" alt="Feedback Automatic">
-                    <p class="image-caption">However, in this example, Player 2's second, both of Player 3's, and Player 4's first choice were made by the computer.</p>
-                </div>
+        <p>Again, the images will depict whether or not the second choices were made by the players themselves, or by the computer.</p>
+        <div class="image-container feedback-image">
+            <img src="{% static 'instructions/TaskInstructionsPage2/feedback_second.png' %}" alt="Points" width="700" height="auto">
+            <div class="image-caption">
+                <span>In this example, you can see the second choices were made by the computer for Player 2 and Player 4.</span>
             </div>
-
+        </div>
+        <br>
         <p>After this, you will move onto the next round, where you will start again by making a new choice.</p>
         <br>
 
