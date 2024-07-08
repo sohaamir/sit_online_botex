@@ -1,3 +1,13 @@
+# -------------------------------------------------------------------------------------------------------------------- #
+# -------------------------- SETTINGS FOR THE OTREE APP HOSTED ON HEROKU ----------------------------- #
+# -------------------------------------------------------------------------------------------------------------------- #
+
+# This file contains the settings for the oTree application. These settings control the behavior of the app.
+# You can customize these settings to fit your experiment. For more information, see the oTree documentation:
+# https://otree.readthedocs.io/en/latest/
+
+# LOAD DEPENDENCIES AND ENVIRONMENT VARIABLES
+# ----------------------------------------------------------------
 import os
 from os import environ
 from dotenv import load_dotenv
@@ -52,7 +62,7 @@ BOTS_CHECK_COMPLETE = False
 SESSION_CONFIGS = [
      dict(
          name='social_influence_task',  # Unique identifier for this session configuration
-         app_sequence=['instructions', 'practice_task', 'main_task_instructions', 'waiting_room', 'main_task', 'player_left', 'submission'],  # Order of apps in the experiment
+         app_sequence=['main_task', 'player_left', 'submission'],  # Order of apps in the experiment
          num_demo_participants=5,  # Number of demo participants, useful for testing
          # use_browser_bots=True,  # Uncomment to use bots for testing
          # Prolific completion links for different scenarios

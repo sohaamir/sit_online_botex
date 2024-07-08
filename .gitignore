@@ -12,3 +12,4 @@ __pycache__/
 *.py[cod]
 .DS_Store
 *.otreezip
+heroku_cheatsheet.txt
