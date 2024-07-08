@@ -4,6 +4,8 @@
 
 {{ block content }}
 
+<!-- HTML code for SecondChoicePage, which updates the page in response to player's inputs -->
+
 <style>
     body {
         background-color: black;
@@ -204,6 +206,8 @@
         liveSend({second_choice_page_loaded: true, page_load_time: performance.now()});
     });
 
+    // Initialize variables to track the state of the task
+    // These variables are used to track the state of the task and the player's choices and bets
     let secondChoiceTime;
     let secondBetStartTime;
     let currentStage = 'choice'; // Initialize currentStage variable
@@ -212,6 +216,8 @@
     let betPhaseEnded = false;
     let resultsShown = false;
 
+    // Define the handleKeyDown function to handle keydown events for choices and bets
+    // This function is called when a key is pressed on the keyboard
     function handleKeyDown(event) {
         if (currentStage === 'choice' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !choiceMade) {
             const secondChoiceTime = Math.round((performance.now() - secondChoiceStartTime) * 100) / 100;
@@ -228,6 +234,8 @@
 
     document.addEventListener('keydown', handleKeyDown);
 
+    // Define the choose function when an option is selected
+    // This function is called when an option is selected by clicking on the image or pressing the arrow keys
     function choose(option) {
         if (currentStage === 'choice') {
             const selectedOption = document.getElementById(`option_${option}`);
@@ -246,6 +254,8 @@
         }
     }
 
+    // Define the selectBet function when a bet is selected
+    // This function is called when a bet is made manually by pressing the number keys 1, 2, or 3
     function selectBet(bet) {
         if (currentStage === 'bet' && !betMade && !betPhaseEnded) {
             const betElements = document.querySelectorAll('.bet-options div');
@@ -263,9 +273,14 @@
         }
     }
 
+// Live communication functions to send and receive data 
+// These functions are used to send and receive data between the server and the client in real-time
+// The liveSend function sends data to the server, while the liveRecv function receives data from the server
+
     function liveRecv(data) {
         console.log('Received data:', data);
 
+        // If the second_choice_page_loaded flag is received, log the page load time
         if ('start_second_choice_timer' in data && data.start_second_choice_timer) {
             secondChoiceStartTime = performance.now();
             setTimeout(function() {
@@ -275,6 +290,8 @@
             }, 4000);
         }
 
+        // Highlight the selected image if the highlight_selected_image flag is received
+        // This is to ensure that the selected image is highlighted when the second choice page is loaded
         if ('highlight_selected_image' in data) {
             const selectedOption = document.querySelector(`#option_${data.highlight_selected_image === '{{ player.left_image }}' ? 'left' : 'right'}`);
             const otherOption = document.querySelector(`#option_${data.highlight_selected_image === '{{ player.left_image }}' ? 'right' : 'left'}`);
@@ -284,6 +301,8 @@
             otherOption.classList.remove('selected-from-previous');
         }
 
+        // If the second_choice_timer_ended flag is received, send the second_choice_timer_ended event
+        // This is to ensure that the second choice phase ends after 4000ms even if no choice is made
         if ('second_choice_timer_ended' in data && data.second_choice_timer_ended) {
             if (currentStage === 'choice') {
                 // Start the second bet phase after the second choice phase ends
@@ -314,6 +333,8 @@
             }
         }
 
+        // If the second_bet_timer_ended flag is received, send the second_bet_timer_ended event
+        // This is to ensure that the second bet phase ends after 4000ms even if no bet is made
         if ('show_bet_container' in data && data.show_bet_container) {
             if (!window.betContainerDisplayed) {
                 window.betContainerDisplayed = true;
@@ -336,6 +357,7 @@
             return;
         }
 
+        // Show the results if the show_results flag is received
         if ('show_results' in data && data.show_results && !resultsShown) {
             resultsShown = true;
             betPhaseEnded = true;
