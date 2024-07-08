@@ -27,7 +27,7 @@
         .dual-image-container {
             display: flex;
             justify-content: center;
-            gap: 20px;
+            gap: 50px;
             margin-top: 20px;
             margin-bottom: 20px;
         }
@@ -128,16 +128,25 @@
         }
 
         .green-highlight-box {
-            background-color: #e8f5e9;
-            border: 2px solid #4caf50;
-            padding: 10px;
-            margin: 10px 0;
+            background-color: #e6ffe6;
+            border: 2px solid #4CAF50;
+            padding: 20px;
+            margin: 20px 0;
             border-radius: 5px;
-            text-align: center;
         }
 
-        .green-highlight-box p {
-            font-weight: bold;
+        .green-highlight-box-image-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .green-highlight-box-image-container img {
+            width: 100px;
+            height: auto;
+            border-radius: 5px;
         }
 
         .red-highlight-box p, .blue-highlight-box p {
@@ -193,6 +202,14 @@
         <br>
         <p>Again, you will have 2.5 seconds, after which a random choice will be made if you do not choose manually.</p>
         <br>
+        <div class="green-highlight-box">
+            <p><b>To make your choice, press either the left or right arrow key on your keyboard.</b></p>
+            <div class="green-highlight-box-image-container">
+                <img src="{% static 'instructions/TaskInstructionsPage1/left_arrow.png' %}" alt="Left">
+                <img src="{% static 'instructions/TaskInstructionsPage1/right_arrow.png' %}" alt="Right">
+            </div>
+        </div>
+        <br>
         <p>The image associated with your second choice will subsequently be highlighted with a red box, <b>regardless if it is different to or the same as your first choice.</b></p>
         <br>
 
@@ -209,8 +226,15 @@
         <br>
         <p>You will then be asked to make your second bet, <b>which can be the same or different to your initial bet.</b> 
             To help with this, your first bet will be highlighted in yellow. 
-            Again, the second bet is made by pressing either the '1', '2' or '3' button on your keyboard.
         <br>
+        <div class="green-highlight-box">
+            <p><b>To make your bet, press either the '1', '2' or '3' key on your keyboard.</b></p>
+            <div class="green-highlight-box-image-container">
+                <img src="{% static 'instructions/TaskInstructionsPage1/1_key.png' %}" alt="1">
+                <img src="{% static 'instructions/TaskInstructionsPage1/2_key.png' %}" alt="2">
+                <img src="{% static 'instructions/TaskInstructionsPage1/3_key.png' %}" alt="3">
+            </div>
+        </div>
         <br>
             This second bet will be highlighted by a red box, regardless if it is the same or different to your first.
             You will have 2.5 seconds, after which a random bet will be made for you if you do not choose manually within the time frame.</p>
@@ -260,7 +284,7 @@
         </div>
         <br>
         <p>You also are provided with the <b>amount of points</b> gained or lost for that round. <b>The amount of points is determined by the second choice and second bet only,</b> 
-            where one image is more likely to give a gain, and one is more likely to give a loss <br> (although this switches throughout).</p>
+            where one image is more likely to give a gain, and one is more likely to give a loss.</p>
         <div class="image-container">
             <img src="{% static 'instructions/TaskInstructionsPage2/points.png' %}" alt="Points" width="200" height="auto">
         </div>
@@ -268,7 +292,8 @@
         <br>
         <div class="blue-highlight-box">
             <p>However, the probability of each image giving a reward will alternate throughout the task such that at certain points, the image that previously was more likely to reward you, is now more likely to give you a loss, and vice versa. 
-                This will continue for a certain period where it will switch again. It is therefore important to pay attention to the feedback and adjust your choices accordingly.</p>
+                This will continue for a certain period where it will switch again.<br></p>
+            <p>It is therefore important to pay attention to the feedback and adjust your choices accordingly.</p>
         </div>
         <br>
         <p>You will also see their second choice for all the other players in the group, (so you can determine whether they changed their choice) and an icon indicating whether they won or lost.
@@ -286,9 +311,8 @@
         <p>After this, you will move onto the next round, where you will start again by making a new choice.</p>
         <br>
 
-        <div class="green-highlight-box">
-            <p>After completing 100 rounds, the total number of points you earned will be displayed, and you can return to Prolific.</p>
-        
+        <div class="blue-highlight-box">
+            <p>After completing 100 rounds, the total number of points you earned will be displayed, and you can return to Prolific.</p>   
             <div class="image-container">
                 <img src="{% static 'instructions/TaskInstructionsPage2/final_results.png' %}" alt="Final Results" width="600" height="auto">
             </div>

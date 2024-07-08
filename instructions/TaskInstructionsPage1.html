@@ -68,6 +68,29 @@
             text-align: center;
             font-style: italic;
         }
+
+        .green-box {
+            background-color: #e6ffe6;
+            border: 2px solid #4CAF50;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .green-box-image-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .green-box-image-container img {
+            width: 100px;
+            height: auto;
+            border-radius: 5px;
+        }
+
     </style>
 
     <div class="container">
@@ -93,8 +116,17 @@
             </div>
         </div>
         <br>
-        <p>You will have 2.5 seconds to make this first choice between the two images. This is done by either pressing the 'Left' or 'Right' keys on your keyboard. <b>Importantly, you cannot change your choice once it is made</b>.
+        <p>You will have 2.5 seconds to make this first choice between the two images.
+            <b>Importantly, you cannot change your choice once it is made</b>.
             If you do not make a choice within this time limit, an image will be selected at random for you.</p>
+
+            <div class="green-box">
+                <p><b>To make your choice, press either the left or right arrow key on your keyboard.</b></p>
+                <div class="green-box-image-container">
+                    <img src="{% static 'instructions/TaskInstructionsPage1/left_arrow.png' %}" alt="Left">
+                    <img src="{% static 'instructions/TaskInstructionsPage1/right_arrow.png' %}" alt="Right">
+                </div>
+            </div>
 
         <br>
         <p>The chosen image is highlighted with a yellow box when you make your choice, or when it has been made for you.</p>
@@ -110,9 +142,17 @@
         </div> 
         <br>
         <p>You will then be asked to place a 'bet' as to <b>how confident you are</b> that the image selected is the image with the higher probability of reward. 
-            This is done by pressing either the '1', '2' or '3' button on your keyboard.
             <b>You cannot change your bet once it is made.</b></p>
-
+        <br>
+            <div class="green-box">
+                <p><b>To make your bet, press either the '1', '2' or '3' key on your keyboard.</b></p>
+                <div class="green-box-image-container">
+                    <img src="{% static 'instructions/TaskInstructionsPage1/1_key.png' %}" alt="1">
+                    <img src="{% static 'instructions/TaskInstructionsPage1/2_key.png' %}" alt="2">
+                    <img src="{% static 'instructions/TaskInstructionsPage1/3_key.png' %}" alt="3">
+                </div>
+            </div>
+        <br>
         <p><b>Again, you have 2.5 seconds to make your bet. If you do not make a bet within this time, a random bet will be placed for you.</b></p>
 
         <p>The chosen bet is highlighted with a yellow box when the bet is made.</p>
@@ -128,15 +168,35 @@
             </div>
         </div>
         <br>
-        <p>You will then be asked to choose one of the other players choices to uncover first, by pressing either '1', '2', '3', or '4'. <b> 
-            Pressing '1' will select Player 1, pressing '2' will select Player 2, '3' Player 3, and '4' Player 4.</b>
-            The avatar for the player selected as the 'first preference' is subsequently highlighted with a red box.</p>
+        <p><b>You will then be asked to choose one of the other players choices to uncover first.</b></p>
         <br>
-        <p>You then select another player's choice to uncover second by pressing either '1', '2', '3' or '4'. The avatar for this second player is highlighted with an orange box. 
-            <b>You must select two different players and cannot choose the same player twice.</b></p>
+        <p>Pressing '1' will select Player 1, pressing '2' will select Player 2, '3' Player 3, and '4' Player 4.</p>
+        <br>
+        <div class="green-box">
+            <p><b>To select the player to uncover first, press either the '1', '2', '3' or '4' key on your keyboard.</b></p>
+            <div class="green-box-image-container">
+                <img src="{% static 'instructions/TaskInstructionsPage1/1_key.png' %}" alt="1">
+                <img src="{% static 'instructions/TaskInstructionsPage1/2_key.png' %}" alt="2">
+                <img src="{% static 'instructions/TaskInstructionsPage1/3_key.png' %}" alt="3">
+                <img src="{% static 'instructions/TaskInstructionsPage1/4_key.png' %}" alt="4">
+            </div>
+        </div>
+        <p>You then select another player's choice to uncover second in the same way.</p>
+        <br>
+        <div class="green-box">
+            <p><b>To select the player to uncover second, press either the '1', '2', '3' or '4' key on your keyboard.</b></p>
+            <div class="green-box-image-container">
+                <img src="{% static 'instructions/TaskInstructionsPage1/1_key.png' %}" alt="1">
+                <img src="{% static 'instructions/TaskInstructionsPage1/2_key.png' %}" alt="2">
+                <img src="{% static 'instructions/TaskInstructionsPage1/3_key.png' %}" alt="3">
+                <img src="{% static 'instructions/TaskInstructionsPage1/4_key.png' %}" alt="4">
+            </div>
+        </div>
+        <p><b>Importantly, you must select two different players and so you cannot press any number twice.</b></p>
+        <br>
         <p>You will have 2 seconds to choose each, a random choice will be made for you if you do not make either choice within this time.</p>
         <br>
-
+        <p>When you make your preference choices, the players' avatars are highlighted accordingly.</p>
         <div class="dual-image-container">
             <div class="image-with-caption">
                 <img src="{% static 'instructions/TaskInstructionsPage1/first_preference_highlighted.png' %}" alt="Pref 1">
@@ -148,7 +208,7 @@
             </div>
         </div>
         <br>
-        <p><b>The choices made by each player is then uncovered in turn below their avatar,</b> starting with the player selected as the 'first preference', 
+        <p><b>The choices made by each player are then uncovered in turn below their avatar,</b> starting with the player selected as the 'first preference', 
             followed by the player selected as the 'second preference'.</p>
         
         <div class="dual-image-container">
