@@ -18,7 +18,7 @@ The task is the same as reported in (Zhang & Glascher, 2020) https://www.science
 class C(BaseConstants):
     NAME_IN_URL = 'main_task'
     PLAYERS_PER_GROUP = 5
-    NUM_ROUNDS = 3
+    NUM_ROUNDS = 30
     REWARD_PROBABILITY_A = 0.7
     REWARD_PROBABILITY_B = 0.3
     IMAGES = ['option1A.bmp', 'option1B.bmp']
