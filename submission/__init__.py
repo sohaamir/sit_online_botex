@@ -2,7 +2,7 @@ from otree.api import *
 
 class C(BaseConstants):
     NAME_IN_URL = 'submission'
-    PLAYERS_PER_GROUP = 5
+    PLAYERS_PER_GROUP = None
     NUM_ROUNDS = 1
 
 class Subsession(BaseSubsession):
@@ -12,22 +12,28 @@ class Group(BaseGroup):
     pass
 
 class Player(BasePlayer):
-    pass
+    engagement = models.IntegerField(min=0, max=100)
+    influence = models.IntegerField(min=0, max=100)
+    real_players = models.IntegerField(min=0, max=100)
 
 def creating_session(subsession):
     for p in subsession.get_players():
         p.participant.finished = False
 
 # PAGES
-class Submission(Page):
-    @staticmethod              
+class Feedback(Page):
+    form_model = 'player'
+    form_fields = ['engagement', 'influence', 'real_players']
+
+class Submit(Page):
+    @staticmethod
     def js_vars(player):
         return dict(
-            completionlink=player.subsession.session.config['completionlink']
+            completionlink=player.session.config['completionlink']
         )
     
     @staticmethod
     def before_next_page(player, timeout_happened):
         player.participant.finished = True
 
-page_sequence = [Submission]
+page_sequence = [Feedback, Submit]

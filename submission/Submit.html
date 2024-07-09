@@ -1,0 +1,73 @@
+{{ block title }}{{ endblock }}
+{{ block content }}
+<style>
+    body {
+        margin: 0 25%;
+        font-family: Arial, sans-serif;
+    }
+
+    .container {
+        max-width: 100%;
+        text-align: center;
+    }
+
+    h1 {
+        font-size: 2em;
+        margin-bottom: 20px;
+    }
+
+    p {
+        font-size: 1.2em;
+    }
+
+    button {
+        background-color: #4CAF50;
+        border: none;
+        color: white;
+        padding: 15px 32px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 4px 2px;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+
+    .green-highlight-box {
+        background-color: #e8f5e9;
+        border: 2px solid #4CAF50;
+        padding: 5px;
+        margin: 20px 0;
+        border-radius: 5px;
+        text-align: center;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .green-highlight-box p {
+        margin: 0; 
+    }
+</style>
+
+<div class="container">
+    <h1>Submit</h1>
+    <div class="green-highlight-box">
+        <p>You will shortly receive an invitation to complete the second part of the study. 
+        It is important that you complete this second part <b>today, ideally within a few hours.</b></p>
+    </div>
+    <p>Click the button below to complete your submission and return to Prolific.</p>
+    <button id="completeButton">Submit</button>
+</div>
+
+<script>
+    var completionlink = js_vars.completionlink;
+
+    document.getElementById('completeButton').addEventListener('click', function(e) {
+        e.preventDefault();
+        window.location.href = completionlink;
+        return false;
+    });
+</script>
+{{ endblock }}

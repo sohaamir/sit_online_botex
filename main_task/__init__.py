@@ -117,7 +117,7 @@ class Group(BaseGroup):
     def reversal_learning(self):
         if self.round_number == 1:
             reversal_rounds = []
-            current_round = random.randint(8, 12)
+            current_round = random.randint(7, 9)
             while current_round <= C.NUM_ROUNDS:
                 reversal_rounds.append(current_round)
                 current_round += random.randint(8, 12)

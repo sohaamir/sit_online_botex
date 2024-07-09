@@ -1,0 +1,130 @@
+{{ block title }}{{ endblock }}
+{{ block content }}
+<style>
+    body {
+        margin: 0 25%;
+        font-family: Arial, sans-serif;
+    }
+
+    .container {
+        max-width: 100%;
+        text-align: center;
+    }
+
+    h1 {
+        font-size: 2em;
+        margin-bottom: 20px;
+    }
+
+    p {
+        font-size: 1.2em;
+    }
+
+    .question {
+        margin-bottom: 30px;
+        text-align: center;
+    }
+    
+    .question p {
+        margin-bottom: 10px;
+        font-size: 1.3em;
+    }
+
+    .slider-container {
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    input[type="range"] {
+        width: 100%;
+    }
+
+    .labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 5px;
+        font-size: 0.9em;
+        color: #666;
+    }
+
+    button {
+        background-color: #4CAF50;
+        border: none;
+        color: white;
+        padding: 15px 32px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 4px 2px;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+
+    .value-display {
+        text-align: center;
+        margin-top: 5px;
+        font-weight: bold;
+    }
+</style>
+
+<div class="container">
+    <h1>Feedback</h1>
+    <p>Please answer the following questions by moving the sliders before submitting:</p>
+    <br>
+    <div class="question">
+        <p>How engaged were you in the <b>main task?</b></p>
+        <div class="slider-container">
+            <input type="range" min="0" max="100" value="50" class="slider" id="engagement" name="engagement">
+            <div class="value-display" id="engagement-value">50</div>
+        </div>
+        <div class="labels">
+            <span>Not at all</span>
+            <span>Extremely</span>
+        </div>
+    </div>
+    <br>
+    <div class="question">
+        <p>How much were you influenced by the choices of others when </p>
+        <p>making your second choice and bet <b>in the main task?</b></p>
+        <div class="slider-container">
+            <input type="range" min="0" max="100" value="50" class="slider" id="influence" name="influence">
+            <div class="value-display" id="influence-value">50</div>
+        </div>
+        <div class="labels">
+            <span>Not at all</span>
+            <span>Extremely</span>
+        </div>
+    </div>
+    <br>
+    <div class="question">
+        <p><b>During the main task</b>, did you think that you were playing against real people?</p>
+        <div class="slider-container">
+            <input type="range" min="0" max="100" value="50" class="slider" id="real_players" name="real_players">
+            <div class="value-display" id="real_players-value">50</div>
+        </div>
+        <div class="labels">
+            <span>Not at all</span>
+            <span>Certainly</span>
+        </div>
+    </div>
+    <br>
+    <button id="nextButton">Next</button>
+</div>
+
+<script>
+    function updateValue(sliderId) {
+        var slider = document.getElementById(sliderId);
+        var output = document.getElementById(sliderId + "-value");
+        output.innerHTML = slider.value;
+        
+        slider.oninput = function() {
+            output.innerHTML = this.value;
+        }
+    }
+
+    updateValue("engagement");
+    updateValue("influence");
+    updateValue("real_players");
+</script>
+{{ endblock }}
