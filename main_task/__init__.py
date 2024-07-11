@@ -86,6 +86,16 @@ class Group(BaseGroup):
     second_preference_choices_displayed = models.BooleanField(initial=False)
     bet_container_displayed = models.BooleanField(initial=False)
     remaining_images_displayed = models.BooleanField(initial=False)
+    reversal_happened = models.BooleanField(initial=False)
+
+#### --------------- Define the set_first_round_reward method ------------------- ####
+# If the player chooses the 70% image, they are guaranteed to be rewarded
+    def set_first_round_reward(self):
+        for p in self.get_players():
+            if p.chosen_image_two == self.seventy_percent_image:
+                p.trial_reward = 1
+            else:
+                p.trial_reward = 1 if random.random() < (0.7 if p.chosen_image_two == 'option1A.bmp' else 0.3) else 0
 
     def set_round_reward(self):
         self.round_reward_A = 1 if random.random() < self.reward_probability_A else 0
@@ -95,11 +105,30 @@ class Group(BaseGroup):
 # The payoff for each round is calculated as: payoff = bet * 20 * reward
 
     def set_payoffs(self):
+        if self.round_number == 1:
+            self.set_first_round_reward()
+        else:
+            self.set_round_reward()
+
         for p in self.get_players():
-            if p.chosen_image_two == 'option1A.bmp':
-                p.trial_reward = self.round_reward_A
+            if self.round_number == 1:
+                p.streak = 1 if p.trial_reward == 1 else -1
             else:
-                p.trial_reward = self.round_reward_B
+                previous_player = p.in_round(self.round_number - 1)
+                if p.chosen_image_two == 'option1A.bmp':
+                    potential_reward = self.round_reward_A
+                else:
+                    potential_reward = self.round_reward_B
+
+                if (previous_player.streak == 3 and potential_reward == 1) or (previous_player.streak == -3 and potential_reward == 0):
+                    p.trial_reward = 1 - potential_reward  # Flip the reward
+                    p.streak = 1 if p.trial_reward == 1 else -1
+                else:
+                    p.trial_reward = potential_reward
+                    if p.trial_reward == 1:
+                        p.streak = previous_player.streak + 1 if previous_player.streak > 0 else 1
+                    else:
+                        p.streak = previous_player.streak - 1 if previous_player.streak < 0 else -1
 
             p.trial_earnings = p.bet2_computer * 20 * p.trial_reward
             p.total_reward_earnings += p.trial_earnings
@@ -112,7 +141,7 @@ class Group(BaseGroup):
         print(f"Intertrial interval of {self.intertrial_interval}ms generated")
 
 #### ----------- Define and record the reversal learning rounds ------------------- ####
-# Reversals are randomly generated between 8 and 12 rounds
+# Reversals are randomly generated between X and Y rounds
 
     def reversal_learning(self):
         if self.round_number == 1:
@@ -123,7 +152,6 @@ class Group(BaseGroup):
                 current_round += random.randint(8, 12)
             self.session.vars['reversal_rounds'] = reversal_rounds
 
-            # Randomly determine the initial image with 0.7 probability
             self.seventy_percent_image = random.choice(['option1A.bmp', 'option1B.bmp'])
             if self.seventy_percent_image == 'option1A.bmp':
                 self.reward_probability_A = 0.7
@@ -131,6 +159,8 @@ class Group(BaseGroup):
             else:
                 self.reward_probability_A = 0.3
                 self.reward_probability_B = 0.7
+
+            self.reversal_happened = False  # No reversal in the first round
 
             print(f"Reversal rounds generated: {reversal_rounds}")
             print(f"Initial 70% image: {self.seventy_percent_image}")
@@ -146,17 +176,21 @@ class Group(BaseGroup):
             if self.round_number in reversal_rounds:
                 self.seventy_percent_image = 'option1B.bmp' if self.seventy_percent_image == 'option1A.bmp' else 'option1A.bmp'
                 self.reward_probability_A, self.reward_probability_B = self.reward_probability_B, self.reward_probability_A
+                self.reversal_happened = True
                 print(f"Reversal occurred in round {self.round_number}")
+            else:
+                self.reversal_happened = False
 
         print(f"Current probabilities: option1A.bmp - {self.reward_probability_A}, option1B.bmp - {self.reward_probability_B}")
         print(f"Current 70% image: {self.seventy_percent_image}")
+        print(f"Reversal happened: {self.reversal_happened}")
 
 #### ------------- Define the reset fields method ------------------- ####
 # This method is used to reset the group-level variables at the start of each round
 
     def reset_fields(self):
         self.current_round = 1
-        self.my_page_load_time = None  # Changed to None
+        self.my_page_load_time = None
         self.round_reward_A = 0
         self.round_reward_B = 0
         self.second_choice_timer_started = False
@@ -169,7 +203,8 @@ class Group(BaseGroup):
         self.show_results_sent = False
         self.show_results_executed = False
         self.second_bet_timer_ended_executed = False
-        self.next_round_transition_time = None  # Changed to None
+        self.next_round_transition_time = None
+        self.reversal_happened = False
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- PLAYER-LEVEL VARIABLES: USED TO TRACK CHOICES, BETS, EARNINGS AND A WHOLE LOT ELSE ------ #
@@ -254,6 +289,7 @@ class Player(BasePlayer):
     loss_or_gain_player3 = models.IntegerField()
     loss_or_gain_player4 = models.IntegerField()
     all_images_displayed = models.BooleanField(initial=False)
+    streak = models.IntegerField(initial=0)
 
 # Reset the player-level variables at the start of each round 
 
@@ -330,6 +366,7 @@ class Player(BasePlayer):
         self.loss_or_gain_player3 = None
         self.loss_or_gain_player4 = None
         self.all_images_displayed = False
+        self.streak = 0
 
 # Calculate the number of players who made the same choice as the current player
 # This is used to calculate the social influence effect 
