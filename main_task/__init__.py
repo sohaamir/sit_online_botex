@@ -18,7 +18,7 @@ The task is the same as reported in (Zhang & Glascher, 2020) https://www.science
 class C(BaseConstants):
     NAME_IN_URL = 'main_task'
     PLAYERS_PER_GROUP = 5
-    NUM_ROUNDS = 30
+    NUM_ROUNDS = 3
     REWARD_PROBABILITY_A = 0.7
     REWARD_PROBABILITY_B = 0.3
     IMAGES = ['option1A.bmp', 'option1B.bmp']
@@ -913,6 +913,9 @@ class SecondChoicePage(Page):
                 p.calculate_choice_comparisons()
                 
             if not group.second_bet_timer_ended_executed:
+                group.second_bet_timer_ended_executed = True
+                response = {}
+
                 for p in players:
                     if p.bet2 == 0:
                         random_bet = random.randint(1, 3)
@@ -921,6 +924,7 @@ class SecondChoicePage(Page):
                         p.computer_bet_two = True
                         p.second_bet_time = 4.0
                         print(f"Player {p.id_in_group} did not make a second bet within the time limit. Computer assigned bet: {p.bet2}")
+                        response[p.id_in_group] = dict(highlight_computer_bet=p.bet2)
 
                 # Calculate trial_reward and trial_earnings for each player
                 for p in players:
@@ -941,34 +945,30 @@ class SecondChoicePage(Page):
                     p.loss_or_gain_player3 = 0 if other_players[2].trial_earnings < 0 else 1
                     p.loss_or_gain_player4 = 0 if other_players[3].trial_earnings < 0 else 1
 
-                # Print display phase information for each player 
-                # This includes chosen_image_two, trial_reward, trial_earnings, and total_reward_earnings
-                for p in players:
-                    print(f"Player {p.id_in_group} display phase - chosen_image_two: {p.chosen_image_two}, trial_reward: {p.trial_reward}, trial_earnings: {p.trial_earnings}, total_reward_earnings: {p.total_reward_earnings}")
-
                 # Generate the intertrial interval and set the next round transition time
                 group.generate_intertrial_interval()
                 group.next_round_transition_time = time.time() * 1000 + group.intertrial_interval
 
-                group.second_bet_timer_ended_executed = True
-
                 chosen_images_secondchoicepage = {p.id_in_group: f"main_task/{p.chosen_image_computer_two}" if p.chosen_image_computer_two else f"main_task/{p.chosen_image_two}" for p in players}
-                win_loss_images = {p.id_in_group: f'main_task/{"win" if p.trial_reward == 1 else "loss"}.bmp' for p in players}
+                win_loss_images = {p.id_in_group: f'main_task/{"win" if p.trial_reward == 1 else "loss"}.png' for p in players}
 
-                return {
-                    p.id_in_group: dict(
-                        show_results=True,
-                        second_bet_reward=p.trial_earnings,
-                        chosen_images=chosen_images_secondchoicepage,
-                        win_loss_images=win_loss_images,
-                        player_win_loss_image=win_loss_images[p.id_in_group],
-                        intertrial_interval=group.intertrial_interval,
-                        round_number=player.round_number,
-                        num_rounds=C.NUM_ROUNDS
-                    ) for p in players
-                }
+                for p in players:
+                    response[p.id_in_group] = {
+                        **response.get(p.id_in_group, {}),
+                        **dict(
+                            show_results=True,
+                            second_bet_reward=p.trial_earnings,
+                            chosen_images=chosen_images_secondchoicepage,
+                            win_loss_images=win_loss_images,
+                            player_win_loss_image=win_loss_images[p.id_in_group],
+                            intertrial_interval=group.intertrial_interval,
+                            round_number=player.round_number,
+                            num_rounds=C.NUM_ROUNDS,
+                            selected_bet=p.bet2
+                        )
+                    }
 
-        return {}
+                return response
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- FINAL RESULTS PAGE: AFTER 100 ROUNDS, PLAYERS RECEIVE THEIR POINTS TALLY ------ #

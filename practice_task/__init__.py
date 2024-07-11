@@ -204,10 +204,10 @@ class MyPage(Page):
             page_start_time=int(time.time() * 1000)
         )
 
-    # Time players out after 30 seconds spent on MyPage (this assumes that a player has left the session)
+    # Time players out after 40 seconds spent on MyPage (this assumes that a player has left the session)
     @staticmethod
     def get_timeout_seconds(player: Player):
-        return 30
+        return 40
 
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
@@ -424,7 +424,7 @@ class MyPage(Page):
 
         if 'preference_second_choice' in data:
             preference_second_choice = data['preference_second_choice']
-            if preference_second_choice != player.preference_choice and preference_second_choice in ['1', '2']:
+            if preference_second_choice != player.preference_choice and preference_second_choice in ['1', '2', '3', '4']:
                 player.preference_second_choice = preference_second_choice
                 player.preference_second_choice_made = True
                 player.computer_preference_choice_two = False
@@ -435,7 +435,7 @@ class MyPage(Page):
 
         if 'preference_second_choice_button_pressed' in data:
             preference_second_choice = data['preference_second_choice_button_pressed']
-            if preference_second_choice != player.preference_choice and preference_second_choice in ['1', '2']:
+            if preference_second_choice != player.preference_choice and preference_second_choice in ['1', '2', '3', '4']:
                 if player.field_maybe_none('preference_second_choice') is None or player.preference_second_choice == '0':
                     player.preference_second_choice = preference_second_choice
                     player.preference_second_choice_made = True
@@ -658,6 +658,7 @@ class SecondChoicePage(Page):
 
         if 'second_bet_timer_ended' in data:
             if not group.second_bet_timer_ended_executed:
+                response = {}
                 for p in players:
                     if p.bet2 == 0:
                         random_bet = random.randint(1, 3)
@@ -666,6 +667,10 @@ class SecondChoicePage(Page):
                         p.computer_bet_two = True
                         p.second_bet_time = 4.0
                         print(f"Player {p.id_in_group} did not make a second bet within the time limit. Computer assigned bet: {p.bet2}")
+                        response[p.id_in_group] = {'computer_assigned_bet': random_bet}
+                
+                if response:
+                    return response
 
                 # Calculate trial_reward and trial_earnings
                 for p in players:
@@ -687,7 +692,7 @@ class SecondChoicePage(Page):
                 group.next_round_transition_time = time.time() * 1000 + group.intertrial_interval
 
                 chosen_images_secondchoicepage = {p.id_in_group: f"practice_task/{p.chosen_image_computer_two}" if p.chosen_image_computer_two else f"practice_task/{p.chosen_image_two}" for p in players}
-                win_loss_images = {p.id_in_group: f'practice_task/{"win" if p.trial_reward == 1 else "loss"}.bmp' for p in players}
+                win_loss_images = {p.id_in_group: f'practice_task/{"win" if p.trial_reward == 1 else "loss"}.png' for p in players}
 
                 group.second_bet_timer_ended_executed = True
 
