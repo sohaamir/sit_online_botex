@@ -12,7 +12,7 @@ class C(BaseConstants):
     PLAYERS_PER_GROUP = 5
     NUM_ROUNDS = 5
     REWARD_PROBABILITY_A = 0.7
-    REWARD_PROBABILITY_B = 0.3
+    REWARD_PROBABILITY_B = 0.5
     IMAGES = ['option1A.bmp', 'option1C.bmp']
     AVATAR_IMAGE = 'practice_task/avatar_male.png'
     IMAGE_PATHS = {
@@ -46,13 +46,6 @@ class Group(BaseGroup):
     second_preference_choices_displayed = models.BooleanField(initial=False)
     all_players_preference_second_choice_time = models.FloatField()
     remaining_images_displayed = models.BooleanField(initial=False)
-
-    def set_first_round_reward(self):
-        for p in self.get_players():
-            if p.chosen_image_two == self.seventy_percent_image:
-                p.trial_reward = 1
-            else:
-                p.trial_reward = 1 if random.random() < (0.7 if p.chosen_image_two == 'option1A.bmp' else 0.3) else 0
 
     def set_round_reward(self):
         self.round_reward_A = 1 if random.random() < C.REWARD_PROBABILITY_A else 0

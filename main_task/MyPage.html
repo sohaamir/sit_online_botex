@@ -202,9 +202,9 @@
             if (currentStage === 'choice') {
                 // If no choice is made within 4 seconds, send this information to the server
                 // This likely triggers a default choice or next stage
-                liveSend({initial_choice_time: 4000});
+                liveSend({initial_choice_time: 1000});
             }
-        }, 4000);  // 4000 milliseconds = 4 seconds
+        }, 1000);  // 1000 milliseconds = 4 seconds
 
         // Record the start time of the choice phase for accurate timing calculations
         window.choicePhaseStartTime = performance.now();
@@ -354,7 +354,7 @@
             window.initialChoiceTimerStarted = true;
             setTimeout(function() {
                 liveSend({initial_choice_timer_ended: true});
-            }, 4000);  // 4 seconds timer
+            }, 1000);  // 4 seconds timer
         }
 
         // Start choice phase timer
@@ -363,7 +363,7 @@
             window.choicePhaseTimerStarted = true;
             setTimeout(function() {
                 liveSend({choice_phase_timer_ended: true});
-            }, 4000);  // 4 seconds timer
+            }, 1000);  // 4 seconds timer
         }
 
         // Handle computer-made choice
@@ -399,7 +399,7 @@
                 if (!betMade) {
                     liveSend({bet_timer_ended: true});
                 }
-            }, 4000);  // 4 seconds timer
+            }, 1000);  // 4 seconds timer
         }
 
         // Show bet container and set up bet phase
@@ -421,7 +421,7 @@
                     liveSend({bet_timer_ended: true});
                 }
                 document.removeEventListener('keydown', handleKeyDown);
-            }, 4000);  // 4 seconds timer
+            }, 1000);  // 4 seconds timer
         }
 
         // Highlight selected bet in UI
@@ -489,7 +489,7 @@
 
             setTimeout(function() {
                 liveSend({preference_choice_timer_ended: true});
-            }, 4000);  // 4 seconds timer
+            }, 1000);  // 4 seconds timer
         }
 
         // Show second preference choice UI and start timer
@@ -504,7 +504,7 @@
 
                 setTimeout(function() {
                     liveSend({preference_second_choice_timer_ended: true});
-                }, 4000);  // 4 seconds timer
+                }, 1000);  // 4 seconds timer
             }
         }
 
@@ -514,7 +514,7 @@
                 if (!window.js_vars.preference_second_choice_made) {
                     liveSend({preference_second_choice_timer_ended: true});
                 }
-            }, 4000);  // 4 seconds timer
+            }, 1000);  // 4 seconds timer
         }
 
         // Display chosen image for a player
@@ -589,14 +589,14 @@
             setTimeout(() => {
                 console.log('Redirecting to SecondChoicePage');
                 document.getElementById('form').submit();
-            }, 3000);
+            }, 1000);
         }
     }
 
     // Time players out after 40 seconds spent on MyPage (this assumes that a player has left the session)
     document.addEventListener('DOMContentLoaded', function() {
         const pageStartTime = js_vars.page_start_time;
-        const timeoutDuration = 40000; // 40 seconds in milliseconds
+        const timeoutDuration = 39000; // 40 seconds in milliseconds
 
         function checkTimeout() {
             const currentTime = new Date().getTime();

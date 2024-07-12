@@ -3,6 +3,8 @@ from otree.api import *
 from . import *
 import random
 import time
+import csv
+import os
 
 author = 'Aamir Sohail'
 
@@ -12,13 +14,13 @@ The task is the same as reported in (Zhang & Glascher, 2020) https://www.science
 """
 
 # -------------------------------------------------------------------------------------------------------------------- #
-# ---- CONSTANTS: DEFINE CONSTANTS USED IN THE GAME INCLUDING NUMBER OF PLAYERS, ROUNDS AND REWARD PROBABILITIES------ #
+# ---- CONSTANTS: DEFINE CONSTANTS USED IN THE GAME INCLUDING NUMBER OF PLAYERS, ROUNDS AND TRIAL SEQUENCE------ #
 # -------------------------------------------------------------------------------------------------------------------- #
 
 class C(BaseConstants):
     NAME_IN_URL = 'main_task'
     PLAYERS_PER_GROUP = 5
-    NUM_ROUNDS = 3
+    NUM_ROUNDS = 80
     REWARD_PROBABILITY_A = 0.7
     REWARD_PROBABILITY_B = 0.3
     IMAGES = ['option1A.bmp', 'option1B.bmp']
@@ -32,11 +34,54 @@ class C(BaseConstants):
     }
 
 # -------------------------------------------------------------------------------------------------------------------- #
+# Generate a trial sequence for the experiment based on the number of rounds and reversal rounds
+# The sequence is generated randomly with reversal rounds every 8-12 rounds, but remains the same for all groups
+
+random_for_rewards = random.Random(43)  # Use a different seed than the one for sequence generation
+
+def generate_trial_sequence():
+    # Set a fixed random seed to ensure the same sequence every time
+    random.seed(42)  # You can change this number, but keep it constant
+
+    sequence = []
+    current_image = random.choice(['option1A.bmp', 'option1B.bmp'])
+    reversal_rounds = []
+    
+    # Generate reversal rounds
+    current_round = random.randint(8, 12)
+    while current_round <= C.NUM_ROUNDS:
+        reversal_rounds.append(current_round)
+        current_round += random.randint(8, 12)
+
+    for round_number in range(1, C.NUM_ROUNDS + 1):
+        if round_number in reversal_rounds:
+            current_image = 'option1B.bmp' if current_image == 'option1A.bmp' else 'option1A.bmp'
+        sequence.append((round_number, current_image))
+
+    # Save sequence to CSV
+    file_path = os.path.join(os.getcwd(), 'trial_sequence.csv')
+    with open(file_path, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['round', 'seventy_percent_image'])
+        writer.writerows(sequence)
+
+    print(f"Reversal rounds: {reversal_rounds}")
+    return sequence, reversal_rounds
+
+# Generate the sequence once when the module is imported
+TRIAL_SEQUENCE, REVERSAL_ROUNDS = generate_trial_sequence()
+
+# -------------------------------------------------------------------------------------------------------------------- #
 # ---- SUBSESSIONS: USED TO DEFINE THE ROUNDS FOR REVERSAL AND BOTS ------ #
 # -------------------------------------------------------------------------------------------------------------------- #
 
 class Subsession(BaseSubsession):
-    reversal_rounds = models.StringField(initial='')
+
+# Define the sequence of rounds for the experiment based on the trial sequence generated earlier
+# The sequence is the same for all groups and is used to determine the reward probabilities for each round
+
+    def get_reversal_rounds(self):
+        return [round for round in REVERSAL_ROUNDS if round <= self.round_number]
 
     def collect_bot_data(self):
         data = []
@@ -88,18 +133,12 @@ class Group(BaseGroup):
     remaining_images_displayed = models.BooleanField(initial=False)
     reversal_happened = models.BooleanField(initial=False)
 
-#### --------------- Define the set_first_round_reward method ------------------- ####
-# If the player chooses the 70% image, they are guaranteed to be rewarded
-    def set_first_round_reward(self):
-        for p in self.get_players():
-            if p.chosen_image_two == self.seventy_percent_image:
-                p.trial_reward = 1
-            else:
-                p.trial_reward = 1 if random.random() < (0.7 if p.chosen_image_two == 'option1A.bmp' else 0.3) else 0
+#### ---------------- Define the round reward ------------------------ ####
+# The round reward is randomly generated based on the reward probabilities for each image
 
     def set_round_reward(self):
-        self.round_reward_A = 1 if random.random() < self.reward_probability_A else 0
-        self.round_reward_B = 1 if random.random() < self.reward_probability_B else 0
+        self.round_reward_A = 1 if random_for_rewards.random() < self.reward_probability_A else 0
+        self.round_reward_B = 1 if random_for_rewards.random() < self.reward_probability_B else 0
 
 #### ---------------- Define payoffs ------------------------ ####
 # The payoff for each round is calculated as: payoff = bet * 20 * reward
@@ -141,18 +180,20 @@ class Group(BaseGroup):
         print(f"Intertrial interval of {self.intertrial_interval}ms generated")
 
 #### ----------- Define and record the reversal learning rounds ------------------- ####
-# Reversals are randomly generated between X and Y rounds
+# Reversals are triggered every 8-12 rounds and the reward probabilities are switched
 
     def reversal_learning(self):
-        if self.round_number == 1:
-            reversal_rounds = []
-            current_round = random.randint(7, 9)
-            while current_round <= C.NUM_ROUNDS:
-                reversal_rounds.append(current_round)
-                current_round += random.randint(8, 12)
-            self.session.vars['reversal_rounds'] = reversal_rounds
+        current_round_data = next((item for item in TRIAL_SEQUENCE if item[0] == self.round_number), None)
+        
+        if current_round_data:
+            self.seventy_percent_image = current_round_data[1]
+            previous_round = self.in_round(self.round_number - 1) if self.round_number > 1 else None
 
-            self.seventy_percent_image = random.choice(['option1A.bmp', 'option1B.bmp'])
+            if self.round_number in REVERSAL_ROUNDS:
+                self.reversal_happened = True
+            else:
+                self.reversal_happened = False
+
             if self.seventy_percent_image == 'option1A.bmp':
                 self.reward_probability_A = 0.7
                 self.reward_probability_B = 0.3
@@ -160,29 +201,8 @@ class Group(BaseGroup):
                 self.reward_probability_A = 0.3
                 self.reward_probability_B = 0.7
 
-            self.reversal_happened = False  # No reversal in the first round
-
-            print(f"Reversal rounds generated: {reversal_rounds}")
-            print(f"Initial 70% image: {self.seventy_percent_image}")
-        else:
-            reversal_rounds = self.session.vars.get('reversal_rounds', [])
-            print(f"Reversal rounds for the game: {reversal_rounds}")
-
-            previous_round = self.in_round(self.round_number - 1)
-            self.seventy_percent_image = previous_round.seventy_percent_image
-            self.reward_probability_A = previous_round.reward_probability_A
-            self.reward_probability_B = previous_round.reward_probability_B
-
-            if self.round_number in reversal_rounds:
-                self.seventy_percent_image = 'option1B.bmp' if self.seventy_percent_image == 'option1A.bmp' else 'option1A.bmp'
-                self.reward_probability_A, self.reward_probability_B = self.reward_probability_B, self.reward_probability_A
-                self.reversal_happened = True
-                print(f"Reversal occurred in round {self.round_number}")
-            else:
-                self.reversal_happened = False
-
+        print(f"Round {self.round_number}: 70% image is {self.seventy_percent_image}")
         print(f"Current probabilities: option1A.bmp - {self.reward_probability_A}, option1B.bmp - {self.reward_probability_B}")
-        print(f"Current 70% image: {self.seventy_percent_image}")
         print(f"Reversal happened: {self.reversal_happened}")
 
 #### ------------- Define the reset fields method ------------------- ####
@@ -369,7 +389,8 @@ class Player(BasePlayer):
         self.streak = 0
 
 # Calculate the number of players who made the same choice as the current player
-# This is used to calculate the social influence effect 
+# This is used to calculate the social influence effect
+
     def calculate_choice_comparisons(self):
         other_players = self.get_others_in_group()
         
@@ -509,7 +530,7 @@ class MyPage(Page):
                     p.chosen_image_one = p.left_image if random_choice == 'left' else p.right_image
                     p.participant.vars['chosen_image_one'] = p.chosen_image_one
                     p.initial_choice_time = 4.0  # Record as 4.0 if the choice was made randomly
-                    p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 0
+                    p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
                     p.computer_choice_one = True  # Record that the choice was made by the computer
                     if p.chosen_image_one == 'option1A.bmp':
                         p.chosen_image_computer = 'option1A_tr.bmp'
@@ -520,7 +541,7 @@ class MyPage(Page):
                 else:
                     p.chosen_image_one = p.left_image if p.choice1 == 'left' else p.right_image
                     p.participant.vars['chosen_image_one'] = p.chosen_image_one
-                    p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 0
+                    p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
                     p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
 
             # Calculate the values for the first choice from the perspective of each player
@@ -899,7 +920,7 @@ class SecondChoicePage(Page):
                     p.chosen_image_two = random_image
                     p.choice2 = 'left' if random_image == p.left_image else 'right'
                     p.choice2_computer = p.choice2
-                    p.chosen_image_two_binary = 1 if p.chosen_image_two == 'option1A.bmp' else 0
+                    p.chosen_image_two_binary = 1 if p.chosen_image_two == 'option1A.bmp' else 2
                     p.computer_choice_two = True
                     if p.chosen_image_two == 'option1A.bmp':
                         p.chosen_image_computer_two = 'option1A_tr.bmp'
@@ -908,7 +929,7 @@ class SecondChoicePage(Page):
                     p.second_choice_time = 4.0
                     print(f"Player {p.id_in_group} assigned random second choice: {p.choice2} in round {p.round_number}")
                 else:
-                    p.chosen_image_two_binary = 1 if p.chosen_image_two == 'option1A.bmp' else 0
+                    p.chosen_image_two_binary = 1 if p.chosen_image_two == 'option1A.bmp' else 2
                     p.choice2_computer = p.choice2
 
                 p.choice2_accuracy = p.chosen_image_two == p.group.seventy_percent_image
