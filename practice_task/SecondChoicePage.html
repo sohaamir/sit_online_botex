@@ -109,6 +109,18 @@
         margin: 0 15px;
     }
 
+    .avatar-number {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 20px;
+        font-weight: bold;
+        color: black;
+        z-index: 1;
+        pointer-events: none;
+    }
+
     .avatar {
         width: 75px;
         height: 75px;
@@ -155,6 +167,7 @@
         {% for player_id in other_player_ids %}
             <div class="avatar-wrapper">
                 <img src="{% static C.AVATAR_IMAGE %}" alt="Player {{ player_id }} Avatar" class="avatar">
+                <div class="avatar-number">{{ forloop.counter }}</div>
                 <div class="chosen-images-container">
                     <img src="" alt="Player {{ player_id }} Chosen Image (MyPage)" class="chosen-image chosen-image-mypage" style="display: none;">
                     <img src="" alt="Player {{ player_id }} Chosen Image (SecondChoicePage)" class="chosen-image chosen-image-secondchoicepage" style="display: none;">
@@ -276,7 +289,7 @@
                 if (currentStage === 'choice') {
                     liveSend({second_choice_timer_ended: true});
                 }
-            }, 8000);
+            }, 40000);
         }
 
         if ('highlight_selected_image' in data) {
@@ -301,13 +314,13 @@
                 secondBetStartTime = performance.now();
                 console.log('Second bet phase start time:', secondBetStartTime);
 
-                // Start the second bet timer for 8000ms
+                // Start the second bet timer for 40000ms
                 setTimeout(function() {
                     if (currentStage === 'bet' && !betMade) {
-                        // If no bet is made within 8000ms, send the second_bet_timer_ended event
+                        // If no bet is made within 40000ms, send the second_bet_timer_ended event
                         liveSend({second_bet_timer_ended: true});
                     }
-                }, 8000);
+                }, 40000);
 
                 // Print the correct choice2 value based on whether it was made manually or assigned by the computer
                 if (choiceMade) {
@@ -338,7 +351,7 @@
             setTimeout(function() {
                 betPhaseEnded = true;
                 liveSend({second_bet_timer_ended: true});
-            }, 8000);
+            }, 40000);
         }
 
         if ('second_bet_timer_ended' in data && data.second_bet_timer_ended) {

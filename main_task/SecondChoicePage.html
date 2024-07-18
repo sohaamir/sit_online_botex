@@ -111,6 +111,18 @@
         margin: 0 15px;
     }
 
+    .avatar-number {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 20px;
+        font-weight: bold;
+        color: black;
+        z-index: 1;
+        pointer-events: none;
+    }
+
     .avatar {
         width: 75px;
         height: 75px;
@@ -157,6 +169,7 @@
         {% for player_id in other_player_ids %}
             <div class="avatar-wrapper">
                 <img src="{% static C.AVATAR_IMAGE %}" alt="Player {{ player_id }} Avatar" class="avatar">
+                <div class="avatar-number">{{ forloop.counter }}</div>
                 <div class="chosen-images-container">
                     <img src="" alt="Player {{ player_id }} Chosen Image (MyPage)" class="chosen-image chosen-image-mypage" style="display: none;">
                     <img src="" alt="Player {{ player_id }} Chosen Image (SecondChoicePage)" class="chosen-image chosen-image-secondchoicepage" style="display: none;">

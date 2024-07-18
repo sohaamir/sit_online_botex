@@ -286,7 +286,7 @@ class MyPage(Page):
                     p.choice1 = random_choice
                     p.chosen_image_one = p.left_image if random_choice == 'left' else p.right_image
                     p.participant.vars['chosen_image_one'] = p.chosen_image_one
-                    p.initial_choice_time = 8.0  # Record as 8.0 if the choice was made randomly
+                    p.initial_choice_time = 30.0  # Record as 30.0 if the choice was made randomly
                     p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 0
                     p.computer_choice_one = True  # Record that the choice was made by the computer
                     if p.chosen_image_one == 'option1A.bmp':
@@ -343,7 +343,7 @@ class MyPage(Page):
                         random_bet = random.randint(1, 3)
                         p.bet1 = random_bet
                         p.participant.vars['bet1'] = p.bet1
-                        p.initial_bet_time = 8.0
+                        p.initial_bet_time = 30.0
                         print(f"Player {p.id_in_group} did not make a bet within 8000ms. Computer randomly selected a bet of {p.bet1}, initial_bet_time: {p.initial_bet_time}")
 
                 if player.id_in_group == 1:
@@ -392,7 +392,7 @@ class MyPage(Page):
             response = {}
             for p in players:
                 if p.preference_choice == '0':
-                    p.preference_choice_time = 8.0
+                    p.preference_choice_time = 30.0
                     # Randomly assign '1' or '2' to preference_choice for players who haven't made a choice
                     p.preference_choice = random.choice(['1', '2', '3', '4'])
                     p.preference_choice_made = True
@@ -465,7 +465,7 @@ class MyPage(Page):
             response = {}
             for p in players:
                 if p.preference_second_choice == '0':
-                    p.preference_second_choice_time = 8.0
+                    p.preference_second_choice_time = 30.0
                     p.preference_second_choice = '1' if p.preference_choice == '2' else '2'
                     p.preference_second_choice_made = True
                     p.computer_preference_choice_two = True
@@ -635,7 +635,7 @@ class SecondChoicePage(Page):
                         p.chosen_image_computer_two = 'option1A_tr.bmp'
                     elif p.chosen_image_two == 'option1C.bmp':
                         p.chosen_image_computer_two = 'option1C_tr.bmp'
-                    p.second_choice_time = 8.0
+                    p.second_choice_time = 30.0
                     p.chosen_image_two_binary = 1 if p.chosen_image_two == 'option1A.bmp' else 0
                     print(f"Player {p.id_in_group} assigned random second choice: {p.choice2} (image: {p.chosen_image_two}) in round {p.round_number}")
                 
@@ -665,7 +665,7 @@ class SecondChoicePage(Page):
                         p.bet2 = random_bet
                         p.bet2_computer = p.bet2
                         p.computer_bet_two = True
-                        p.second_bet_time = 8.0
+                        p.second_bet_time = 30.0
                         print(f"Player {p.id_in_group} did not make a second bet within the time limit. Computer assigned bet: {p.bet2}")
                         response[p.id_in_group] = {'computer_assigned_bet': random_bet}
                 

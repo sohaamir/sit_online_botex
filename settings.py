@@ -45,7 +45,7 @@ OTREE_PRODUCTION = os.environ.get('OTREE_PRODUCTION') == '1'
 PARTICIPANT_FIELDS = ['finished']
 SESSION_FIELDS = []
 
-# Use points instead of cash rewards. This is common in experimental economics.
+# Use points instead of cash rewards.
 USE_POINTS = True
 # Custom name for points, displayed to participants.
 POINTS_CUSTOM_NAME = 'tokens'
@@ -62,11 +62,11 @@ BOTS_CHECK_COMPLETE = False
 SESSION_CONFIGS = [
      dict(
          name='social_influence_task',  # Unique identifier for this session configuration
-         app_sequence=['main_task', 'player_left', 'submission'],  # Order of apps in the experiment
+         app_sequence=['instructions', 'practice_task', 'main_task_instructions', 'waiting_room', 'main_task', 'player_left', 'submission'],  # Order of apps in the experiment
          num_demo_participants=5,  # Number of demo participants, useful for testing
          # use_browser_bots=True,  # Uncomment to use bots for testing
          # Prolific completion links for different scenarios
-         completionlink='https://app.prolific.com/submissions/complete?cc=CKMY5BJS',
+         completionlink='',
          noconsentlink='https://app.prolific.com/submissions/complete?cc=CDVJRJBR',
          playerleftlink='https://app.prolific.com/submissions/complete?cc=CXG9SKDC',
          waitpagelink='https://app.prolific.com/submissions/complete?cc=C1J67YK4',

@@ -77,6 +77,11 @@ TRIAL_SEQUENCE, REVERSAL_ROUNDS = generate_trial_sequence()
 
 class Subsession(BaseSubsession):
 
+    def creating_session(self):
+        if self.round_number > 1:
+            for group in self.get_groups():
+                group.round_reward_set = False
+
 # Define the sequence of rounds for the experiment based on the trial sequence generated earlier
 # The sequence is the same for all groups and is used to determine the reward probabilities for each round
 
@@ -125,6 +130,7 @@ class Group(BaseGroup):
     reward_probability_A = models.FloatField(initial=0.7)
     reward_probability_B = models.FloatField(initial=0.3)
     seventy_percent_image = models.StringField(initial='option1A.bmp')
+    thirty_percent_image = models.StringField(initial='option1B.bmp')
     reversal_rounds = models.StringField(initial='')
     redirect_triggered = models.BooleanField(initial=False)
     preference_choices_presented = models.BooleanField(initial=False)
@@ -132,13 +138,50 @@ class Group(BaseGroup):
     bet_container_displayed = models.BooleanField(initial=False)
     remaining_images_displayed = models.BooleanField(initial=False)
     reversal_happened = models.BooleanField(initial=False)
+    round_reward_set = models.BooleanField(initial=False)
+    consecutive_seventy_percent_rewards = models.IntegerField(initial=0)
 
 #### ---------------- Define the round reward ------------------------ ####
 # The round reward is randomly generated based on the reward probabilities for each image
 
     def set_round_reward(self):
-        self.round_reward_A = 1 if random_for_rewards.random() < self.reward_probability_A else 0
-        self.round_reward_B = 1 if random_for_rewards.random() < self.reward_probability_B else 0
+        if not self.round_reward_set:
+            self.round_reward_A = 1 if random_for_rewards.random() < self.reward_probability_A else 0
+            self.round_reward_B = 1 if random_for_rewards.random() < self.reward_probability_B else 0
+            self.round_reward_set = True
+            
+            # Reset consecutive rewards counter if there's a reversal
+            if self.round_number in REVERSAL_ROUNDS:
+                self.consecutive_seventy_percent_rewards = 0
+
+    def calculate_player_rewards(self):
+        for p in self.get_players():
+            if p.field_maybe_none('chosen_image_two') is None:
+                continue  # Skip players who haven't made a choice yet
+
+            if p.chosen_image_two == self.seventy_percent_image:
+                if self.consecutive_seventy_percent_rewards >= 3:
+                    p.trial_reward = 0
+                    self.consecutive_seventy_percent_rewards = 0
+                else:
+                    p.trial_reward = self.round_reward_A if self.seventy_percent_image == 'option1A.bmp' else self.round_reward_B
+                    if p.trial_reward == 1:
+                        self.consecutive_seventy_percent_rewards += 1
+                    else:
+                        self.consecutive_seventy_percent_rewards = 0
+            else:
+                p.trial_reward = self.round_reward_B if self.seventy_percent_image == 'option1A.bmp' else self.round_reward_A
+                self.consecutive_seventy_percent_rewards = 0
+            
+            # Update player streak
+            if self.round_number > 1:
+                previous_player = p.in_round(self.round_number - 1)
+                if p.trial_reward == 1:
+                    p.streak = previous_player.streak + 1 if previous_player.streak > 0 else 1
+                else:
+                    p.streak = previous_player.streak - 1 if previous_player.streak < 0 else -1
+            else:
+                p.streak = 1 if p.trial_reward == 1 else -1
 
 #### ---------------- Define payoffs ------------------------ ####
 # The payoff for each round is calculated as: payoff = bet * 20 * reward
@@ -187,6 +230,7 @@ class Group(BaseGroup):
         
         if current_round_data:
             self.seventy_percent_image = current_round_data[1]
+            self.thirty_percent_image = 'option1B.bmp' if self.seventy_percent_image == 'option1A.bmp' else 'option1A.bmp'
             previous_round = self.in_round(self.round_number - 1) if self.round_number > 1 else None
 
             if self.round_number in REVERSAL_ROUNDS:
@@ -201,7 +245,7 @@ class Group(BaseGroup):
                 self.reward_probability_A = 0.3
                 self.reward_probability_B = 0.7
 
-        print(f"Round {self.round_number}: 70% image is {self.seventy_percent_image}")
+        print(f"Round {self.round_number}: 70% image is {self.seventy_percent_image}, 30% image is {self.thirty_percent_image}")
         print(f"Current probabilities: option1A.bmp - {self.reward_probability_A}, option1B.bmp - {self.reward_probability_B}")
         print(f"Reversal happened: {self.reversal_happened}")
 
@@ -225,6 +269,7 @@ class Group(BaseGroup):
         self.second_bet_timer_ended_executed = False
         self.next_round_transition_time = None
         self.reversal_happened = False
+        self.consecutive_seventy_percent_rewards = 0
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- PLAYER-LEVEL VARIABLES: USED TO TRACK CHOICES, BETS, EARNINGS AND A WHOLE LOT ELSE ------ #
@@ -979,18 +1024,20 @@ class SecondChoicePage(Page):
                         random_bet = random.randint(1, 3)
                         p.bet2 = random_bet
                         p.bet2_computer = p.bet2
-                        p.computer_bet_two = True
+                        p.computer_choice_two = True
                         p.second_bet_time = 4.0
                         print(f"Player {p.id_in_group} did not make a second bet within the time limit. Computer assigned bet: {p.bet2}")
                         response[p.id_in_group] = dict(highlight_computer_bet=p.bet2)
 
-                # Calculate trial_reward and trial_earnings for each player
+                # Set round rewards if not already set
+                if not group.round_reward_set:
+                    group.set_round_reward()
+
+                # Calculate player rewards
+                group.calculate_player_rewards()
+
+                # Calculate trial_earnings for each player
                 for p in players:
-                    if p.chosen_image_two == 'option1A.bmp':
-                        p.trial_reward = group.round_reward_A
-                    else:
-                        p.trial_reward = group.round_reward_B
-                    
                     p.trial_earnings = p.bet2_computer * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2_computer * 20
                     p.total_reward_earnings = sum([prev_player.trial_earnings for prev_player in p.in_previous_rounds()]) + p.trial_earnings
                     p.loss_or_gain = -1 if p.trial_earnings < 0 else 1
