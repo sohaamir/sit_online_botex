@@ -46,13 +46,17 @@
     button:hover {
         background-color: #45a049;
     }
+
+    .result-item {
+        margin: 10px 0;
+    }
 </style>
 
 <div id="content-container">
     <h1>Thank you for completing the task!</h1>
     
     <div id="results-container">
-        <p>You earned {{ total_reward_earnings }} points!</p>
+        <p class="result-item">You earned {{ total_reward_earnings }} points!</p>
         <p>Click the button below to continue.</p>
         {% next_button label="Continue" %}
     </div>

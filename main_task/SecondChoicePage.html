@@ -302,7 +302,7 @@
                 if (currentStage === 'choice') {
                     liveSend({second_choice_timer_ended: true});
                 }
-            }, 1000);
+            }, 110);
         }
 
         // Highlight the selected image if the highlight_selected_image flag is received
@@ -317,7 +317,7 @@
         }
 
         // If the second_choice_timer_ended flag is received, send the second_choice_timer_ended event
-        // This is to ensure that the second choice phase ends after 1000ms even if no choice is made
+        // This is to ensure that the second choice phase ends after 110ms even if no choice is made
         if ('second_choice_timer_ended' in data && data.second_choice_timer_ended) {
             if (currentStage === 'choice') {
                 // Start the second bet phase after the second choice phase ends
@@ -331,13 +331,13 @@
                 secondBetStartTime = performance.now();
                 console.log('Second bet phase start time:', secondBetStartTime);
 
-                // Start the second bet timer for 1000ms
+                // Start the second bet timer for 110ms
                 setTimeout(function() {
                     if (currentStage === 'bet' && !betMade) {
-                        // If no bet is made within 1000ms, send the second_bet_timer_ended event
+                        // If no bet is made within 110ms, send the second_bet_timer_ended event
                         liveSend({second_bet_timer_ended: true});
                     }
-                }, 1000);
+                }, 110);
 
                 // Print the correct choice2 value based on whether it was made manually or assigned by the computer
                 if (choiceMade) {
@@ -349,7 +349,7 @@
         }
 
         // If the second_bet_timer_ended flag is received, send the second_bet_timer_ended event
-        // This is to ensure that the second bet phase ends after 1000ms even if no bet is made
+        // This is to ensure that the second bet phase ends after 110ms even if no bet is made
         if ('show_bet_container' in data && data.show_bet_container) {
             if (!window.betContainerDisplayed) {
                 window.betContainerDisplayed = true;
@@ -363,7 +363,7 @@
                 setTimeout(function() {
                     betPhaseEnded = true;
                     liveSend({second_bet_timer_ended: true});
-                }, 1000);
+                }, 110);
             }
         }
 

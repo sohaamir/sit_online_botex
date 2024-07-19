@@ -17,27 +17,10 @@ The task is the same as reported in (Zhang & Glascher, 2020) https://www.science
 # ---- CONSTANTS: DEFINE CONSTANTS USED IN THE GAME INCLUDING NUMBER OF PLAYERS, ROUNDS AND TRIAL SEQUENCE------ #
 # -------------------------------------------------------------------------------------------------------------------- #
 
-class C(BaseConstants):
-    NAME_IN_URL = 'main_task'
-    PLAYERS_PER_GROUP = 5
-    NUM_ROUNDS = 80
-    REWARD_PROBABILITY_A = 0.7
-    REWARD_PROBABILITY_B = 0.3
-    IMAGES = ['option1A.bmp', 'option1B.bmp']
-    AVATAR_IMAGE = 'main_task/avatar_male.png'
-    IMAGE_PATHS = {
-        'option1A.bmp': '_static/main_task/option1A.bmp',
-        'option1B.bmp': '_static/main_task/option1B.bmp',
-        'option1A_tr.bmp': '_static/main_task/option1A_tr.bmp',
-        'option1B_tr.bmp': '_static/main_task/option1B_tr.bmp',
-        'avatar_male.png': '_static/main_task/avatar_male.png',
-    }
-
 # -------------------------------------------------------------------------------------------------------------------- #
+
 # Generate a trial sequence for the experiment based on the number of rounds and reversal rounds
 # The sequence is generated randomly with reversal rounds every 8-12 rounds, but remains the same for all groups
-
-random_for_rewards = random.Random(43)  # Use a different seed than the one for sequence generation
 
 def generate_trial_sequence():
     # Set a fixed random seed to ensure the same sequence every time
@@ -49,17 +32,17 @@ def generate_trial_sequence():
     
     # Generate reversal rounds
     current_round = random.randint(8, 12)
-    while current_round <= C.NUM_ROUNDS:
+    while current_round <= NUM_ROUNDS:
         reversal_rounds.append(current_round)
         current_round += random.randint(8, 12)
 
-    for round_number in range(1, C.NUM_ROUNDS + 1):
+    for round_number in range(1, NUM_ROUNDS + 1):
         if round_number in reversal_rounds:
             current_image = 'option1B.bmp' if current_image == 'option1A.bmp' else 'option1A.bmp'
         sequence.append((round_number, current_image))
 
     # Save sequence to CSV
-    file_path = os.path.join(os.getcwd(), 'trial_sequence.csv')
+    file_path = os.path.join(os.getcwd(), 'reversal_sequence.csv')
     with open(file_path, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(['round', 'seventy_percent_image'])
@@ -68,8 +51,110 @@ def generate_trial_sequence():
     print(f"Reversal rounds: {reversal_rounds}")
     return sequence, reversal_rounds
 
-# Generate the sequence once when the module is imported
+# -------------------------------------------------------------------------------------------------------------------- #
+# Generate a reward sequence for the experiment based on the number of rounds and reversal rounds
+# The sequence is generated randomly with reversal rounds every 8-12 rounds, but remains the same for all groups
+
+# Define constants at the top level
+NUM_ROUNDS = 80
+REWARD_PROBABILITY_A = 0.7
+REWARD_PROBABILITY_B = 0.3
+
+def generate_reward_sequence(num_rounds, reversal_rounds):
+    sequence = []
+    current_high_prob_image = 'A'
+    high_prob_rewards = 0
+    low_prob_rewards = 0
+    target_high_rewards = 56
+    target_low_rewards = 24
+
+    csv_data = [['Round', 'High Prob', 'reward_A', 'reward_B']]
+
+    print("\nGenerated Reward Sequence:")
+    print("Round | High Prob | reward_A | reward_B")
+    print("------|-----------|----------|----------")
+
+    def can_add_high_prob():
+        if len(sequence) < 3:
+            return True
+        return not all(s[0] if current_high_prob_image == 'A' else s[1] for s in sequence[-3:])
+
+    def can_add_low_prob():
+        if len(sequence) < 3:
+            return True
+        return not all(s[1] if current_high_prob_image == 'A' else s[0] for s in sequence[-3:])
+
+    for round_num in range(1, num_rounds + 1):
+        if round_num in reversal_rounds:
+            current_high_prob_image = 'B' if current_high_prob_image == 'A' else 'A'
+            print("-------|-----------|----------|----------")
+            csv_data.append(['-------|-----------|----------|----------'])
+
+        remaining_rounds = num_rounds - round_num + 1
+        min_high_needed = target_high_rewards - high_prob_rewards
+        min_low_needed = target_low_rewards - low_prob_rewards
+
+        if min_high_needed > remaining_rounds * 0.7:
+            choice = 'high'
+        elif min_low_needed > remaining_rounds * 0.3:
+            choice = 'low'
+        elif not can_add_high_prob():
+            choice = 'low'
+        elif not can_add_low_prob():
+            choice = 'high'
+        else:
+            choice = random.choices(['high', 'low'], weights=[0.7, 0.3])[0]
+
+        if choice == 'high' and can_add_high_prob():
+            reward_A, reward_B = (1, 0) if current_high_prob_image == 'A' else (0, 1)
+            high_prob_rewards += 1
+        else:
+            reward_A, reward_B = (0, 1) if current_high_prob_image == 'A' else (1, 0)
+            low_prob_rewards += 1
+
+        sequence.append((reward_A, reward_B))
+        print(f"{round_num:5d} | {current_high_prob_image:9s} | {reward_A:8d} | {reward_B:8d}")
+        csv_data.append([round_num, current_high_prob_image, reward_A, reward_B])
+
+    high_prob_percentage = (high_prob_rewards / num_rounds) * 100
+    low_prob_percentage = (low_prob_rewards / num_rounds) * 100
+    
+    print("\nReward Statistics:")
+    print(f"High probability rewards: {high_prob_rewards}/{num_rounds} ({high_prob_percentage:.2f}%)")
+    print(f"Low probability rewards: {low_prob_rewards}/{num_rounds} ({low_prob_percentage:.2f}%)")
+
+    # Save to CSV
+    with open('reward_sequence.csv', 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerows(csv_data)
+
+    print("Reward sequence saved to 'reward_sequence.csv'")
+
+    return sequence
+
+# Generate the sequences once when the module is imported
 TRIAL_SEQUENCE, REVERSAL_ROUNDS = generate_trial_sequence()
+REWARD_SEQUENCE = generate_reward_sequence(80, REVERSAL_ROUNDS)
+
+# -------------------------------------------------------------------------------------------------------------------- #
+# Base Constants: Used to define constants across all pages and subsessions in the game
+
+class C(BaseConstants):
+    NAME_IN_URL = 'main_task'
+    PLAYERS_PER_GROUP = 5
+    NUM_ROUNDS = NUM_ROUNDS
+    REWARD_PROBABILITY_A = REWARD_PROBABILITY_A
+    REWARD_PROBABILITY_B = REWARD_PROBABILITY_B
+    IMAGES = ['option1A.bmp', 'option1B.bmp']
+    AVATAR_IMAGE = 'main_task/avatar_male.png'
+    IMAGE_PATHS = {
+        'option1A.bmp': '_static/main_task/option1A.bmp',
+        'option1B.bmp': '_static/main_task/option1B.bmp',
+        'option1A_tr.bmp': '_static/main_task/option1A_tr.bmp',
+        'option1B_tr.bmp': '_static/main_task/option1B_tr.bmp',
+        'avatar_male.png': '_static/main_task/avatar_male.png',
+    }
+    REWARD_SEQUENCE = REWARD_SEQUENCE
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- SUBSESSIONS: USED TO DEFINE THE ROUNDS FOR REVERSAL AND BOTS ------ #
@@ -146,13 +231,9 @@ class Group(BaseGroup):
 
     def set_round_reward(self):
         if not self.round_reward_set:
-            self.round_reward_A = 1 if random_for_rewards.random() < self.reward_probability_A else 0
-            self.round_reward_B = 1 if random_for_rewards.random() < self.reward_probability_B else 0
+            self.round_reward_A, self.round_reward_B = C.REWARD_SEQUENCE[self.round_number - 1]
             self.round_reward_set = True
-            
-            # Reset consecutive rewards counter if there's a reversal
-            if self.round_number in REVERSAL_ROUNDS:
-                self.consecutive_seventy_percent_rewards = 0
+            print(f"Round {self.round_number}: reward_A = {self.round_reward_A}, reward_B = {self.round_reward_B}")
 
     def calculate_player_rewards(self):
         for p in self.get_players():
@@ -160,28 +241,11 @@ class Group(BaseGroup):
                 continue  # Skip players who haven't made a choice yet
 
             if p.chosen_image_two == self.seventy_percent_image:
-                if self.consecutive_seventy_percent_rewards >= 3:
-                    p.trial_reward = 0
-                    self.consecutive_seventy_percent_rewards = 0
-                else:
-                    p.trial_reward = self.round_reward_A if self.seventy_percent_image == 'option1A.bmp' else self.round_reward_B
-                    if p.trial_reward == 1:
-                        self.consecutive_seventy_percent_rewards += 1
-                    else:
-                        self.consecutive_seventy_percent_rewards = 0
+                potential_reward = self.round_reward_A if self.seventy_percent_image == 'option1A.bmp' else self.round_reward_B
             else:
-                p.trial_reward = self.round_reward_B if self.seventy_percent_image == 'option1A.bmp' else self.round_reward_A
-                self.consecutive_seventy_percent_rewards = 0
-            
-            # Update player streak
-            if self.round_number > 1:
-                previous_player = p.in_round(self.round_number - 1)
-                if p.trial_reward == 1:
-                    p.streak = previous_player.streak + 1 if previous_player.streak > 0 else 1
-                else:
-                    p.streak = previous_player.streak - 1 if previous_player.streak < 0 else -1
-            else:
-                p.streak = 1 if p.trial_reward == 1 else -1
+                potential_reward = self.round_reward_B if self.seventy_percent_image == 'option1A.bmp' else self.round_reward_A
+
+            p.trial_reward = potential_reward
 
 #### ---------------- Define payoffs ------------------------ ####
 # The payoff for each round is calculated as: payoff = bet * 20 * reward
@@ -192,34 +256,39 @@ class Group(BaseGroup):
         else:
             self.set_round_reward()
 
+        self.calculate_player_rewards()
+
+        print(f"\n--- Round {self.round_number} Results ---")
+
         for p in self.get_players():
-            if self.round_number == 1:
-                p.streak = 1 if p.trial_reward == 1 else -1
-            else:
-                previous_player = p.in_round(self.round_number - 1)
-                if p.chosen_image_two == 'option1A.bmp':
-                    potential_reward = self.round_reward_A
-                else:
-                    potential_reward = self.round_reward_B
+            previous_player = p.in_round(self.round_number - 1) if self.round_number > 1 else None
 
-                if (previous_player.streak == 3 and potential_reward == 1) or (previous_player.streak == -3 and potential_reward == 0):
-                    p.trial_reward = 1 - potential_reward  # Flip the reward
+            # Update streak
+            if previous_player:
+                if p.trial_reward == previous_player.trial_reward:
+                    p.streak = previous_player.streak + (1 if p.trial_reward == 1 else -1)
+                else:
                     p.streak = 1 if p.trial_reward == 1 else -1
-                else:
-                    p.trial_reward = potential_reward
-                    if p.trial_reward == 1:
-                        p.streak = previous_player.streak + 1 if previous_player.streak > 0 else 1
-                    else:
-                        p.streak = previous_player.streak - 1 if previous_player.streak < 0 else -1
+            else:
+                p.streak = 1 if p.trial_reward == 1 else -1
 
+            # Flip reward if streak would become 4 or -4
+            if abs(p.streak) == 3 and p.trial_reward == (1 if p.streak > 0 else 0):
+                p.trial_reward = 1 - p.trial_reward
+                p.streak = 1 if p.trial_reward == 1 else -1
+            
             p.trial_earnings = p.bet2_computer * 20 * p.trial_reward
             p.total_reward_earnings += p.trial_earnings
+            
+            print(f"Player {p.id_in_group}: Streak = {p.streak}, Trial Reward = {p.trial_reward}")
+
+        print("-----------------------------\n")
 
 #### --------------- Define the intertrial interval ------------------------ ####
 # The intertrial interval is randomly generated between 2000ms and 4000ms
 
     def generate_intertrial_interval(self):
-        self.intertrial_interval = random.randint(2000, 4000)
+        self.intertrial_interval = random.randint(200, 400)
         print(f"Intertrial interval of {self.intertrial_interval}ms generated")
 
 #### ----------- Define and record the reversal learning rounds ------------------- ####
@@ -317,6 +386,9 @@ class Player(BasePlayer):
     second_bet_time = models.FloatField()
     trial_earnings = models.IntegerField(initial=0)
     total_reward_earnings = models.IntegerField(initial=0)
+    base_payoff = models.CurrencyField(initial=6)
+    bonus_payoff = models.CurrencyField(initial=0)
+    total_payoff = models.CurrencyField(initial=0)
     loss_or_gain = models.IntegerField()
     computer_choice_one = models.BooleanField(initial=True)
     computer_bet_one = models.IntegerField(initial=1)
@@ -360,11 +432,7 @@ class Player(BasePlayer):
 
     def reset_fields(self):
         self.choice1 = ''
-        # self.choice2 = ''
         self.bet1 = 0
-        # self.bet2 = 0
-        # self.left_image = ''  # Removed
-        # self.right_image = ''  # Removed
         self.trial_reward = 0
         self.chosen_image_one = ''
         self.chosen_image_one_binary = None  # Changed to None
@@ -393,7 +461,6 @@ class Player(BasePlayer):
         self.second_choice_page_load_time = None  # Changed to None
         self.second_choice_time = None  # Changed to None
         self.second_bet_time = None  # Changed to None
-        # self.trial_earnings = 0
         self.computer_choice_one = True
         self.computer_bet_one = 1
         self.computer_preference_choice_one = True
@@ -431,7 +498,7 @@ class Player(BasePlayer):
         self.loss_or_gain_player3 = None
         self.loss_or_gain_player4 = None
         self.all_images_displayed = False
-        self.streak = 0
+        # self.streak = 0
 
 # Calculate the number of players who made the same choice as the current player
 # This is used to calculate the social influence effect
@@ -446,6 +513,14 @@ class Player(BasePlayer):
         # For choice2
         self.choice2_with = sum(1 for p in other_players if p.chosen_image_two == self.chosen_image_two)
         self.choice2_against = len(other_players) - self.choice2_with
+
+    def calculate_payoffs(self):
+        self.base_payoff = cu(6)  # Base payoff of £6
+        max_points = C.NUM_ROUNDS * 60  # Maximum points that can be earned
+        max_bonus = 3  # Maximum bonus that can be earned
+        bonus_ratio = self.total_reward_earnings / max_points
+        self.bonus_payoff = cu(round(bonus_ratio * max_bonus, 2))  # Round to 2 decimal places
+        self.total_payoff = self.base_payoff + self.bonus_payoff
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- MYPAGE: WHERE PLAYERS MAKE THEIR FIRST CHOICE, FIRST BET AND PREFERENCE CHOICES ------ #
@@ -825,7 +900,7 @@ class MyPage(Page):
             if not player.group.second_preference_choices_displayed:
                 player.group.second_preference_choices_displayed = True
                 print(f'All players have their first preference images displayed.')
-                time.sleep(2)  # Add a 2-second delay
+                time.sleep(0.2)  # Add a 2-second delay
                 print(f'Displaying second preference choices.')
                 response = {}
                 for p in players:
@@ -845,7 +920,7 @@ class MyPage(Page):
             if not player.group.remaining_images_displayed:
                 player.group.remaining_images_displayed = True
                 print(f'Displaying all images for all players.')
-                time.sleep(3)  # Add a 3-second delay
+                time.sleep(0.3)  # Add a 3-second delay
                 response = {}
                 for p in players:
                     other_players = p.get_others_in_group()
@@ -1074,27 +1149,31 @@ class SecondChoicePage(Page):
                     }
 
                 return response
+            
+    @staticmethod
+    def after_all_players_arrive(group: Group):
+        group.set_payoffs()
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- FINAL RESULTS PAGE: AFTER 100 ROUNDS, PLAYERS RECEIVE THEIR POINTS TALLY ------ #
 # -------------------------------------------------------------------------------------------------------------------- #
 
 class FinalResults(Page):
-
-    # Only display the final results page after 100 rounds have been completed
     @staticmethod
     def is_displayed(player: Player):
         return player.round_number == C.NUM_ROUNDS
 
-    # Get the variables for the template and pass them so they can be displayed (i.e., total_reward_earnings and player ID)
     @staticmethod
     def vars_for_template(player: Player):
+        player.calculate_payoffs()  # Calculate payoffs here
         return {
             'total_reward_earnings': player.total_reward_earnings,
             'player_id': player.id_in_group,
+            # 'base_payoff': player.base_payoff,
+            # 'bonus_payoff': player.bonus_payoff,
+            # 'total_payoff': player.total_payoff,
         }
 
-    # Redirect players to the submission page after the final results page so they can return to Prolific
     @staticmethod
     def app_after_this_page(player, upcoming_apps):
         print('upcoming_apps is', upcoming_apps)

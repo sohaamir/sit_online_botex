@@ -48,7 +48,7 @@ SESSION_FIELDS = []
 # Use points instead of cash rewards.
 USE_POINTS = True
 # Custom name for points, displayed to participants.
-POINTS_CUSTOM_NAME = 'tokens'
+# POINTS_CUSTOM_NAME = 'tokens'
 
 # Browser bot configuration for automated testing.
 # These bots can run through your experiment to check for errors.
@@ -62,14 +62,14 @@ BOTS_CHECK_COMPLETE = False
 SESSION_CONFIGS = [
      dict(
          name='social_influence_task',  # Unique identifier for this session configuration
-         app_sequence=['instructions', 'practice_task', 'main_task_instructions', 'waiting_room', 'main_task', 'player_left', 'submission'],  # Order of apps in the experiment
+         app_sequence=['main_task'],  # Order of apps in the experiment
          num_demo_participants=5,  # Number of demo participants, useful for testing
          # use_browser_bots=True,  # Uncomment to use bots for testing
          # Prolific completion links for different scenarios
-         completionlink='',
-         noconsentlink='https://app.prolific.com/submissions/complete?cc=CDVJRJBR',
-         playerleftlink='https://app.prolific.com/submissions/complete?cc=CXG9SKDC',
-         waitpagelink='https://app.prolific.com/submissions/complete?cc=C1J67YK4',
+         completionlink='https://bhampsychology.eu.qualtrics.com/jfe/form/SV_78qlaEMwYhSyUui', # Send to Qualtrics survey if participant completes the task
+         noconsentlink='https://app.prolific.com/submissions/complete?cc=CDVJRJBR', # Send to Prolific if participant does not consent
+         playerleftlink='https://app.prolific.com/submissions/complete?cc=CXG9SKDC', # End the task and send to Prolific if a participant leaves mid-task
+         waitpagelink='https://app.prolific.com/submissions/complete?cc=C1J67YK4', # Send to Prolific if participant decides to leave the task
      ),
 ]
 

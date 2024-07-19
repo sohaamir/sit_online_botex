@@ -27,6 +27,10 @@ class PlayerBot(Bot):
         
         if self.round_number == C.NUM_ROUNDS:
             yield Submission(FinalResults, check_html=False)
+            print("\n--- Final Results ---")
+            print(f"Total Reward Earnings: {self.player.total_reward_earnings}")
+            # You can add more fields to print here if needed
+            
             bot_data = self.subsession.collect_bot_data()
             print("\n--- Final Bot Data ---")
             for round_data in bot_data:
