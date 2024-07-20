@@ -201,9 +201,9 @@
         liveSend({my_page_load_time: performance.now()});
         initialChoiceTimerId = setTimeout(function() {
             if (currentStage === 'choice') {
-                liveSend({initial_choice_time: 40000});  // Send the time limit if no choice is made
+                liveSend({initial_choice_time: 8000});  // Send the time limit if no choice is made
             }
-        }, 40000);
+        }, 8000);
 
         window.choicePhaseStartTime = performance.now();  // Store the start time of the choice phase
     });
@@ -318,14 +318,14 @@
             window.initialChoiceTimerStarted = true;  // Set the flag to indicate that the initial choice timer has started
             setTimeout(function() {
                 liveSend({initial_choice_timer_ended: true});
-            }, 40000);
+            }, 8000);
         }
 
         if ('start_choice_phase_timer' in data && data.start_choice_phase_timer && !window.choicePhaseTimerStarted) {
             window.choicePhaseTimerStarted = true;
             setTimeout(function() {
                 liveSend({choice_phase_timer_ended: true});
-            }, 40000);
+            }, 8000);
         }
 
         if ('choice_phase_timer_ended' in data) {
@@ -360,10 +360,10 @@
             window.betTimerStarted = true; // Set the flag to indicate that the bet timer has started
             setTimeout(function() {
                 if (!betMade) {
-                    // If no bet is made within 40000ms, send the bet_timer_ended event
+                    // If no bet is made within 8000ms, send the bet_timer_ended event
                     liveSend({bet_timer_ended: true});
                 }
-            }, 40000);
+            }, 8000);
         }
 
         if ('show_bet_container' in data && data.show_bet_container) {
@@ -376,16 +376,16 @@
             window.betPhaseStartTime = performance.now(); // Record the start time of the bet phase
             window.betContainerLoadTime = performance.now(); // Store the time when the bet container is shown
 
-            // Start a timer for 40000ms
+            // Start a timer for 8000ms
             setTimeout(function() {
                 if (!betMade) {
-                    // If no bet is made within 40000ms, send the bet_timer_ended event
+                    // If no bet is made within 8000ms, send the bet_timer_ended event
                     liveSend({bet_timer_ended: true});
                 } else {
                     liveSend({bet_timer_ended: true});
                 }
-                document.removeEventListener('keydown', handleKeyDown); // Remove the event listener after 40000ms
-            }, 40000);
+                document.removeEventListener('keydown', handleKeyDown); // Remove the event listener after 8000ms
+            }, 8000);
         }
 
         if ('highlight_selected_bet' in data) {
@@ -452,10 +452,10 @@
             // Start the preference choice timer
             window.preferenceChoiceStartTime = performance.now();
 
-            // Start a timer for 40000ms
+            // Start a timer for 8000ms
             setTimeout(function() {
                 liveSend({preference_choice_timer_ended: true});
-            }, 40000);
+            }, 8000);
         }
 
         if ('preference_choice_timer_ended' in data) {
@@ -472,11 +472,11 @@
             // Start the second preference choice timer
             window.preferenceSecondChoiceStartTime = performance.now();
 
-            // Start a timer for 40000ms
+            // Start a timer for 8000ms
             setTimeout(function() {
                 console.log("Second preference choice timer ended");
                 liveSend({preference_second_choice_timer_ended: true});
-            }, 40000);
+            }, 8000);
         }
 
         if ('start_preference_second_choice_timer' in data && data.start_preference_second_choice_timer) {
@@ -484,7 +484,7 @@
                 if (!window.js_vars.preference_second_choice_made) {
                     liveSend({preference_second_choice_timer_ended: true});
                 }
-            }, 40000);
+            }, 8000);
         }
 
         if ('preference_second_choice_timer_ended' in data) {
@@ -560,7 +560,7 @@
     // Time players out after 40 seconds spent on MyPage (this assumes that a player has left the session)
     document.addEventListener('DOMContentLoaded', function() {
         const pageStartTime = js_vars.page_start_time;
-        const timeoutDuration = 400000; // 40 seconds in milliseconds
+        const timeoutDuration = 80000; // 40 seconds in milliseconds
 
         function checkTimeout() {
             const currentTime = new Date().getTime();

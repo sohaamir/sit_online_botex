@@ -7,10 +7,10 @@
         font-size: 24px;
         display: flex;
         justify-content: center;
-        align-items: flex-start; /* Change this from center to flex-start */
+        align-items: flex-start;
         min-height: 100vh;
         margin: 0;
-        padding-top: 10vh; /* Add some top padding to push content down */
+        padding-top: 10vh;
     }
 
     #content-container {
@@ -22,7 +22,7 @@
         padding: 20px;
         max-width: 800px;
         width: 90%;
-        margin-top: 10vh; /* Add top margin to push content down further */
+        margin-top: 10vh;
     }
 
     #results-container {
@@ -50,11 +50,19 @@
     .result-item {
         margin: 10px 0;
     }
+
+    .image-container {
+        margin-bottom: 20px;
+    }
 </style>
 
 <div id="content-container">
+    <div class="image-container">
+        <img src="{% static 'instructions/hogan_money.gif' %}" alt="Hogan Money" width="300" height="auto">
+    </div>
+    <br>
     <h1>Thank you for completing the task!</h1>
-    
+    <br>
     <div id="results-container">
         <p class="result-item">You earned {{ total_reward_earnings }} points!</p>
         <p>Click the button below to continue.</p>

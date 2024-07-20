@@ -289,7 +289,7 @@
                 if (currentStage === 'choice') {
                     liveSend({second_choice_timer_ended: true});
                 }
-            }, 40000);
+            }, 8000);
         }
 
         if ('highlight_selected_image' in data) {
@@ -314,13 +314,13 @@
                 secondBetStartTime = performance.now();
                 console.log('Second bet phase start time:', secondBetStartTime);
 
-                // Start the second bet timer for 40000ms
+                // Start the second bet timer for 8000ms
                 setTimeout(function() {
                     if (currentStage === 'bet' && !betMade) {
-                        // If no bet is made within 40000ms, send the second_bet_timer_ended event
+                        // If no bet is made within 8000ms, send the second_bet_timer_ended event
                         liveSend({second_bet_timer_ended: true});
                     }
-                }, 40000);
+                }, 8000);
 
                 // Print the correct choice2 value based on whether it was made manually or assigned by the computer
                 if (choiceMade) {
@@ -351,7 +351,7 @@
             setTimeout(function() {
                 betPhaseEnded = true;
                 liveSend({second_bet_timer_ended: true});
-            }, 40000);
+            }, 8000);
         }
 
         if ('second_bet_timer_ended' in data && data.second_bet_timer_ended) {

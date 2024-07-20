@@ -186,7 +186,7 @@
         <img src="{% static right_image %}" id="option_right" data-option="right">
         <div class="title" id="choice-title">Your choice?</div>
         <div class="title" id="bet-title" style="display: none;">Your bet?</div>
-        <div class="title" id="preference-title" style="display: none;">1.Pref?</div>
+        <div class="title" id="preference-title" style="display: none;">First Preference?</div>
     </div>
     <div id="bet-container" style="display: none;">
         <div class="bet-options">
@@ -510,7 +510,7 @@
         if ('show_preference_second_choice' in data && data.show_preference_second_choice) {
             if (!window.js_vars.preference_second_choice_displayed) {
                 window.js_vars.preference_second_choice_displayed = true;
-                document.getElementById('preference-title').textContent = '2.Pref?';
+                document.getElementById('preference-title').textContent = 'Second Preference?';
                 currentStage = 'preference_second';
 
                 window.preferenceSecondChoiceStartTime = performance.now();

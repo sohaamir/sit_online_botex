@@ -1,4 +1,3 @@
-from otree.live import live_payload_function
 from otree.api import *
 from . import *
 import random
@@ -56,7 +55,7 @@ def generate_trial_sequence():
 # The sequence is generated randomly with reversal rounds every 8-12 rounds, but remains the same for all groups
 
 # Define constants at the top level
-NUM_ROUNDS = 80
+NUM_ROUNDS = 2
 REWARD_PROBABILITY_A = 0.7
 REWARD_PROBABILITY_B = 0.3
 
@@ -134,7 +133,7 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
 
 # Generate the sequences once when the module is imported
 TRIAL_SEQUENCE, REVERSAL_ROUNDS = generate_trial_sequence()
-REWARD_SEQUENCE = generate_reward_sequence(80, REVERSAL_ROUNDS)
+REWARD_SEQUENCE = generate_reward_sequence(2, REVERSAL_ROUNDS)
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Base Constants: Used to define constants across all pages and subsessions in the game
@@ -224,7 +223,6 @@ class Group(BaseGroup):
     remaining_images_displayed = models.BooleanField(initial=False)
     reversal_happened = models.BooleanField(initial=False)
     round_reward_set = models.BooleanField(initial=False)
-    consecutive_seventy_percent_rewards = models.IntegerField(initial=0)
 
 #### ---------------- Define the round reward ------------------------ ####
 # The round reward is randomly generated based on the reward probabilities for each image
@@ -251,36 +249,17 @@ class Group(BaseGroup):
 # The payoff for each round is calculated as: payoff = bet * 20 * reward
 
     def set_payoffs(self):
-        if self.round_number == 1:
-            self.set_first_round_reward()
-        else:
-            self.set_round_reward()
-
+        self.set_round_reward()
         self.calculate_player_rewards()
 
         print(f"\n--- Round {self.round_number} Results ---")
 
         for p in self.get_players():
-            previous_player = p.in_round(self.round_number - 1) if self.round_number > 1 else None
-
-            # Update streak
-            if previous_player:
-                if p.trial_reward == previous_player.trial_reward:
-                    p.streak = previous_player.streak + (1 if p.trial_reward == 1 else -1)
-                else:
-                    p.streak = 1 if p.trial_reward == 1 else -1
-            else:
-                p.streak = 1 if p.trial_reward == 1 else -1
-
-            # Flip reward if streak would become 4 or -4
-            if abs(p.streak) == 3 and p.trial_reward == (1 if p.streak > 0 else 0):
-                p.trial_reward = 1 - p.trial_reward
-                p.streak = 1 if p.trial_reward == 1 else -1
             
             p.trial_earnings = p.bet2_computer * 20 * p.trial_reward
             p.total_reward_earnings += p.trial_earnings
             
-            print(f"Player {p.id_in_group}: Streak = {p.streak}, Trial Reward = {p.trial_reward}")
+            print(f"Player {p.id_in_group}: Trial Reward = {p.trial_reward}")
 
         print("-----------------------------\n")
 
@@ -338,7 +317,6 @@ class Group(BaseGroup):
         self.second_bet_timer_ended_executed = False
         self.next_round_transition_time = None
         self.reversal_happened = False
-        self.consecutive_seventy_percent_rewards = 0
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- PLAYER-LEVEL VARIABLES: USED TO TRACK CHOICES, BETS, EARNINGS AND A WHOLE LOT ELSE ------ #
@@ -426,7 +404,6 @@ class Player(BasePlayer):
     loss_or_gain_player3 = models.IntegerField()
     loss_or_gain_player4 = models.IntegerField()
     all_images_displayed = models.BooleanField(initial=False)
-    streak = models.IntegerField(initial=0)
 
 # Reset the player-level variables at the start of each round 
 
@@ -498,7 +475,6 @@ class Player(BasePlayer):
         self.loss_or_gain_player3 = None
         self.loss_or_gain_player4 = None
         self.all_images_displayed = False
-        # self.streak = 0
 
 # Calculate the number of players who made the same choice as the current player
 # This is used to calculate the social influence effect

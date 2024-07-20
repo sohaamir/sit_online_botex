@@ -28,9 +28,16 @@
         font-size: 24px;
         padding: 10px 20px;
     }
+    .image-container {
+        margin-bottom: 20px;
+    }
 </style>
 
 <div id="results-container">
+    <div class="image-container">
+        <img src="{% static 'instructions/not_bad.jpg' %}" alt="Not Bad" width="400" height="auto">
+    </div>
+    <br>
     <p>Your total score for the practice game is {{ total_reward_earnings }} points.</p>
     <p>Please press the button below to continue.</p>
     <button onclick="window.location.href='/'">Continue</button>
