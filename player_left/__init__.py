@@ -2,7 +2,7 @@ from otree.api import *
 
 class C(BaseConstants):
     NAME_IN_URL = 'player_left'
-    PLAYERS_PER_GROUP = 5
+    PLAYERS_PER_GROUP = 1
     NUM_ROUNDS = 1
 
 class Subsession(BaseSubsession):
