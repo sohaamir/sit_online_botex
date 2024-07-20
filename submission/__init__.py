@@ -16,6 +16,9 @@ class Player(BasePlayer):
     influence = models.IntegerField(min=0, max=100)
     real_players = models.IntegerField(min=0, max=100)
 
+    def get_prolific_id(self):
+        return self.participant.vars.get('prolific_id', '')
+
 def creating_session(subsession):
     for p in subsession.get_players():
         p.participant.finished = False
@@ -35,5 +38,11 @@ class Submit(Page):
     @staticmethod
     def before_next_page(player, timeout_happened):
         player.participant.finished = True
+
+    @staticmethod
+    def vars_for_template(player):
+        return {
+            'prolific_id': player.get_prolific_id()
+        }
 
 page_sequence = [Feedback, Submit]

@@ -2,7 +2,7 @@ from otree.api import *
 
 class C(BaseConstants):
     NAME_IN_URL = 'instructions'
-    PLAYERS_PER_GROUP = 5
+    PLAYERS_PER_GROUP = None
     NUM_ROUNDS = 1
     TRANSITION_TIME = 15  # transition time to practice task when players are matched
 
@@ -29,8 +29,9 @@ class Consent(Page):
 
 class TaskOverview(Page):
     @staticmethod
-    def before_next_page(self, timeout_happened):
-        self.prolific_id = self.participant.label
+    def before_next_page(player, timeout_happened):
+        player.prolific_id = player.participant.label
+        player.participant.vars['prolific_id'] = player.prolific_id
 
 class TaskInstructionsPage1(Page):
     pass
