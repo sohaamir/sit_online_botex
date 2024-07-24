@@ -46,7 +46,7 @@ PARTICIPANT_FIELDS = ['finished']
 SESSION_FIELDS = []
 
 # Use points instead of cash rewards.
-USE_POINTS = True
+USE_POINTS = False
 # Custom name for points, displayed to participants.
 # POINTS_CUSTOM_NAME = 'tokens'
 
@@ -62,7 +62,7 @@ BOTS_CHECK_COMPLETE = False
 SESSION_CONFIGS = [
      dict(
          name='social_influence_task',  # Unique identifier for this session configuration
-         app_sequence=['instructions', 'submission'],  # Order of apps in the experiment
+         app_sequence=['instructions', 'practice_task', 'main_task_instructions', 'waiting_room', 'main_task', 'player_left', 'submission'],  # Order of apps in the experiment
          num_demo_participants=5,  # Number of demo participants, useful for testing
          # use_browser_bots=True,  # Uncomment to use bots for testing
          # Prolific completion links for different scenarios
@@ -78,6 +78,7 @@ SESSION_CONFIGS = [
 SESSION_CONFIG_DEFAULTS = dict(
     real_world_currency_per_point=0.00,  # Conversion rate from points to real currency
     participation_fee=0.00,  # Fixed fee for participating
+    payoff=6.00,  # Default payoff for the experiment
     doc=""  # Documentation string
 )
 

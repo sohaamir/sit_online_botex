@@ -55,7 +55,7 @@ def generate_trial_sequence():
 # The sequence is generated randomly with reversal rounds every 8-12 rounds, but remains the same for all groups
 
 # Define constants at the top level
-NUM_ROUNDS = 2
+NUM_ROUNDS = 10
 REWARD_PROBABILITY_A = 0.7
 REWARD_PROBABILITY_B = 0.3
 
@@ -133,7 +133,7 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
 
 # Generate the sequences once when the module is imported
 TRIAL_SEQUENCE, REVERSAL_ROUNDS = generate_trial_sequence()
-REWARD_SEQUENCE = generate_reward_sequence(2, REVERSAL_ROUNDS)
+REWARD_SEQUENCE = generate_reward_sequence(10, REVERSAL_ROUNDS)
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Base Constants: Used to define constants across all pages and subsessions in the game
@@ -490,12 +490,17 @@ class Player(BasePlayer):
         self.choice2_with = sum(1 for p in other_players if p.chosen_image_two == self.chosen_image_two)
         self.choice2_against = len(other_players) - self.choice2_with
 
+# Calculate the payoffs for each player based on their choices and rewards
+# The payoff is calculated as: payoff = £6 + (reward_earnings / 75)
+
     def calculate_payoffs(self):
         self.base_payoff = cu(6)  # Base payoff of £6
-        max_points = C.NUM_ROUNDS * 60  # Maximum points that can be earned
-        max_bonus = 3  # Maximum bonus that can be earned
-        bonus_ratio = self.total_reward_earnings / max_points
-        self.bonus_payoff = cu(round(bonus_ratio * max_bonus, 2))  # Round to 2 decimal places
+        
+        if self.total_reward_earnings <= 0:
+            self.bonus_payoff = cu(0)
+        else:
+            self.bonus_payoff = cu(round(self.total_reward_earnings / 750, 2))
+        
         self.total_payoff = self.base_payoff + self.bonus_payoff
 
 # -------------------------------------------------------------------------------------------------------------------- #
@@ -876,7 +881,7 @@ class MyPage(Page):
             if not player.group.second_preference_choices_displayed:
                 player.group.second_preference_choices_displayed = True
                 print(f'All players have their first preference images displayed.')
-                time.sleep(0.2)  # Add a 2-second delay
+                time.sleep(2)  # Add a 2-second delay
                 print(f'Displaying second preference choices.')
                 response = {}
                 for p in players:
@@ -896,7 +901,7 @@ class MyPage(Page):
             if not player.group.remaining_images_displayed:
                 player.group.remaining_images_displayed = True
                 print(f'Displaying all images for all players.')
-                time.sleep(0.3)  # Add a 3-second delay
+                time.sleep(3)  # Add a 3-second delay
                 response = {}
                 for p in players:
                     other_players = p.get_others_in_group()
@@ -1131,7 +1136,7 @@ class SecondChoicePage(Page):
         group.set_payoffs()
 
 # -------------------------------------------------------------------------------------------------------------------- #
-# ---- FINAL RESULTS PAGE: AFTER 100 ROUNDS, PLAYERS RECEIVE THEIR POINTS TALLY ------ #
+# ---- FINAL RESULTS PAGE: AFTER 80 ROUNDS, PLAYERS RECEIVE THEIR POINTS TALLY ------ #
 # -------------------------------------------------------------------------------------------------------------------- #
 
 class FinalResults(Page):
@@ -1142,12 +1147,25 @@ class FinalResults(Page):
     @staticmethod
     def vars_for_template(player: Player):
         player.calculate_payoffs()  # Calculate payoffs here
+        
+        # Save data to CSV
+        data = [
+            player.participant.vars.get('prolific_id', 'Unknown'),
+            float(player.base_payoff),
+            float(player.bonus_payoff),
+            float(player.total_payoff)
+        ]
+        
+        with open('payoffs.csv', 'a', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(data)
+        
         return {
             'total_reward_earnings': player.total_reward_earnings,
             'player_id': player.id_in_group,
-            # 'base_payoff': player.base_payoff,
-            # 'bonus_payoff': player.bonus_payoff,
-            # 'total_payoff': player.total_payoff,
+            'base_payoff': player.base_payoff,
+            'bonus_payoff': player.bonus_payoff,
+            'total_payoff': player.total_payoff,
         }
 
     @staticmethod

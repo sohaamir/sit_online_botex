@@ -1,5 +1,6 @@
 {{ block title }}{{ endblock }}
 {{ block content }}
+
 <style>
     body {
         background-color: white;
@@ -10,7 +11,7 @@
         align-items: flex-start;
         min-height: 100vh;
         margin: 0;
-        padding-top: 10vh;
+        padding-top: 5vh;
     }
 
     #content-container {
@@ -20,9 +21,9 @@
         text-align: center;
         border: 5px solid black;
         padding: 20px;
-        max-width: 800px;
-        width: 90%;
-        margin-top: 10vh;
+        max-width: 1000px;
+        width: 95%;
+        margin-top: 5vh;
     }
 
     #results-container {
@@ -30,6 +31,7 @@
         flex-direction: column;
         align-items: center;
         margin-bottom: 20px;
+        width: 100%;
     }
 
     button {
@@ -48,23 +50,35 @@
     }
 
     .result-item {
-        margin: 10px 0;
+        margin: 8px 0;
     }
 
     .image-container {
-        margin-bottom: 20px;
+        margin-bottom: 15px;
+    }
+
+    .green-highlight-box {
+        background-color: #e6ffe6;
+        border: 2px solid #4CAF50;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 5px;
+        width: 60%;
     }
 </style>
 
 <div id="content-container">
     <div class="image-container">
-        <img src="{% static 'instructions/hogan_money.gif' %}" alt="Hogan Money" width="300" height="auto">
+        <img src="{% static 'instructions/hogan_money.gif' %}" alt="Hogan Money" width="250" height="auto">
     </div>
     <br>
-    <h1>Thank you for completing the task!</h1>
-    <br>
+    <h1>Thank you for completing the experiment!</h1>
     <div id="results-container">
-        <p class="result-item">You earned {{ total_reward_earnings }} points!</p>
+        <div class="green-highlight-box">
+            <p class="result-item">You scored <b>{{ total_reward_earnings }}</b> points!</p>
+            <p class="result-item">You earned <b>{{ base_payoff }}</b> for completing the task, with a <b>{{ bonus_payoff }}</b> bonus!</p>
+        </div>
+
         <p>Click the button below to continue.</p>
         {% next_button label="Continue" %}
     </div>

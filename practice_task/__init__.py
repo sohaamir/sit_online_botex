@@ -10,7 +10,7 @@ Practice social influence task with 10 trials and fixed reward probabilities.
 class C(BaseConstants):
     NAME_IN_URL = 'practice_task'
     PLAYERS_PER_GROUP = 5
-    NUM_ROUNDS = 1
+    NUM_ROUNDS = 3
     REWARD_PROBABILITY_A = 0.7
     REWARD_PROBABILITY_B = 0.5
     IMAGES = ['option1A.bmp', 'option1C.bmp']
