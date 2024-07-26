@@ -68,14 +68,10 @@
 </style>
 
 <div id="content-container">
-    <div class="image-container">
-        <img src="{% static 'instructions/hogan_money.gif' %}" alt="Hogan Money" width="250" height="auto">
-    </div>
-    <br>
     <h1>Thank you for completing the experiment!</h1>
     <div id="results-container">
         <div class="green-highlight-box">
-            <p class="result-item">You scored <b>{{ total_reward_earnings }}</b> points!</p>
+            <p class="result-item">You scored <b>{{ bonus_payment_score }}</b> points!</p>
             <p class="result-item">You earned <b>{{ base_payoff }}</b> for completing the task, with a <b>{{ bonus_payoff }}</b> bonus!</p>
         </div>
 

@@ -13,7 +13,7 @@ class Group(BaseGroup):
     pass
 
 class Player(BasePlayer):
-    prolific_id = models.StringField(default=str(" "))
+    prolific_id = models.StringField(blank=True)  # This allows the field to be None
 
 # PAGES
 class Welcome(Page):
@@ -30,8 +30,13 @@ class Consent(Page):
 class TaskOverview(Page):
     @staticmethod
     def before_next_page(player, timeout_happened):
-        player.prolific_id = player.participant.label
-        player.participant.vars['prolific_id'] = player.prolific_id
+        if player.participant.label is not None:
+            player.prolific_id = player.participant.label
+            player.participant.vars['prolific_id'] = player.prolific_id
+        else:
+            # Handle the case where label is None
+            player.prolific_id = "No ID provided"
+            player.participant.vars['prolific_id'] = player.prolific_id
 
 class TaskInstructionsPage1(Page):
     pass
