@@ -12,9 +12,11 @@ class Group(BaseGroup):
     pass
 
 class Player(BasePlayer):
+    task_understanding = models.IntegerField(min=0, max=100)
     engagement = models.IntegerField(min=0, max=100)
     influence = models.IntegerField(min=0, max=100)
     real_players = models.IntegerField(min=0, max=100)
+    attention_focus = models.IntegerField(min=0, max=100)
 
     def get_prolific_id(self):
         return self.participant.vars.get('prolific_id', '')
@@ -26,7 +28,7 @@ def creating_session(subsession):
 # PAGES
 class Feedback(Page):
     form_model = 'player'
-    form_fields = ['engagement', 'influence', 'real_players']
+    form_fields = ['task_understanding', 'engagement', 'influence', 'real_players', 'attention_focus']
 
 class Submit(Page):
     @staticmethod

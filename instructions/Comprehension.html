@@ -153,6 +153,24 @@
     </p>
     <p id="incorrect3" class="hidden incorrect-answer">That is not the correct answer, please try again!</p>
     <br>
+
+
+    <br>
+    <h3>Question 4.</h3>
+
+    <p>Which of the following accurately describes how your bonus payment is calculated?</p>
+
+    <div class="answer-options" id="question4-options">
+        <label><input type="radio" name="question4" value="1"> From your initial choice and bet only</label>
+        <label><input type="radio" name="question4" value="2"> From your second bet and choice only</label>
+        <label><input type="radio" name="question4" value="3"> From both the first and second choices and bets but randomly</label>
+        <label><input type="radio" name="question4" value="4"> From both the first and second choices and bets on every trial</label>
+    </div>
+    <br>
+    <p id="answer4" class="hidden correct-answer">Correct! Whether your first choice/bet or second choice/bet is chosen is randomly determined on each trial, so choose appropriately for both!</p>
+    <p id="incorrect4" class="hidden incorrect-answer">That is not the correct answer, please try again!</p>
+
+    <br>
     <p id="play-game" class="hidden">Please now press the button below to play a practice game.</p>
 
     <div id="next-button-container" class="hidden">
@@ -165,12 +183,15 @@
         var question1 = document.getElementsByName('question1');
         var question2 = document.getElementsByName('question2');
         var question3 = document.getElementsByName('question3');
+        var question4 = document.getElementsByName('question4');
         var answer1 = document.getElementById('answer1');
         var answer2 = document.getElementById('answer2');
         var answer3 = document.getElementById('answer3');
+        var answer4 = document.getElementById('answer4');
         var incorrect1 = document.getElementById('incorrect1');
         var incorrect2 = document.getElementById('incorrect2');
         var incorrect3 = document.getElementById('incorrect3');
+        var incorrect4 = document.getElementById('incorrect4');
         var playGame = document.getElementById('play-game');
         var nextButtonContainer = document.getElementById('next-button-container');
     
@@ -209,12 +230,25 @@
             }
             checkAllAnswers();
         }
+
+        function checkAnswer4() {
+            var isQuestion4Correct = question4[2].checked;
+            if (isQuestion4Correct) {
+                answer4.classList.remove('hidden');
+                incorrect4.classList.add('hidden');
+            } else {
+                answer4.classList.add('hidden');
+                incorrect4.classList.remove('hidden');
+            }
+            checkAllAnswers();
+        }
     
         function checkAllAnswers() {
             var isQuestion1Correct = question1[3].checked;
             var isQuestion2Correct = question2[3].checked;
             var isQuestion3Correct = question3[1].checked;
-            if (isQuestion1Correct && isQuestion2Correct && isQuestion3Correct) {
+            var isQuestion4Correct = question4[2].checked;
+            if (isQuestion1Correct && isQuestion2Correct && isQuestion3Correct && isQuestion4Correct) {
                 playGame.classList.remove('hidden');
                 nextButtonContainer.classList.remove('hidden');
             } else {
@@ -234,6 +268,11 @@
         for (var i = 0; i < question3.length; i++) {
             question3[i].addEventListener('change', checkAnswer3);
         }
+
+        for (var i = 0; i < question4.length; i++) {
+            question4[i].addEventListener('change', checkAnswer4);
+        }
     });
-    </script>
+</script>
+
 {% endblock %}

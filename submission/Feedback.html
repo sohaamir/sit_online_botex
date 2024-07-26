@@ -73,7 +73,19 @@
     <p>Please answer the following questions by moving the sliders before submitting:</p>
     <br>
     <div class="question">
-        <p>How engaged were you in the <b>main task?</b></p>
+        <p>How well do you think you understood the task?</p>
+        <div class="slider-container">
+            <input type="range" min="0" max="100" value="50" class="slider" id="task_understanding" name="task_understanding">
+            <div class="value-display" id="task_understanding-value">50</div>
+        </div>
+        <div class="labels">
+            <span>Not at all</span>
+            <span>Completely</span>
+        </div>
+    </div>
+    <br>
+    <div class="question">
+        <p>How engaged were you in the task?</p>
         <div class="slider-container">
             <input type="range" min="0" max="100" value="50" class="slider" id="engagement" name="engagement">
             <div class="value-display" id="engagement-value">50</div>
@@ -85,8 +97,7 @@
     </div>
     <br>
     <div class="question">
-        <p>How much were you influenced by the choices of others when </p>
-        <p>making your second choice and bet <b>in the main task?</b></p>
+        <p>How much were you influenced by the choices of others when making your second choice and bet?</p>
         <div class="slider-container">
             <input type="range" min="0" max="100" value="50" class="slider" id="influence" name="influence">
             <div class="value-display" id="influence-value">50</div>
@@ -98,7 +109,7 @@
     </div>
     <br>
     <div class="question">
-        <p><b>During the main task</b>, did you think that you were playing with real people?</p>
+        <p>Did you think that you were playing with real people?</p>
         <div class="slider-container">
             <input type="range" min="0" max="100" value="50" class="slider" id="real_players" name="real_players">
             <div class="value-display" id="real_players-value">50</div>
@@ -110,7 +121,7 @@
     </div>
     <br>
     <div class="question">
-        <p>When making your choices in the main task, did you feel that you paid more attention to specific player(s) or the group as a whole?</p>
+        <p>When making your choices, did you feel that you paid more attention to specific player(s) or the group as a whole?</p>
         <div class="slider-container">
             <input type="range" min="0" max="100" value="50" class="slider" id="attention_focus" name="attention_focus">
             <div class="value-display" id="attention_focus-value">50</div>
@@ -135,9 +146,11 @@
         }
     }
 
+    updateValue("task_understanding");
     updateValue("engagement");
     updateValue("influence");
     updateValue("real_players");
     updateValue("attention_focus");
 </script>
+
 {{ endblock }}
