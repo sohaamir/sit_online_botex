@@ -1,10 +1,11 @@
-Unknown,6.0,0.21,6.21,160
-Unknown,6.0,0.0,6.0,-20
-Unknown,6.0,0.08,6.08,60
-Unknown,6.0,0.16,6.16,120
-Unknown,6.0,0.24,6.24,180
-Unknown,6.0,0.0,6.0,-320,320
-Unknown,6.0,0.72,6.72,540,-480
-Unknown,6.0,0.0,6.0,-160,-460
-Unknown,6.0,0.0,6.0,-480,-300
-Unknown,6.0,0.0,6.0,-500,160
+Prolific ID,Base Payoff,Bonus Payoff,Total Payoff,Final Bonus Score,Final Choice 1 Sum
+Unknown,6.0,0.0,6.0,0,-560
+Unknown,6.0,0.64,6.64,480,660
+Unknown,6.0,0.0,6.0,0,260
+Unknown,6.0,0.67,6.67,500,-40
+Unknown,6.0,0.0,6.0,-820,-120
+Unknown,6.0,0.0,6.0,-100,180
+Unknown,6.0,0.0,6.0,-20,-160
+Unknown,6.0,0.05,6.05,40,80
+Unknown,6.0,0.0,6.0,0,40
+Unknown,6.0,0.0,6.0,-40,-100

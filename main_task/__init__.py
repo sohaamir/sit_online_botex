@@ -55,7 +55,7 @@ def generate_trial_sequence():
 # The sequence is generated randomly with reversal rounds every 8-12 rounds, but remains the same for all groups
 
 # Define constants at the top level
-NUM_ROUNDS = 1
+NUM_ROUNDS = 8
 REWARD_PROBABILITY_A = 0.7
 REWARD_PROBABILITY_B = 0.3
 
@@ -133,7 +133,7 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
 
 # Generate the sequences once when the module is imported
 TRIAL_SEQUENCE, REVERSAL_ROUNDS = generate_trial_sequence()
-REWARD_SEQUENCE = generate_reward_sequence(1, REVERSAL_ROUNDS)
+REWARD_SEQUENCE = generate_reward_sequence(8, REVERSAL_ROUNDS)
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Base Constants: Used to define constants across all pages and subsessions in the game
@@ -157,11 +157,11 @@ class C(BaseConstants):
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Generate a sequence of earnings types for the experiment based on the number of rounds
-# The sequence is generated randomly with alternating choice1_earnings and trial_earnings
+# The sequence is generated randomly with alternating choice1_earnings and choice2_earnings
 
 def generate_earnings_sequence(num_rounds):
     random.seed(42)  # Ensure reproducibility
-    sequence = ['choice1_earnings' if i % 2 == 0 else 'trial_earnings' for i in range(num_rounds)]
+    sequence = ['choice1_earnings' if i % 2 == 0 else 'choice2_earnings' for i in range(num_rounds)]
     random.shuffle(sequence)
     
     for i, earnings_type in enumerate(sequence, 1):
@@ -201,7 +201,7 @@ class Subsession(BaseSubsession):
                 'choice2': p.choice2,
                 'bet2': p.bet2,
                 'trial_reward': p.trial_reward,
-                'trial_earnings': p.trial_earnings
+                'choice2_earnings': p.choice2_earnings
             }
             data.append(player_data)
         return data
@@ -271,8 +271,8 @@ class Group(BaseGroup):
         print(f"\n--- Round {self.round_number} Results ---")
 
         for p in self.get_players():
-            # Calculate trial_earnings (based on second choice and bet)
-            p.trial_earnings = p.bet2_computer * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2_computer * 20
+            # Calculate choice2_earnings (based on second choice and bet)
+            p.choice2_earnings = p.bet2_computer * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2_computer * 20
             
             # Calculate choice1_earnings (based on first choice and bet)
             choice1_reward = 0
@@ -384,9 +384,9 @@ class Player(BasePlayer):
     second_choice_time = models.FloatField()
     second_bet_time = models.FloatField()
     choice1_earnings = models.IntegerField(initial=0)
-    trial_earnings = models.IntegerField(initial=0)
+    choice2_earnings = models.IntegerField(initial=0)
     choice1_sum_earnings = models.IntegerField(initial=0)
-    total_reward_earnings = models.IntegerField(initial=0)
+    choice2_sum_earnings = models.IntegerField(initial=0)
     bonus_payment_score = models.IntegerField(initial=0)
     base_payoff = models.CurrencyField(initial=6)
     bonus_payoff = models.CurrencyField(initial=0)
@@ -1024,7 +1024,7 @@ class SecondChoicePage(Page):
 
         # Calculate and update bonus_payment_score
         earnings_type = EARNINGS_SEQUENCE[player.round_number - 1]
-        current_round_earnings = player.choice1_earnings if earnings_type == 'choice1_earnings' else player.trial_earnings
+        current_round_earnings = player.choice1_earnings if earnings_type == 'choice1_earnings' else player.choice2_earnings
 
         if player.round_number == 1:
             player.bonus_payment_score = current_round_earnings
@@ -1144,19 +1144,19 @@ class SecondChoicePage(Page):
                 # Calculate player rewards
                 group.calculate_player_rewards()
 
-                # Calculate trial_earnings for each player
+                # Calculate choice2_earnings for each player
                 for p in players:
-                    p.trial_earnings = p.bet2_computer * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2_computer * 20
-                    p.total_reward_earnings = sum([prev_player.trial_earnings for prev_player in p.in_previous_rounds()]) + p.trial_earnings
-                    p.loss_or_gain = -1 if p.trial_earnings < 0 else 1
+                    p.choice2_earnings = p.bet2_computer * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2_computer * 20
+                    p.choice2_sum_earnings = sum([prev_player.choice2_earnings for prev_player in p.in_previous_rounds()]) + p.choice2_earnings
+                    p.loss_or_gain = -1 if p.choice2_earnings < 0 else 1
 
                 # Calculate loss_or_gain for other players in the group from the perspective of each player
                 for p in players:
                     other_players = p.get_others_in_group()
-                    p.loss_or_gain_player1 = 0 if other_players[0].trial_earnings < 0 else 1
-                    p.loss_or_gain_player2 = 0 if other_players[1].trial_earnings < 0 else 1
-                    p.loss_or_gain_player3 = 0 if other_players[2].trial_earnings < 0 else 1
-                    p.loss_or_gain_player4 = 0 if other_players[3].trial_earnings < 0 else 1
+                    p.loss_or_gain_player1 = 0 if other_players[0].choice2_earnings < 0 else 1
+                    p.loss_or_gain_player2 = 0 if other_players[1].choice2_earnings < 0 else 1
+                    p.loss_or_gain_player3 = 0 if other_players[2].choice2_earnings < 0 else 1
+                    p.loss_or_gain_player4 = 0 if other_players[3].choice2_earnings < 0 else 1
 
                 # Generate the intertrial interval and set the next round transition time
                 group.generate_intertrial_interval()
@@ -1170,7 +1170,7 @@ class SecondChoicePage(Page):
                         **response.get(p.id_in_group, {}),
                         **dict(
                             show_results=True,
-                            second_bet_reward=p.trial_earnings,
+                            second_bet_reward=p.choice2_earnings,
                             chosen_images=chosen_images_secondchoicepage,
                             win_loss_images=win_loss_images,
                             player_win_loss_image=win_loss_images[p.id_in_group],
@@ -1208,22 +1208,38 @@ class FinalResults(Page):
             round_score = player.in_round(round_num).bonus_payment_score
             round_choice1_sum = player.in_round(round_num).choice1_sum_earnings
 
-        # Save data to CSV
+        # Define column names
+        column_names = [
+            'Prolific ID',
+            'Base Payoff',
+            'Bonus Payoff',
+            'Total Payoff',
+            'Final Bonus Score',
+            'Final Choice 1 Sum'
+        ]
+
+        # Prepare data row
         data = [
             player.participant.vars.get('prolific_id', 'Unknown'),
             float(player.base_payoff),
             float(player.bonus_payoff),
             float(player.total_payoff),
             final_bonus_score,
-            final_choice1_sum  # Add this to the CSV
+            final_choice1_sum
         ]
+        
+        # Check if file exists to determine if we need to write headers
+        file_exists = os.path.isfile('payoffs.csv')
         
         with open('payoffs.csv', 'a', newline='') as f:
             writer = csv.writer(f)
+            if not file_exists:
+                # Write column names if the file is being created for the first time
+                writer.writerow(column_names)
             writer.writerow(data)
         
         return {
-            'total_reward_earnings': player.total_reward_earnings,
+            'choice2_sum_earnings': player.choice2_sum_earnings,
             'bonus_payment_score': final_bonus_score,
             'choice1_sum_earnings': final_choice1_sum,
             'player_id': player.id_in_group,

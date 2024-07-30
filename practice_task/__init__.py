@@ -2,17 +2,51 @@ from otree.api import *
 from otree.live import live_payload_function
 import random
 import time
+import csv
+import os
 
 doc = """
 Practice social influence task with 10 trials and fixed reward probabilities.
 """
 
+def generate_reward_sequence(num_rounds):
+    sequence = []
+    rewards_a = rewards_b = num_rounds // 2
+
+    for round_num in range(1, num_rounds + 1):
+        if rewards_a == 0:
+            reward_a, reward_b = 0, 1
+            rewards_b -= 1
+        elif rewards_b == 0:
+            reward_a, reward_b = 1, 0
+            rewards_a -= 1
+        else:
+            if random.random() < 0.5:
+                reward_a, reward_b = 1, 0
+                rewards_a -= 1
+            else:
+                reward_a, reward_b = 0, 1
+                rewards_b -= 1
+        sequence.append((reward_a, reward_b))
+
+    # Save sequence to CSV
+    file_path = os.path.join(os.getcwd(), 'practice_trial_sequence.csv')
+    with open(file_path, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['round', 'reward_A', 'reward_B'])
+        for round_num, (reward_a, reward_b) in enumerate(sequence, start=1):
+            writer.writerow([round_num, reward_a, reward_b])
+
+    return sequence
+
+# Generate the reward sequence once when the module is imported
+REWARD_SEQUENCE = generate_reward_sequence(5)  # 5 rounds for practice task
+
+# Modify the C class to include the REWARD_SEQUENCE
 class C(BaseConstants):
     NAME_IN_URL = 'practice_task'
     PLAYERS_PER_GROUP = 5
-    NUM_ROUNDS = 3
-    REWARD_PROBABILITY_A = 0.7
-    REWARD_PROBABILITY_B = 0.5
+    NUM_ROUNDS = 5
     IMAGES = ['option1A.bmp', 'option1C.bmp']
     AVATAR_IMAGE = 'practice_task/avatar_male.png'
     IMAGE_PATHS = {
@@ -22,6 +56,7 @@ class C(BaseConstants):
         'option1C_tr.bmp': '_static/practice_task/option1C_tr.bmp',
         'avatar_male.png': '_static/practice_task/avatar_male.png',
     }
+    REWARD_SEQUENCE = REWARD_SEQUENCE
 
 class Subsession(BaseSubsession):
     pass
@@ -48,9 +83,10 @@ class Group(BaseGroup):
     remaining_images_displayed = models.BooleanField(initial=False)
 
     def set_round_reward(self):
-        self.round_reward_A = 1 if random.random() < C.REWARD_PROBABILITY_A else 0
-        self.round_reward_B = 1 if random.random() < C.REWARD_PROBABILITY_B else 0
+        round_index = self.round_number - 1
+        self.round_reward_A, self.round_reward_B = C.REWARD_SEQUENCE[round_index]
 
+    # Modify the set_payoffs method
     def set_payoffs(self):
         for p in self.get_players():
             if p.chosen_image_two == 'option1A.bmp':
@@ -265,7 +301,7 @@ class MyPage(Page):
                 group.set_round_reward()
                 # Start the choice phase timer for 8000ms
                 player.participant.vars['choice_phase_start_time'] = time.time()  # Record the start time of the choice phase
-                print(f"Choice phase timer started for all players in the group")
+                pass
                 return {p.id_in_group: dict(start_choice_phase_timer=True) for p in players}
 
         if 'initial_choice_time' in data:
@@ -275,10 +311,10 @@ class MyPage(Page):
                 player.chosen_image_one = player.left_image if data['choice'] == 'left' else player.right_image
                 player.participant.vars['chosen_image_one'] = player.chosen_image_one
                 player.computer_choice_one = False  # Record that the choice was made by the player
-                print(f"Player {player.id_in_group} choice1: {player.choice1}, chosen_image_one: {player.chosen_image_one}")
+                pass
 
         if 'choice_phase_timer_ended' in data:
-            print(f"Choice phase timer ended for all players in the group")
+            pass
 
             for p in players:
                 if p.field_maybe_none('choice1') is None or p.choice1 == '':
@@ -293,7 +329,7 @@ class MyPage(Page):
                         p.chosen_image_computer = 'option1A_tr.bmp'
                     elif p.chosen_image_one == 'option1C.bmp':
                         p.chosen_image_computer = 'option1C_tr.bmp'
-                    print(f"Player {p.id_in_group} did not make a choice within 8000ms. Computer randomly selected: choice1: {p.choice1}, chosen_image_one: {p.chosen_image_one}")
+                    pass
                 else:
                     p.chosen_image_one = p.left_image if p.choice1 == 'left' else p.right_image
                     p.participant.vars['chosen_image_one'] = p.chosen_image_one
@@ -306,14 +342,14 @@ class MyPage(Page):
                 p.player_1_computer_choice_one = other_players[0].computer_choice_one
                 p.player_2_computer_choice_one = other_players[1].computer_choice_one
 
-            print("All players have made their initial choice (or time limit reached). Presenting bets.")
+            pass
             return {p.id_in_group: dict(show_bet_container=True, highlight_selected_choice=p.choice1) for p in players}
 
         if 'show_bet_container' in data and data['show_bet_container']:
             # Start a timer for 8000ms
             player.participant.vars['bet_timer_started'] = True
             player.participant.vars['bet_phase_start_time'] = time.time()  # Record the start time of the bet phase
-            print(f"Player {player.id_in_group}: Bet timer started")
+            pass
             return {player.id_in_group: dict(start_bet_timer=True)}
 
         if 'bet' in data:
@@ -323,7 +359,7 @@ class MyPage(Page):
                 player.initial_bet_time = round(data['initial_bet_time'] / 1000, 2)
                 if player.computer_bet_one != 0:
                     player.computer_bet_one = 0
-                print(f"Player {player.id_in_group} made a bet of {player.bet1}, at {player.initial_bet_time}")
+                pass
 
                 if all(p.field_maybe_none('bet1') != 0 for p in players):
                     player.group.manual_bets = True
@@ -344,7 +380,7 @@ class MyPage(Page):
                         p.bet1 = random_bet
                         p.participant.vars['bet1'] = p.bet1
                         p.initial_bet_time = 8.0
-                        print(f"Player {p.id_in_group} did not make a bet within 8000ms. Computer randomly selected a bet of {p.bet1}, initial_bet_time: {p.initial_bet_time}")
+                        pass
 
                 if player.id_in_group == 1:
                     pass
@@ -359,7 +395,7 @@ class MyPage(Page):
                 player.preference_choice_made = True
                 player.computer_preference_choice_one = False
                 player.preference_choice_time = round(data['preference_choice_time'] / 1000, 2)
-                print(f"Player {player.id_in_group} preference_choice: {player.preference_choice}")
+                pass
                 
                 # Highlight the selected avatar immediately
                 selected_player_id = player.get_others_in_group()[int(player.preference_choice) - 1].id_in_group
@@ -375,10 +411,10 @@ class MyPage(Page):
             player.preference_choice_made = True
             player.computer_preference_choice_one = False  # Record that the choice was made by the player
             player.preference_choice_time = round(data['preference_choice_time'] / 1000, 2)
-            print(f"Player {player.id_in_group} preference_choice assigned: {player.preference_choice}")
+            pass
 
             selected_player = player.get_others_in_group()[int(player.preference_choice) - 1]
-            print(f"Player {player.id_in_group} selected initial preference: {player.preference_choice}. Recorded {selected_player.chosen_image_one}")
+            pass
 
             if all(p.preference_choice != '0' for p in players):
                 player.group.manual_preference_choices = True
@@ -397,7 +433,7 @@ class MyPage(Page):
                     p.preference_choice = random.choice(['1', '2', '3', '4'])
                     p.preference_choice_made = True
                     p.computer_preference_choice_one = True  # Record that the choice was made by the computer
-                    print(f"Player {p.id_in_group} did not make a preference choice within 8000ms. Computer randomly selected: {p.preference_choice}")
+                    pass
                     
                     # Highlight the selected avatar for players whose choice was made randomly
                     selected_player_id = p.get_others_in_group()[int(p.preference_choice) - 1].id_in_group
@@ -429,7 +465,7 @@ class MyPage(Page):
                 player.preference_second_choice_made = True
                 player.computer_preference_choice_two = False
                 player.preference_second_choice_time = round(data['preference_second_choice_time'] / 1000, 2)
-                print(f"Player {player.id_in_group} preference_second_choice: {player.preference_second_choice}")
+                pass
             else:
                 pass
 
@@ -441,14 +477,14 @@ class MyPage(Page):
                     player.preference_second_choice_made = True
                     player.computer_preference_choice_two = False
                     player.preference_second_choice_time = round(data['preference_second_choice_time'] / 1000, 2)
-                    print(f"Player {player.id_in_group} preference_second_choice: {player.preference_second_choice}")
+                    pass
 
                     selected_player_id = player.get_others_in_group()[int(player.preference_second_choice) - 1].id_in_group
                     
                     # Check if all players have made their second preference choice manually
                     if all(p.preference_second_choice != '0' for p in players):
                         group.manual_second_preference_choices = True
-                        print("All players have made their second preference choice manually.")
+                        pass
                     
                     return {player.id_in_group: dict(highlight_selected_avatar_second_choice=selected_player_id)}
 
@@ -460,7 +496,7 @@ class MyPage(Page):
                 return {player.id_in_group: dict(start_preference_second_choice_timer=True)}
 
         if 'preference_second_choice_timer_ended' in data:
-            print(f"Second preference choice timer ended. manual_second_preference_choices: {group.manual_second_preference_choices}")
+            pass
             
             response = {}
             for p in players:
@@ -469,7 +505,7 @@ class MyPage(Page):
                     p.preference_second_choice = '1' if p.preference_choice == '2' else '2'
                     p.preference_second_choice_made = True
                     p.computer_preference_choice_two = True
-                    print(f"Player {p.id_in_group} did not make a second preference choice within 8000ms. Computer selected: {p.preference_second_choice}")
+                    pass
                     
                     # Highlight the avatar for computer-made choices
                     selected_player_id = p.get_others_in_group()[int(p.preference_second_choice) - 1].id_in_group
@@ -619,7 +655,7 @@ class SecondChoicePage(Page):
             player.computer_choice_two = False
             player.second_choice_time = round(data['second_choice_time'] / 1000, 2)
             player.chosen_image_two_binary = 1 if player.chosen_image_two == 'option1A.bmp' else 0
-            print(f"Player {player.id_in_group} made a second choice: {player.choice2} (image: {player.chosen_image_two}) at {player.second_choice_time}")
+            pass
             return {player.id_in_group: dict(highlight_selected_image=player.chosen_image_two)}
 
         if 'second_choice_timer_ended' in data:
@@ -637,7 +673,7 @@ class SecondChoicePage(Page):
                         p.chosen_image_computer_two = 'option1C_tr.bmp'
                     p.second_choice_time = 8.0
                     p.chosen_image_two_binary = 1 if p.chosen_image_two == 'option1A.bmp' else 0
-                    print(f"Player {p.id_in_group} assigned random second choice: {p.choice2} (image: {p.chosen_image_two}) in round {p.round_number}")
+                    pass
                 
                 other_players = p.get_others_in_group()
                 p.player_1_choice_two = other_players[0].field_maybe_none('chosen_image_two_binary') or 0
@@ -654,7 +690,7 @@ class SecondChoicePage(Page):
             player.bet2_computer = player.bet2
             player.computer_bet_two = False
             player.second_bet_time = round(data['second_bet_time'] / 1000, 2)
-            print(f"Player {player.id_in_group} made a second bet: {player.bet2} at {player.second_bet_time}")
+            pass
 
         if 'second_bet_timer_ended' in data:
             if not group.second_bet_timer_ended_executed:
@@ -666,7 +702,7 @@ class SecondChoicePage(Page):
                         p.bet2_computer = p.bet2
                         p.computer_bet_two = True
                         p.second_bet_time = 8.0
-                        print(f"Player {p.id_in_group} did not make a second bet within the time limit. Computer assigned bet: {p.bet2}")
+                        pass
                         response[p.id_in_group] = {'computer_assigned_bet': random_bet}
                 
                 if response:
@@ -685,7 +721,7 @@ class SecondChoicePage(Page):
                     previous_trial_earnings = [prev_player.trial_earnings for prev_player in p.in_previous_rounds()]
                     p.total_reward_earnings = sum(previous_trial_earnings) + p.trial_earnings
 
-                    print(f"Player {p.id_in_group} display phase - chosen_image_two: {p.chosen_image_two}, trial_reward: {p.trial_reward}, trial_earnings: {p.trial_earnings}, total_reward_earnings: {p.total_reward_earnings}")
+                    pass
 
                 # Generate intertrial interval
                 group.generate_intertrial_interval()
