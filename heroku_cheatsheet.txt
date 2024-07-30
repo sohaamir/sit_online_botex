@@ -55,16 +55,19 @@ otree test [app_name] [num_participants] --server-url=[url]
     Example: otree test main_task 10 --server-url=https://social-influence-task-e7974ebf1c60.herokuapp.com/
 
 
-Typical commands for setting up and powering down Heroku:
+Commands for setting up and powering down Heroku:
 
-Logging and making changes:
+Logging in:
 
 heroku login - login to Heroku CLI
 heroku maintenance:off --app social_influence_task - turn off maintenance mode to run Postgres and Redis
+
+Making changes and commiting them:
+
 git status, git add ., git commit -am "your message", git push heroku main - git commands for updating the Heroku app after changing code 
 heroku run "otree resetdb" - reset database after pushing changes to heroku
 
-Turning off for the day:
+Turning off:
 
 heroku maintenance:on - turn maintenance mode on when powering down
 heroku logout - logout of heroku
