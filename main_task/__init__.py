@@ -55,7 +55,7 @@ def generate_trial_sequence():
 # The sequence is generated randomly with reversal rounds every 8-12 rounds, but remains the same for all groups
 
 # Define constants at the top level
-NUM_ROUNDS = 8
+NUM_ROUNDS = 80
 REWARD_PROBABILITY_A = 0.7
 REWARD_PROBABILITY_B = 0.3
 
@@ -133,7 +133,7 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
 
 # Generate the sequences once when the module is imported
 TRIAL_SEQUENCE, REVERSAL_ROUNDS = generate_trial_sequence()
-REWARD_SEQUENCE = generate_reward_sequence(8, REVERSAL_ROUNDS)
+REWARD_SEQUENCE = generate_reward_sequence(80, REVERSAL_ROUNDS)
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Base Constants: Used to define constants across all pages and subsessions in the game
@@ -289,7 +289,7 @@ class Group(BaseGroup):
 # The intertrial interval is randomly generated between 2000ms and 4000ms
 
     def generate_intertrial_interval(self):
-        self.intertrial_interval = random.randint(200, 400)
+        self.intertrial_interval = random.randint(2000, 4000)
         print(f"Intertrial interval of {self.intertrial_interval}ms generated")
 
 #### ----------- Define and record the reversal learning rounds ------------------- ####
@@ -553,10 +553,10 @@ class MyPage(Page):
             page_start_time=int(time.time() * 1000)
         )
 
-# Time players out after 40 seconds spent on MyPage (this assumes that a player has left the session)
+# Time players out after 42 seconds spent on MyPage (this assumes that a player has left the session)
     @staticmethod
     def get_timeout_seconds(player: Player):
-        return 40
+        return 42
 
 # Time out players who leave the session and set the chosen_image_one based on the manual choice
     @staticmethod
@@ -919,7 +919,7 @@ class MyPage(Page):
             if not player.group.second_preference_choices_displayed:
                 player.group.second_preference_choices_displayed = True
                 print(f'All players have their first preference images displayed.')
-                time.sleep(0.2)  # Add a 2-second delay
+                time.sleep(2)  # Add a 2-second delay
                 print(f'Displaying second preference choices.')
                 response = {}
                 for p in players:
@@ -939,7 +939,7 @@ class MyPage(Page):
             if not player.group.remaining_images_displayed:
                 player.group.remaining_images_displayed = True
                 print(f'Displaying all images for all players.')
-                time.sleep(0.3)  # Add a 3-second delay
+                time.sleep(3)  # Add a 3-second delay
                 response = {}
                 for p in players:
                     other_players = p.get_others_in_group()

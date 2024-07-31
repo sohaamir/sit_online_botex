@@ -6,7 +6,7 @@ import csv
 import os
 
 doc = """
-Practice social influence task with 10 trials and fixed reward probabilities.
+Practice social influence task with fewer trials and fixed reward probabilities.
 """
 
 def generate_reward_sequence(num_rounds):
@@ -46,7 +46,7 @@ REWARD_SEQUENCE = generate_reward_sequence(5)  # 5 rounds for practice task
 class C(BaseConstants):
     NAME_IN_URL = 'practice_task'
     PLAYERS_PER_GROUP = 5
-    NUM_ROUNDS = 5
+    NUM_ROUNDS = 3
     IMAGES = ['option1A.bmp', 'option1C.bmp']
     AVATAR_IMAGE = 'practice_task/avatar_male.png'
     IMAGE_PATHS = {
