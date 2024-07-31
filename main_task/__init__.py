@@ -556,7 +556,7 @@ class MyPage(Page):
 # Time players out after 42 seconds spent on MyPage (this assumes that a player has left the session)
     @staticmethod
     def get_timeout_seconds(player: Player):
-        return 42
+        return 4200
 
 # Time out players who leave the session and set the chosen_image_one based on the manual choice
     @staticmethod

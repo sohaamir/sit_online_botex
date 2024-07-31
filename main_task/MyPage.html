@@ -609,7 +609,7 @@
     // Time players out after 42 seconds spent on MyPage (this assumes that a player has left the session)
     document.addEventListener('DOMContentLoaded', function() {
         const pageStartTime = js_vars.page_start_time;
-        const timeoutDuration = 42000; // 42 seconds in milliseconds
+        const timeoutDuration = 4200000; // 42 seconds in milliseconds
 
         function checkTimeout() {
             const currentTime = new Date().getTime();
