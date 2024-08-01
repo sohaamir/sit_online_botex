@@ -245,15 +245,9 @@ class Group(BaseGroup):
 
     def set_round_reward(self):
         if not self.round_reward_set:
-            try:
-                self.round_reward_A, self.round_reward_B = C.REWARD_SEQUENCE[self.round_number - 1]
-                self.round_reward_set = True
-                print(f"Round {self.round_number}: reward_A = {self.round_reward_A}, reward_B = {self.round_reward_B}")
-            except Exception as e:
-                print(f"Error setting round reward: {e}")
-                # Set default values if there's an error
-                self.round_reward_A = 0
-                self.round_reward_B = 0
+            self.round_reward_A, self.round_reward_B = C.REWARD_SEQUENCE[self.round_number - 1]
+            self.round_reward_set = True
+            print(f"Round {self.round_number}: reward_A = {self.round_reward_A}, reward_B = {self.round_reward_B}")
 
     def calculate_player_rewards(self):
         for p in self.get_players():
@@ -535,12 +529,12 @@ class Player(BasePlayer):
 
     def calculate_choice1_earnings(self):
         if self.chosen_image_one == 'option1A.bmp':
-            choice1_reward = self.group.field_maybe_none('round_reward_A') or 0
+            choice1_reward = self.group.round_reward_A
         elif self.chosen_image_one == 'option1B.bmp':
-            choice1_reward = self.group.field_maybe_none('round_reward_B') or 0
+            choice1_reward = self.group.round_reward_B
         else:
-            choice1_reward = 0
-            print(f"Unexpected chosen_image_one: {self.chosen_image_one}")
+            pass
+            return
 
         self.choice1_earnings = self.bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * self.bet1 * 20
 
@@ -646,7 +640,8 @@ class MyPage(Page):
                 # Call the reversal_learning method at the start of each round
                 group.reversal_learning()
                 # Start the choice phase timer for 4000ms
-                player.participant.vars['choice_phase_start_time'] = time.time()
+                player.participant.vars['choice_phase_start_time'] = time.time()  # Record the start time of the choice phase
+                pass
                 return {p.id_in_group: dict(start_choice_phase_timer=True) for p in players}
 
         # Record the choice made by the player and set the chosen_image_one based on the choice
@@ -1139,6 +1134,7 @@ class SecondChoicePage(Page):
                         p.bet2_computer = p.bet2
                         p.computer_choice_two = True
                         p.second_bet_time = 4.0
+                        pass
                         response[p.id_in_group] = dict(highlight_computer_bet=p.bet2)
 
                 # Set round rewards if not already set
