@@ -55,6 +55,10 @@ otree test [app_name] [num_participants] --server-url=[url]
     Example: otree test main_task 10 --server-url=https://social-influence-task-e7974ebf1c60.herokuapp.com/
 
 
+#############################################################################################################################
+#############################################################################################################################
+#############################################################################################################################
+
 Commands for setting up and powering down Heroku:
 
 Logging in:
@@ -71,3 +75,31 @@ Turning off:
 
 heroku maintenance:on - turn maintenance mode on when powering down
 heroku logout - logout of heroku
+
+
+#############################################################################################################################
+#############################################################################################################################
+#############################################################################################################################
+
+Changing Heroku configs
+
+Get config list
+
+heroku config -a social-influence-task
+
+Change config (e.g., websockets timeout config)
+
+heroku config:set WEBSOCKET_TIMEOUT=300 -a social-influence-task
+
+Restart dynos
+
+heroku restart -a social-influence-task
+
+Reset the database
+
+heroku run "otree resetdb"
+
+Unset config changes
+
+heroku config:unset WEBSOCKET_TIMEOUT -a social-influence-task
+
