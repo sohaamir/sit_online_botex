@@ -289,7 +289,7 @@ class Group(BaseGroup):
 # The intertrial interval is randomly generated between 2000ms and 4000ms
 
     def generate_intertrial_interval(self):
-        self.intertrial_interval = random.randint(1500, 2500)
+        self.intertrial_interval = random.randint(1000, 2000)
         print(f"Intertrial interval of {self.intertrial_interval}ms generated")
 
 #### ----------- Define and record the reversal learning rounds ------------------- ####
@@ -939,7 +939,7 @@ class MyPage(Page):
             if not player.group.remaining_images_displayed:
                 player.group.remaining_images_displayed = True
                 print(f'Displaying all images for all players.')
-                time.sleep(2)  # Add a 3-second delay
+                time.sleep(1)  # Add a 3-second delay
                 response = {}
                 for p in players:
                     other_players = p.get_others_in_group()
