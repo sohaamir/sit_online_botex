@@ -213,8 +213,8 @@ class Subsession(BaseSubsession):
 class Group(BaseGroup):
     current_round = models.IntegerField(initial=1)
     my_page_load_time = models.FloatField()
-    round_reward_A = models.IntegerField(initial=None)
-    round_reward_B = models.IntegerField(initial=None)
+    round_reward_A = models.IntegerField()
+    round_reward_B = models.IntegerField()
     second_choice_timer_started = models.BooleanField(initial=False)
     all_players_made_choice2 = models.BooleanField(initial=False)
     all_manual_bet2 = models.BooleanField(initial=False)    
@@ -244,7 +244,7 @@ class Group(BaseGroup):
 # The round reward is randomly generated based on the reward probabilities for each image
 
     def set_round_reward(self):
-        if self.field_maybe_none('round_reward_A') is None or self.field_maybe_none('round_reward_B') is None:
+        if not self.round_reward_set:
             self.round_reward_A, self.round_reward_B = C.REWARD_SEQUENCE[self.round_number - 1]
             self.round_reward_set = True
             print(f"Round {self.round_number}: reward_A = {self.round_reward_A}, reward_B = {self.round_reward_B}")
@@ -255,9 +255,9 @@ class Group(BaseGroup):
                 continue  # Skip players who haven't made a choice yet
 
             if p.chosen_image_two == self.seventy_percent_image:
-                potential_reward = self.field_maybe_none('round_reward_A') if self.seventy_percent_image == 'option1A.bmp' else self.field_maybe_none('round_reward_B')
+                potential_reward = self.round_reward_A if self.seventy_percent_image == 'option1A.bmp' else self.round_reward_B
             else:
-                potential_reward = self.field_maybe_none('round_reward_B') if self.seventy_percent_image == 'option1A.bmp' else self.field_maybe_none('round_reward_A')
+                potential_reward = self.round_reward_B if self.seventy_percent_image == 'option1A.bmp' else self.round_reward_A
 
             p.trial_reward = potential_reward
 
@@ -277,13 +277,13 @@ class Group(BaseGroup):
             # Calculate choice1_earnings (based on first choice and bet)
             choice1_reward = 0
             if p.chosen_image_one == 'option1A.bmp':
-                choice1_reward = self.field_maybe_none('round_reward_A')
+                choice1_reward = self.round_reward_A
             elif p.chosen_image_one == 'option1B.bmp':
-                choice1_reward = self.field_maybe_none('round_reward_B')
+                choice1_reward = self.round_reward_B
             
             p.choice1_earnings = p.bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * p.bet1 * 20
 
-        print("-----------------------------\n")
+    print("-----------------------------\n")
 
 #### --------------- Define the intertrial interval ------------------------ ####
 # The intertrial interval is randomly generated between 2000ms and 4000ms
