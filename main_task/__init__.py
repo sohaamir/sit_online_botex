@@ -55,7 +55,7 @@ def generate_trial_sequence():
 # The sequence is generated randomly with reversal rounds every 8-12 rounds, but remains the same for all groups
 
 # Define constants at the top level
-NUM_ROUNDS = 80
+NUM_ROUNDS = 40
 REWARD_PROBABILITY_A = 0.7
 REWARD_PROBABILITY_B = 0.3
 
@@ -133,7 +133,7 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
 
 # Generate the sequences once when the module is imported
 TRIAL_SEQUENCE, REVERSAL_ROUNDS = generate_trial_sequence()
-REWARD_SEQUENCE = generate_reward_sequence(80, REVERSAL_ROUNDS)
+REWARD_SEQUENCE = generate_reward_sequence(40, REVERSAL_ROUNDS)
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Base Constants: Used to define constants across all pages and subsessions in the game
@@ -631,7 +631,7 @@ class MyPage(Page):
         # Record the page load time for each player and set the group-level variable when all players have loaded the page
         # This is used to set the round reward and start the choice phase timer
         if 'my_page_load_time' in data:
-            player.my_page_load_time = round(data['my_page_load_time'] / 111, 2)
+            player.my_page_load_time = round(data['my_page_load_time'] / 2111, 2)
 
             if all(p.field_maybe_none('my_page_load_time') for p in players):
                 group.my_page_load_time = round(max(p.my_page_load_time for p in players), 2)
@@ -647,7 +647,7 @@ class MyPage(Page):
         # Record the choice made by the player and set the chosen_image_one based on the choice
         # This is used to calculate comparisons and accuracies for the first choice
         if 'initial_choice_time' in data:
-            player.initial_choice_time = round(data['initial_choice_time'] / 111, 2)
+            player.initial_choice_time = round(data['initial_choice_time'] / 2111, 2)
             if 'choice' in data and not player.field_maybe_none('chosen_image_one'):
                 player.choice1 = data['choice']  # Record the manual choice
                 player.chosen_image_one = player.left_image if data['choice'] == 'left' else player.right_image
@@ -719,7 +719,7 @@ class MyPage(Page):
             if not player.field_maybe_none('bet1') and data.get('id') == player.id_in_group:
                 player.bet1 = int(data['bet'])
                 player.participant.vars['bet1'] = player.bet1
-                player.initial_bet_time = round(data['initial_bet_time'] / 111, 2)
+                player.initial_bet_time = round(data['initial_bet_time'] / 2111, 2)
                 if player.computer_bet_one != 0:
                     player.computer_bet_one = 0
                 pass
@@ -756,7 +756,7 @@ class MyPage(Page):
                 player.preference_choice = preference_choice
                 player.preference_choice_made = True
                 player.computer_preference_choice_one = False
-                player.preference_choice_time = round(data['preference_choice_time'] / 111, 2)
+                player.preference_choice_time = round(data['preference_choice_time'] / 2111, 2)
                 pass
                 
                 # Highlight the selected avatar immediately
@@ -772,7 +772,7 @@ class MyPage(Page):
             player.preference_choice = data['preference_choice_button_pressed']
             player.preference_choice_made = True
             player.computer_preference_choice_one = False  # Record that the choice was made by the player
-            player.preference_choice_time = round(data['preference_choice_time'] / 111, 2)
+            player.preference_choice_time = round(data['preference_choice_time'] / 2111, 2)
             pass
 
             selected_player = player.get_others_in_group()[int(player.preference_choice) - 1]
@@ -832,7 +832,7 @@ class MyPage(Page):
                 player.preference_second_choice = preference_second_choice
                 player.preference_second_choice_made = True
                 player.computer_preference_choice_two = False
-                player.preference_second_choice_time = round(data['preference_second_choice_time'] / 111, 2)
+                player.preference_second_choice_time = round(data['preference_second_choice_time'] / 2111, 2)
                 pass
             else:
                 pass
@@ -844,7 +844,7 @@ class MyPage(Page):
                     player.preference_second_choice = preference_second_choice
                     player.preference_second_choice_made = True
                     player.computer_preference_choice_two = False
-                    player.preference_second_choice_time = round(data['preference_second_choice_time'] / 111, 2)
+                    player.preference_second_choice_time = round(data['preference_second_choice_time'] / 2111, 2)
                     pass
 
                     # Prevent players from selecting the same avatar for both choices
@@ -905,12 +905,12 @@ class MyPage(Page):
                 return response
 
         if 'preference_choice_time' in data:
-            player.preference_choice_time = round(data['preference_choice_time'] / 111, 2)
+            player.preference_choice_time = round(data['preference_choice_time'] / 2111, 2)
             if all(p.field_maybe_none('preference_choice_time') for p in players):
                 group.all_players_preference_choice_time = round(max(p.preference_choice_time for p in players), 2)
 
         if 'preference_second_choice_time' in data:
-            player.preference_second_choice_time = round(data['preference_second_choice_time'] / 111, 2)
+            player.preference_second_choice_time = round(data['preference_second_choice_time'] / 2111, 2)
             if all(p.field_maybe_none('preference_second_choice_time') for p in players):
                 group.all_players_preference_second_choice_time = round(max(p.preference_second_choice_time for p in players), 2)
 
@@ -1048,7 +1048,7 @@ class SecondChoicePage(Page):
 
         # Record the time taken to load the second choice page for each player and set the group-level variable when all players have loaded the page
         if 'second_choice_page_loaded' in data:
-            player.second_choice_page_load_time = round(data['page_load_time'] / 111, 2)
+            player.second_choice_page_load_time = round(data['page_load_time'] / 2111, 2)
             if all(p.field_maybe_none('second_choice_page_load_time') for p in players):
                 return {p.id_in_group: dict(start_second_choice_timer=True) for p in players}
 
@@ -1059,7 +1059,7 @@ class SecondChoicePage(Page):
             player.choice2_computer = ''
             player.computer_choice_two = False
             if 'second_choice_time' in data:
-                player.second_choice_time = round(data['second_choice_time'] / 111, 2)
+                player.second_choice_time = round(data['second_choice_time'] / 2111, 2)
             else:
                 player.second_choice_time = None
             pass
@@ -1114,7 +1114,7 @@ class SecondChoicePage(Page):
             player.bet2 = int(data['second_bet'])
             player.bet2_computer = player.bet2
             player.computer_bet_two = False
-            player.second_bet_time = round(data['second_bet_time'] / 111, 2)
+            player.second_bet_time = round(data['second_bet_time'] / 2111, 2)
             pass
 
         # Start the second bet timer for all players and assign a random bet to players who haven't made a bet within the time limit
