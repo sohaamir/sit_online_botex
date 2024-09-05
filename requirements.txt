@@ -2,4 +2,4 @@ otree==5.10.4
 psycopg2==2.9.9
 python-dotenv==1.0.1
 sentry_sdk
-websockets==10.2
+websockets==10.1
