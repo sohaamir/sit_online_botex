@@ -574,6 +574,10 @@ class MyPage(Page):
 
         # Calculate choice1_earnings
         player.calculate_choice1_earnings()
+
+        # Check if it's time to move to SecondChoicePage
+        if time.time() >= player.participant.vars.get('display_phase_end_time', 0):
+            return 'SecondChoicePage'
     
 # If a player leaves the session, redirect the remaining players to the player_left page
 
@@ -714,7 +718,6 @@ class MyPage(Page):
             pass
             return {player.id_in_group: dict(start_bet_timer=True)}
 
-        # Record the bet made by the player and set the bet1 based on the choice
         if 'bet' in data:
             if not player.field_maybe_none('bet1') and data.get('id') == player.id_in_group:
                 player.bet1 = int(data['bet'])
@@ -725,261 +728,57 @@ class MyPage(Page):
                 pass
 
                 if all(p.field_maybe_none('bet1') != 0 for p in players):
-                    player.group.manual_bets = True
+                    group.manual_bets = True
 
-        # When the bet timer ends, randomly assign a bet to players who haven't made a bet and start the preference choice phase
         if 'bet_timer_ended' in data:
             player.participant.vars['bet_timer_started'] = False
 
-            if player.group.manual_bets:
-                if player.id_in_group == 1:
-                    player.group.get_players()[0].participant.vars['preference_choices_presented'] = True
-                    return {p.id_in_group: dict(show_preference_choice=True, hide_bet_title=True, highlight_selected_bet=p.bet1) for p in players}
-            else:
-                for p in players:
-                    if p.field_maybe_none('bet1') == 0:
-                        p.computer_bet_one = 1
-                        random_bet = random.randint(1, 3)
-                        p.bet1 = random_bet
-                        p.participant.vars['bet1'] = p.bet1
-                        p.initial_bet_time = 3.0
-                        pass
+            for p in players:
+                if p.field_maybe_none('bet1') == 0:
+                    p.computer_bet_one = 1
+                    random_bet = random.randint(1, 3)
+                    p.bet1 = random_bet
+                    p.participant.vars['bet1'] = p.bet1
+                    p.initial_bet_time = 3.0
+                    pass
 
-                if player.id_in_group == 1:
-                    player.group.get_players()[0].participant.vars['preference_choices_presented'] = True
-                    return {p.id_in_group: dict(show_preference_choice=True, hide_bet_title=True, highlight_selected_bet=p.bet1) for p in players}
+            # Highlight the computer-selected bet for players who didn't bet manually
+            response = {}
+            for p in players:
+                response[p.id_in_group] = dict(highlight_selected_bet=p.bet1)
 
-        # Record the preference choice made by the player and start the preference choice timer
-        if 'preference_choice' in data:
-            preference_choice = data['preference_choice']
-            if preference_choice in ['1', '2', '3', '4']:
-                player.preference_choice = preference_choice
-                player.preference_choice_made = True
-                player.computer_preference_choice_one = False
-                player.preference_choice_time = round(data['preference_choice_time'] / 3000, 2)
-                pass
-                
-                # Highlight the selected avatar immediately
-                selected_player_id = player.get_others_in_group()[int(player.preference_choice) - 1].id_in_group
-                return {player.id_in_group: dict(highlight_selected_avatar=selected_player_id)}
-            else:
-                pass
+            # Trigger the display phase here
+            display_response = MyPage.display_remaining_images(player, players)
+            
+            # Merge the highlight_selected_bet response with the display_remaining_images response
+            for player_id, player_response in display_response.items():
+                if player_id in response:
+                    response[player_id].update(player_response)
+                else:
+                    response[player_id] = player_response
 
-        if 'preference_choice_timer_started' in data:
-            pass
-
-        if 'preference_choice_button_pressed' in data:
-            player.preference_choice = data['preference_choice_button_pressed']
-            player.preference_choice_made = True
-            player.computer_preference_choice_one = False  # Record that the choice was made by the player
-            player.preference_choice_time = round(data['preference_choice_time'] / 3000, 2)
-            pass
-
-            selected_player = player.get_others_in_group()[int(player.preference_choice) - 1]
-            pass
-
-            if all(p.preference_choice != '0' for p in players):
-                player.group.manual_preference_choices = True
-
-            # Highlight the selected avatar immediately
-            selected_player_id = selected_player.id_in_group
-            response = {player.id_in_group: dict(highlight_selected_avatar=selected_player_id)}
             return response
 
-        # When the preference choice timer ends, randomly assign a preference choice to players who haven't made a choice
-        if 'preference_choice_timer_ended' in data:
-            for p in players:
-                if p.preference_choice == '0':
-                    p.preference_choice_time = 3.0
-                    # Randomly assign '1' or '2' to preference_choice for players who haven't made a choice
-                    p.preference_choice = random.choice(['1', '2', '3', '4'])
-                    p.preference_choice_made = True
-                    p.computer_preference_choice_one = True  # Record that the choice was made by the computer
-                    pass
-                    
-                    # Highlight the selected avatar for players whose choice was made randomly
-                    selected_player_id = p.get_others_in_group()[int(p.preference_choice) - 1].id_in_group
-                    return {p.id_in_group: dict(highlight_selected_avatar=selected_player_id)}
-                else:
-                    pass
+        return response
 
-            # When all players have made a preference choice, display the selected avatar for each player
-            if all(p.preference_choice != '0' for p in players):
-                if not player.group.preference_choices_presented:
-                    player.group.preference_choices_presented = True
-                    if player.group.manual_preference_choices:
-                        if player.id_in_group == 1:
-                            pass
-                    else:
-                        if player.id_in_group == 1:
-                            pass
-                    
-                    return {p.id_in_group: dict(show_preference_second_choice=True) for p in players}
-
-        # Record the time taken to make the preference choice for each player
-        if 'preference_choice_displayed' in data:
-            print(f"Preference choices displayed for all players.")
-            player.participant.vars['preference_choice_displayed_time'] = round(data['preference_choice_displayed_time'], 2)
-            if not player.preference_choice_made:
-                # Start a timer for 4000ms
-                player.participant.vars['preference_choice_timer_started'] = True
-                return {player.id_in_group: dict(start_preference_choice_timer=True)}
-
-        # Record the second preference choice made by the player and start the second preference choice timer
-        if 'preference_second_choice' in data:
-            preference_second_choice = data['preference_second_choice']
-            if preference_second_choice != player.preference_choice and preference_second_choice in ['1', '2', '3', '4']:
-                player.preference_second_choice = preference_second_choice
-                player.preference_second_choice_made = True
-                player.computer_preference_choice_two = False
-                player.preference_second_choice_time = round(data['preference_second_choice_time'] / 3000, 2)
-                pass
-            else:
-                pass
-
-        if 'preference_second_choice_button_pressed' in data:
-            preference_second_choice = data['preference_second_choice_button_pressed']
-            if preference_second_choice != player.preference_choice and preference_second_choice in ['1', '2', '3', '4']:
-                if player.field_maybe_none('preference_second_choice') is None or player.preference_second_choice == '0':
-                    player.preference_second_choice = preference_second_choice
-                    player.preference_second_choice_made = True
-                    player.computer_preference_choice_two = False
-                    player.preference_second_choice_time = round(data['preference_second_choice_time'] / 3000, 2)
-                    pass
-
-                    # Prevent players from selecting the same avatar for both choices
-                    selected_player_id = player.get_others_in_group()[int(player.preference_second_choice) - 1].id_in_group
-                    return {player.id_in_group: dict(highlight_selected_avatar_second_choice=selected_player_id)}
-            else:
-                pass
-
-            if all(p.preference_second_choice != '0' for p in players):
-                player.group.manual_second_preference_choices = True
-
-        # Display the second preference choice container and start the second preference choice timer
-        if 'preference_second_choice_displayed' in data:
-            player.participant.vars['preference_second_choice_displayed_time'] = round(data['preference_second_choice_displayed_time'], 2)
-            if not player.preference_second_choice_made:
-                # Start a timer for 4000ms
-                player.participant.vars['preference_second_choice_timer_started'] = True
-                return {player.id_in_group: dict(start_preference_second_choice_timer=True)}
-
-        # When the second preference choice timer ends, randomly assign a second preference choice to players who haven't made a choice
-        if 'preference_second_choice_timer_ended' in data:
-            for p in players:
-                if p.preference_second_choice == '0':
-                    p.preference_second_choice_time = 3.0
-                    available_choices = ['1', '2', '3', '4']
-                    available_choices.remove(p.preference_choice)
-                    p.preference_second_choice = random.choice(available_choices)
-                    p.preference_second_choice_made = True
-                    p.computer_preference_choice_two = True
-                    pass
-                    
-                    second_selected_player_id = p.get_others_in_group()[int(p.preference_second_choice) - 1].id_in_group
-                    response[p.id_in_group] = dict(highlight_selected_avatar_second_choice=second_selected_player_id)
-
-            # Record whether all players have made their second preference choices manually
-            if all(p.preference_second_choice != '0' for p in players):
-                if player.group.manual_second_preference_choices:
-                    if player.id_in_group == 1:
-                        pass
-                else:
-                    if player.id_in_group == 1:
-                        pass
-                
-                # For each player, highlight the selected avatar for the second preference choice 
-                for p in players:
-                    selected_player_id = p.get_others_in_group()[int(p.preference_choice) - 1].id_in_group
-                    selected_player = p.group.get_player_by_id(selected_player_id)
-                    chosen_image = selected_player.chosen_image_computer if selected_player.chosen_image_computer else selected_player.chosen_image_one
-                    response[p.id_in_group] = {
-                        **response.get(p.id_in_group, {}),
-                        **dict(
-                            display_chosen_image=True,
-                            chosen_image=f'main_task/{chosen_image}',
-                            selected_player_id=selected_player_id
-                        )
-                    }
-                
-                return response
-
-        if 'preference_choice_time' in data:
-            player.preference_choice_time = round(data['preference_choice_time'] / 3000, 2)
-            if all(p.field_maybe_none('preference_choice_time') for p in players):
-                group.all_players_preference_choice_time = round(max(p.preference_choice_time for p in players), 2)
-
-        if 'preference_second_choice_time' in data:
-            player.preference_second_choice_time = round(data['preference_second_choice_time'] / 3000, 2)
-            if all(p.field_maybe_none('preference_second_choice_time') for p in players):
-                group.all_players_preference_second_choice_time = round(max(p.preference_second_choice_time for p in players), 2)
-
-        # Define a method to display the second preference choices for all players
-        def display_second_preference_choices(player, players):
-            if not player.group.second_preference_choices_displayed:
-                player.group.second_preference_choices_displayed = True
-                print(f'All players have their first preference images displayed.')
-                time.sleep(1)  # Add a 2-second delay
-                print(f'Displaying second preference choices.')
-                response = {}
-                for p in players:
-                    selected_player_id = p.get_others_in_group()[int(p.preference_second_choice) - 1].id_in_group
-                    selected_player = p.group.get_player_by_id(selected_player_id)
-                    chosen_image = selected_player.chosen_image_computer if selected_player.chosen_image_computer else selected_player.chosen_image_one
-                    response[p.id_in_group] = dict(
-                        display_second_chosen_image=True,
-                        second_chosen_image=f'main_task/{chosen_image}',
-                        selected_player_id=selected_player_id
-                    )
-                return response
-            return {}
-
-        # Define a method to display all images for all players after the second preference choices are displayed (i.e., the two players not chosen)
-        def display_remaining_images(player, players):
-            if not player.group.remaining_images_displayed:
-                player.group.remaining_images_displayed = True
-                print(f'Displaying all images for all players.')
-                time.sleep(1)  # Add a 3-second delay
-                response = {}
-                for p in players:
-                    other_players = p.get_others_in_group()
-                    all_images = {}
-                    for op in other_players:
-                        if op.chosen_image_computer:
-                            chosen_image = op.chosen_image_computer
-                        else:
-                            chosen_image = op.chosen_image_one
-                        all_images[op.id_in_group] = f'main_task/{chosen_image}'
-                    response[p.id_in_group] = dict(
-                        display_all_images=True,
-                        all_images=all_images
-                    )
-                pass
-                return response
-            return {}
-
-        # A series of if statements to handle the display of the second preference choices and all images for all players
-        if 'image_displayed' in data:
-            player.image_displayed = True
-
-            if all(p.field_maybe_none('image_displayed') for p in players):
-                return display_second_preference_choices(player, players)
-
-        if 'second_image_displayed' in data:
-            player.second_image_displayed = True
-
-            if all(p.field_maybe_none('second_image_displayed') for p in players):
-                return display_remaining_images(player, players)
-
-        if 'all_images_displayed' in data:
-            player.all_images_displayed = True
-
-            if all(p.field_maybe_none('all_images_displayed') for p in players):
-                if not group.redirect_triggered:
-                    group.redirect_triggered = True
-                    print('All images displayed for all players, triggering redirect')
-                    return {p.id_in_group: dict(redirect_to_second_choice=True) for p in players}
-
+    @staticmethod
+    def display_remaining_images(player, players):
+        response = {}
+        for p in players:
+            other_players = p.get_others_in_group()
+            all_images = {}
+            for op in other_players:
+                chosen_image = op.chosen_image_computer if op.chosen_image_computer else op.chosen_image_one
+                all_images[op.id_in_group] = f'main_task/{chosen_image}'
+            response[p.id_in_group] = dict(
+                display_all_images=True,
+                all_images=all_images
+            )
+        
+        # Set a timer to move to SecondChoicePage after 3 seconds
+        for p in players:
+            p.participant.vars['display_phase_end_time'] = time.time() + 3
+        
         return response
 
 # -------------------------------------------------------------------------------------------------------------------- #

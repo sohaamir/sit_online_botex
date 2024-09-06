@@ -9,6 +9,18 @@
 <!-- CSS code for page layout -->
 
 <style>
+    
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+    #content {
+        height: 100vh;
+        overflow-y: auto;
+    }
+
     body {
         background-color: black;
         color: white;
@@ -170,8 +182,6 @@
             <img src="{% static avatar_image %}" alt="Player {{ player_id }} Avatar" class="avatar">
             <div class="avatar-number">{{ forloop.counter }}</div>
             <img src="" alt="Player {{ player_id }} Chosen Image" class="chosen-image" style="display: none;">
-            <img src="" alt="Player {{ player_id }} Second Chosen Image" class="second-chosen-image" style="display: none;">
-            <img src="" alt="Player {{ player_id }} Remaining Image" class="remaining-image" style="display: none;">
         </div>
     {% endfor %}
 </div>
@@ -186,7 +196,6 @@
         <img src="{% static right_image %}" id="option_right" data-option="right">
         <div class="title" id="choice-title">Your choice?</div>
         <div class="title" id="bet-title" style="display: none;">Your bet?</div>
-        <div class="title" id="preference-title" style="display: none;">First Preference?</div>
     </div>
     <div id="bet-container" style="display: none;">
         <div class="bet-options">
@@ -198,189 +207,93 @@
 </div>
 
 <script>
-    // Initialize global variables for the game state
     window.js_vars = {
-        player_id: {{ player_id }},  // Unique identifier for the current player
-        preference_choice_displayed: false,  // Flag to track if the first preference choice has been shown
-        preference_second_choice_displayed: false  // Flag to track if the second preference choice has been shown
+        player_id: {{ player_id }},
     };
 
-    // Event listener that runs when the DOM is fully loaded
     document.addEventListener('DOMContentLoaded', function() {
-        // Send the page load time to the server for performance tracking
         liveSend({my_page_load_time: performance.now()});
         
-        // Set a timer for the initial choice phase
         initialChoiceTimerId = setTimeout(function() {
             if (currentStage === 'choice') {
-                // If no choice is made within 4 seconds, send this information to the server
-                // This likely triggers a default choice or next stage
                 liveSend({initial_choice_time: 3000});
             }
-        }, 3000);  // 3000 milliseconds = 4 seconds
+        }, 3000);
 
-        // Record the start time of the choice phase for accurate timing calculations
         window.choicePhaseStartTime = performance.now();
     });
 
-    // Initialize variables for timing different phases and managing game state
-    window.betPhaseStartTime = null;  // Will be set when bet phase starts
-    let initialChoiceTime;  // Time taken for initial choice
-    let initialBetTime;  // Time taken for initial bet
-    let preferenceChoiceTime;  // Time taken for first preference choice
-    let preferenceSecondChoiceTime;  // Time taken for second preference choice
-    let currentStage = 'choice';  // Tracks the current stage of the game (choice, bet, preference, etc.)
-    let initialChoiceTimerId;  // ID for the initial choice timer, used to clear it if needed
-    let choiceMade = false;  // Flag to prevent multiple choices
-    let betMade = false;  // Flag to prevent multiple bets
+    window.betPhaseStartTime = null;
+    let initialChoiceTime;
+    let initialBetTime;
+    let currentStage = 'choice';
+    let initialChoiceTimerId;
+    let choiceMade = false;
+    let betMade = false;
 
-    // Main function to handle all keydown events
     function handleKeyDown(event) {
-        console.log('Key pressed:', event.key);
-        console.log('Current stage:', currentStage);
-        console.log('window.js_vars.preference_choice_made:', window.js_vars.preference_choice_made);
-
-        // Handle initial choice (left or right arrow key)
         if (currentStage === 'choice' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !choiceMade) {
-            initialChoiceTime = performance.now() - window.choicePhaseStartTime;  // Calculate time taken
+            initialChoiceTime = performance.now() - window.choicePhaseStartTime;
             liveSend({
                 initial_choice_time: initialChoiceTime, 
                 choice: event.key === 'ArrowLeft' ? 'left' : 'right'
-            });  // Send choice data to server
-            choose(event.key === 'ArrowLeft' ? 'left' : 'right');  // Update UI
-            choiceMade = true;  // Prevent further choices
-            clearTimeout(initialChoiceTimerId);  // Clear the timeout to prevent automatic choice
+            });
+            choose(event.key === 'ArrowLeft' ? 'left' : 'right');
+            choiceMade = true;
+            clearTimeout(initialChoiceTimerId);
         } 
-        // Handle bet (keys 1, 2, or 3)
         else if (currentStage === 'bet' && (event.key >= '1' && event.key <= '3') && !betMade) {
             const bet = parseInt(event.key);
-            const initialBetTime = performance.now() - window.betPhaseStartTime;  // Calculate time taken
+            const initialBetTime = performance.now() - window.betPhaseStartTime;
             liveSend({
                 initial_bet_time: initialBetTime, 
                 bet: bet, 
                 id: js_vars.player_id
-            });  // Send bet data to server
-            selectBet(bet);  // Update UI
-            betMade = true;  // Prevent further bets
-        } 
-        // Handle preference choice (keys 1 or 2)
-        else if (currentStage === 'preference' && (event.key === '1' || event.key === '2') && !window.js_vars.preference_choice_made) {
-            console.log('Preference choice button pressed:', event.key);
-            preferenceChoiceTime = performance.now();  // Record time of choice
-            const preferenceChoice = event.key;
-            liveSend({
-                preference_choice: preferenceChoice, 
-                preference_choice_time: preferenceChoiceTime, 
-                button_pressed: true
-            });  // Send preference data to server
-            window.js_vars.preference_choice_made = true;
-            window.js_vars.preference_choice = preferenceChoice;
-            console.log('window.js_vars.preference_choice_made updated:', window.js_vars.preference_choice_made);
-            console.log('window.js_vars.preference_choice updated:', window.js_vars.preference_choice);
+            });
+            selectBet(bet);
+            betMade = true;
         }
     }
 
-    // Add the main keydown event listener to handle all key presses
     document.addEventListener('keydown', handleKeyDown);
 
-    // Function to handle the initial choice (left or right)
     function choose(option) {
         if (currentStage === 'choice' && !choiceMade) {
             const selectedOption = document.getElementById(`option_${option}`);
             const otherOption = document.getElementById(`option_${option === 'left' ? 'right' : 'left'}`);
-            selectedOption.classList.add('selected');  // Highlight chosen option
-            otherOption.classList.remove('selected');  // Remove highlight from other option
-            choiceMade = true;  // Prevent further choices
+            selectedOption.classList.add('selected');
+            otherOption.classList.remove('selected');
+            choiceMade = true;
         }
     }
 
-    // Function to handle bet selection
     function selectBet(bet) {
         if (currentStage === 'bet' && !betMade) {
             const betElements = document.querySelectorAll('.bet-options div');
             betElements.forEach(element => {
-                element.classList.remove('selected');  // Remove highlight from all bet options
+                element.classList.remove('selected');
             });
-            document.querySelector(`.bet-options div[data-bet="${bet}"]`).classList.add('selected');  // Highlight chosen bet
-            liveSend({ bet: bet });  // Send bet data to server
-            betMade = true;  // Prevent further bets
-            document.removeEventListener('keydown', handleKeyDown);  // Remove the event listener after the first bet
+            document.querySelector(`.bet-options div[data-bet="${bet}"]`).classList.add('selected');
+            liveSend({ bet: bet });
+            betMade = true;
+            document.removeEventListener('keydown', handleKeyDown);
         }
     }
-
-    // Function to handle the first preference choice
-    function handlePreferenceChoice(event) {
-        if (currentStage === 'preference' && (event.key === '1' || event.key === '2' || event.key === '3' || event.key === '4') && !window.js_vars.preference_choice_made) {
-            console.log('Preference choice button pressed:', event.key);
-            const preferenceChoiceTime = performance.now() - window.preferenceChoiceStartTime;  // Calculate time taken
-            const preferenceChoice = event.key;
-            liveSend({
-                preference_choice_button_pressed: preferenceChoice, 
-                preference_choice_time: preferenceChoiceTime
-            });  // Send preference data to server
-            window.js_vars.preference_choice_made = true;
-            window.js_vars.preference_choice = preferenceChoice;
-            console.log('window.js_vars.preference_choice_made updated:', window.js_vars.preference_choice_made);
-            console.log('window.js_vars.preference_choice updated:', window.js_vars.preference_choice);
-        }
-    }
-
-    // Add event listener for the first preference choice
-    document.addEventListener('keydown', handlePreferenceChoice);
-
-    // Function to handle the second preference choice
-    function handleSecondPreferenceChoice(event) {
-        if (currentStage === 'preference_second' && (event.key === '1' || event.key === '2' || event.key === '3' || event.key === '4')) {
-            console.log('Second preference choice button pressed:', event.key);
-            preferenceSecondChoiceTime = performance.now() - window.preferenceSecondChoiceStartTime;  // Calculate time taken
-            const preferenceSecondChoice = event.key;
-            liveSend({
-                preference_second_choice_button_pressed: preferenceSecondChoice, 
-                preference_second_choice_time: preferenceSecondChoiceTime
-            });  // Send second preference data to server
-            // Ensure the second choice is different from the first and hasn't been made before
-            if (preferenceSecondChoice !== window.js_vars.preference_choice && !window.js_vars.preference_second_choice_made) {
-                window.js_vars.preference_second_choice_made = true;
-                window.js_vars.preference_second_choice = preferenceSecondChoice;
-                console.log('window.js_vars.preference_second_choice_made updated:', window.js_vars.preference_second_choice_made);
-                console.log('window.js_vars.preference_second_choice updated:', window.js_vars.preference_second_choice);
-            }
-        }
-    }
-
-    // Add event listener for the second preference choice
-    document.addEventListener('keydown', handleSecondPreferenceChoice);
 
     function liveRecv(data) {
         console.log('Received data:', data);
-        console.log('Current stage:', currentStage);
-        console.log('window.js_vars.preference_choice_made:', window.js_vars.preference_choice_made);
 
-        // Handle page load time
         if ('my_page_load_time' in data) {
             window.myPageLoadTime = data.my_page_load_time;
         }
 
-        // Start initial choice timer
-        // This begins the timed choice phase of the experiment
-        if ('start_initial_choice_timer' in data && data.start_initial_choice_timer && !window.initialChoiceTimerStarted) {
-            window.initialChoiceTimerStarted = true;
-            setTimeout(function() {
-                liveSend({initial_choice_timer_ended: true});
-            }, 3000);  // 4 seconds timer
-        }
-
-        // Start choice phase timer
-        // This manages the overall timing for the choice phase
         if ('start_choice_phase_timer' in data && data.start_choice_phase_timer && !window.choicePhaseTimerStarted) {
             window.choicePhaseTimerStarted = true;
             setTimeout(function() {
                 liveSend({choice_phase_timer_ended: true});
-            }, 3000);  // 4 seconds timer
+            }, 3000);
         }
 
-        // Handle computer-made choice
-        // Used when a player doesn't respond in time
         if ('computer_choice' in data) {
             const selectedOption = document.getElementById(`option_${data.computer_choice}`);
             const otherOption = document.getElementById(`option_${data.computer_choice === 'left' ? 'right' : 'left'}`);
@@ -388,7 +301,6 @@
             otherOption.classList.remove('selected');
         }
 
-        // Highlight selected choice in UI
         if ('highlight_selected_choice' in data) {
             const selectedOption = document.getElementById(`option_${data.highlight_selected_choice}`);
             const otherOption = document.getElementById(`option_${data.highlight_selected_choice === 'left' ? 'right' : 'left'}`);
@@ -396,27 +308,15 @@
             otherOption.classList.remove('selected');
         }
 
-        // Highlight selected image in UI
-        if ('highlight_selected_image' in data) {
-            const selectedOption = document.querySelector(`#option_${data.highlight_selected_image.includes('option1A') ? 'left' : 'right'}`);
-            const otherOption = document.querySelector(`#option_${data.highlight_selected_image.includes('option1A') ? 'right' : 'left'}`);
-            selectedOption.classList.add('selected');
-            otherOption.classList.remove('selected');
-        }
-
-        // Start bet timer
-        // Initiates the timed betting phase
         if ('start_bet_timer' in data && data.start_bet_timer && !window.betTimerStarted) {
             window.betTimerStarted = true;
             setTimeout(function() {
                 if (!betMade) {
                     liveSend({bet_timer_ended: true});
                 }
-            }, 3000);  // 4 seconds timer
+            }, 3000);
         }
 
-        // Show bet container and set up bet phase
-        // Transitions UI to betting phase
         if ('show_bet_container' in data && data.show_bet_container) {
             document.getElementById('bet-container').style.display = 'block';
             document.getElementById('choice-title').style.display = 'none';
@@ -425,149 +325,26 @@
             betMade = false;
             document.addEventListener('keydown', handleKeyDown);
             window.betPhaseStartTime = performance.now();
-            window.betContainerLoadTime = performance.now();
 
             setTimeout(function() {
                 if (!betMade) {
                     liveSend({bet_timer_ended: true});
-                } else {
-                    liveSend({bet_timer_ended: true});
                 }
                 document.removeEventListener('keydown', handleKeyDown);
-            }, 3000);  // 4 seconds timer
+            }, 3000);
         }
 
-        // Highlight selected bet in UI
         if ('highlight_selected_bet' in data) {
             const betElements = document.querySelectorAll('.bet-options div');
             betElements.forEach(element => {
                 element.classList.remove('selected');
             });
-            document.querySelector(`.bet-options div[data-bet="${data.highlight_selected_bet}"]`).classList.add('selected');
-        }
-
-        // Hide bet title
-        if ('hide_bet_title' in data && data.hide_bet_title) {
-            document.getElementById('bet-title').style.display = 'none';
-        }
-
-        // Handle preference choice button press
-        // Records player's preference selection
-        if ('preference_choice_button_pressed' in data) {
-            console.log('Preference choice button press acknowledged by server');
-            window.js_vars.preference_choice_made = true;
-            window.js_vars.preference_choice = data.preference_choice_button_pressed;
-            console.log('window.js_vars.preference_choice_made updated:', window.js_vars.preference_choice_made);
-            console.log('window.js_vars.preference_choice updated:', window.js_vars.preference_choice);
-        }
-
-        // Highlight selected avatar for first preference
-        if ('highlight_selected_avatar' in data) {
-            const selectedPlayerId = data.highlight_selected_avatar;
-            const avatarWrappers = document.querySelectorAll('.avatar-wrapper');
-            avatarWrappers.forEach(wrapper => {
-                if (wrapper.dataset.playerId == selectedPlayerId) {
-                    wrapper.classList.add('avatar-selected');
-                } else {
-                    wrapper.classList.remove('avatar-selected');
-                }
-            });
-        }
-
-        // Highlight selected avatar for second preference
-        if ('highlight_selected_avatar_second_choice' in data) {
-            const selectedPlayerId = data.highlight_selected_avatar_second_choice;
-            const avatarWrappers = document.querySelectorAll('.avatar-wrapper');
-            avatarWrappers.forEach(wrapper => {
-                if (wrapper.dataset.playerId == selectedPlayerId) {
-                    wrapper.classList.add('avatar-selected-second-choice');
-                } else {
-                    wrapper.classList.remove('avatar-selected-second-choice');
-                }
-            });
-        }
-
-        // Show preference choice UI and start timer
-        // Initiates the preference selection phase
-        if ('show_preference_choice' in data && data.show_preference_choice) {
-            console.log('Showing preference choice');
-            document.getElementById('preference-title').style.display = 'block';
-            window.js_vars.preference_choice = '';
-            currentStage = 'preference';
-            console.log('Current stage updated:', currentStage);
-            console.log('window.js_vars.preference_choice_made:', window.js_vars.preference_choice_made);
-
-            liveSend({preference_choice_timer_started: true});
-            window.preferenceChoiceStartTime = performance.now();
-
-            setTimeout(function() {
-                liveSend({preference_choice_timer_ended: true});
-            }, 3000);  // 4 seconds timer
-        }
-
-        // Show second preference choice UI and start timer
-        // Initiates the second preference selection phase
-        if ('show_preference_second_choice' in data && data.show_preference_second_choice) {
-            if (!window.js_vars.preference_second_choice_displayed) {
-                window.js_vars.preference_second_choice_displayed = true;
-                document.getElementById('preference-title').textContent = 'Second Preference?';
-                currentStage = 'preference_second';
-
-                window.preferenceSecondChoiceStartTime = performance.now();
-
-                setTimeout(function() {
-                    liveSend({preference_second_choice_timer_ended: true});
-                }, 3000);  // 4 seconds timer
+            const selectedBetElement = document.querySelector(`.bet-options div[data-bet="${data.highlight_selected_bet}"]`);
+            if (selectedBetElement) {
+                selectedBetElement.classList.add('selected');
             }
         }
 
-        // Start second preference choice timer
-        if ('start_preference_second_choice_timer' in data && data.start_preference_second_choice_timer) {
-            setTimeout(function() {
-                if (!window.js_vars.preference_second_choice_made) {
-                    liveSend({preference_second_choice_timer_ended: true});
-                }
-            }, 3000);  // 4 seconds timer
-        }
-
-        // Display chosen image for a player
-        // Shows the image selected by a particular player
-        if ('display_chosen_image' in data && data.display_chosen_image) {
-            const selectedPlayerId = data.selected_player_id;
-            const chosenImage = data.chosen_image;
-            console.log('Displaying chosen image for player:', selectedPlayerId, 'Image:', chosenImage);
-            const avatarWrapper = document.querySelector(`.avatar-wrapper[data-player-id="${selectedPlayerId}"]`);
-            if (avatarWrapper) {
-                const chosenImageElement = avatarWrapper.querySelector('.chosen-image');
-                chosenImageElement.src = `/static/${chosenImage}`;
-                chosenImageElement.style.display = 'block';
-
-                chosenImageElement.onload = function() {
-                    liveSend({image_displayed: true});
-                };
-            }
-        }
-
-        // Display second chosen image for a player
-        // Shows the second image selected by a particular player
-        if ('display_second_chosen_image' in data && data.display_second_chosen_image) {
-            const selectedPlayerId = data.selected_player_id;
-            const secondChosenImage = data.second_chosen_image;
-            console.log('Displaying second chosen image for player:', selectedPlayerId, 'Image:', secondChosenImage);
-            const avatarWrapper = document.querySelector(`.avatar-wrapper[data-player-id="${selectedPlayerId}"]`);
-            if (avatarWrapper) {
-                const secondChosenImageElement = avatarWrapper.querySelector('.second-chosen-image');
-                secondChosenImageElement.src = `/static/${secondChosenImage}`;
-                secondChosenImageElement.style.display = 'block';
-
-                secondChosenImageElement.onload = function() {
-                    liveSend({second_image_displayed: true});
-                };
-            }
-        }
-
-        // Display all images for all players
-        // Reveals all selected images at the end of the round
         if ('display_all_images' in data && data.display_all_images) {
             const allImages = data.all_images;
             console.log('Displaying all images:', allImages);
@@ -576,15 +353,8 @@
                 const avatarWrapper = document.querySelector(`.avatar-wrapper[data-player-id="${playerId}"]`);
                 if (avatarWrapper) {
                     const chosenImageElement = avatarWrapper.querySelector('.chosen-image');
-                    const secondChosenImageElement = avatarWrapper.querySelector('.second-chosen-image');
-                    const remainingImageElement = avatarWrapper.querySelector('.remaining-image');
-                    
-                    remainingImageElement.src = `/static/${imagePath}`;
-                    remainingImageElement.style.display = 'block';
-                    
-                    chosenImageElement.style.display = 'none';
-                    secondChosenImageElement.style.display = 'none';
-                    
+                    chosenImageElement.src = `/static/${imagePath}`;
+                    chosenImageElement.style.display = 'block';
                     console.log(`Displayed image for player ${playerId}: ${imagePath}`);
                 } else {
                     console.error(`No avatar wrapper found for player ${playerId}`);
@@ -593,12 +363,20 @@
 
             console.log('Sending all_images_displayed event');
             liveSend({all_images_displayed: true});
-        }
 
-        // Redirect to second choice page
-        // Moves the experiment to the next phase
-        if ('redirect_to_second_choice' in data && data.redirect_to_second_choice) {
-            console.log('Received redirect signal, waiting 3 seconds before redirecting');
+            // Ensure the bet is still highlighted after displaying images
+            if ('highlight_selected_bet' in data) {
+                const betElements = document.querySelectorAll('.bet-options div');
+                betElements.forEach(element => {
+                    element.classList.remove('selected');
+                });
+                const selectedBetElement = document.querySelector(`.bet-options div[data-bet="${data.highlight_selected_bet}"]`);
+                if (selectedBetElement) {
+                    selectedBetElement.classList.add('selected');
+                }
+            }
+
+            // Set a timer to move to SecondChoicePage after 3 seconds
             setTimeout(() => {
                 console.log('Redirecting to SecondChoicePage');
                 document.getElementById('form').submit();
@@ -606,7 +384,7 @@
         }
     }
 
-    // Time players out after 42 seconds spent on MyPage (this assumes that a player has left the session)
+    // Timeout logic
     document.addEventListener('DOMContentLoaded', function() {
         const pageStartTime = js_vars.page_start_time;
         const timeoutDuration = 4300000; // 42 seconds in milliseconds
@@ -625,4 +403,4 @@
 
 </script>
 
-{{ endblock }} 
+{{ endblock }}
