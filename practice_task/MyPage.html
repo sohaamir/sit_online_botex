@@ -175,8 +175,6 @@
             <img src="{% static avatar_image %}" alt="Player {{ player_id }} Avatar" class="avatar">
             <div class="avatar-number">{{ forloop.counter }}</div>
             <img src="" alt="Player {{ player_id }} Chosen Image" class="chosen-image" style="display: none;">
-            <img src="" alt="Player {{ player_id }} Second Chosen Image" class="second-chosen-image" style="display: none;">
-            <img src="" alt="Player {{ player_id }} Remaining Image" class="remaining-image" style="display: none;">
         </div>
     {% endfor %}
 </div>
@@ -191,7 +189,6 @@
         <img src="{% static right_image %}" id="option_right" data-option="right">
         <div class="title" id="choice-title">Your choice?</div>
         <div class="title" id="bet-title" style="display: none;">Your bet?</div>
-        <div class="title" id="preference-title" style="display: none;">First Preference?</div>
     </div>
     <div id="bet-container" style="display: none;">
         <div class="bet-options">
@@ -205,28 +202,24 @@
 <script>
     window.js_vars = {
         player_id: {{ player_id }},
-        preference_choice_displayed: false,
-        preference_second_choice_displayed: false
     };
 
     document.addEventListener('DOMContentLoaded', function() {
         liveSend({my_page_load_time: performance.now()});
         initialChoiceTimerId = setTimeout(function() {
             if (currentStage === 'choice') {
-                liveSend({initial_choice_time: 8000});  // Send the time limit if no choice is made
+                liveSend({initial_choice_time: 8000});
             }
         }, 8000);
 
-        window.choicePhaseStartTime = performance.now();  // Store the start time of the choice phase
+        window.choicePhaseStartTime = performance.now();
     });
 
     window.betPhaseStartTime = null;
 
     let initialChoiceTime;
     let initialBetTime;
-    let preferenceChoiceTime;
-    let preferenceSecondChoiceTime;
-    let currentStage = 'choice'; // Initialize currentStage variable
+    let currentStage = 'choice';
     let initialChoiceTimerId;
     let choiceMade = false;
     let betMade = false;
@@ -234,29 +227,19 @@
     function handleKeyDown(event) {
         console.log('Key pressed:', event.key);
         console.log('Current stage:', currentStage);
-        console.log('window.js_vars.preference_choice_made:', window.js_vars.preference_choice_made);
 
         if (currentStage === 'choice' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !choiceMade) {
             initialChoiceTime = performance.now() - window.choicePhaseStartTime;
             liveSend({initial_choice_time: initialChoiceTime, choice: event.key === 'ArrowLeft' ? 'left' : 'right'});
             choose(event.key === 'ArrowLeft' ? 'left' : 'right');
             choiceMade = true;
-            clearTimeout(initialChoiceTimerId);  // Clear the timeout when a choice is made manually
+            clearTimeout(initialChoiceTimerId);
         } else if (currentStage === 'bet' && (event.key >= '1' && event.key <= '3') && !betMade) {
             const bet = parseInt(event.key);
-            const initialBetTime = performance.now() - window.betPhaseStartTime;  // Calculate the initial_bet_time relative to the start of the bet phase
-            liveSend({initial_bet_time: initialBetTime, bet: bet, id: js_vars.player_id});  // Include the player's ID in the data sent to the server
+            const initialBetTime = performance.now() - window.betPhaseStartTime;
+            liveSend({initial_bet_time: initialBetTime, bet: bet, id: js_vars.player_id});
             selectBet(bet);
             betMade = true;
-        } else if (currentStage === 'preference' && (event.key === '1' || event.key === '2') && !window.js_vars.preference_choice_made) {
-            console.log('Preference choice button pressed:', event.key);
-            preferenceChoiceTime = performance.now();
-            const preferenceChoice = event.key;
-            liveSend({preference_choice: preferenceChoice, preference_choice_time: preferenceChoiceTime, button_pressed: true});
-            window.js_vars.preference_choice_made = true;
-            window.js_vars.preference_choice = preferenceChoice;
-            console.log('window.js_vars.preference_choice_made updated:', window.js_vars.preference_choice_made);
-            console.log('window.js_vars.preference_choice updated:', window.js_vars.preference_choice);
         }
     }
 
@@ -281,56 +264,16 @@
             document.querySelector(`.bet-options div[data-bet="${bet}"]`).classList.add('selected');
             liveSend({ bet: bet });
             betMade = true;
-            document.removeEventListener('keydown', handleKeyDown);  // Remove the event listener after the first bet
+            document.removeEventListener('keydown', handleKeyDown);
         }
     }
-
-    function handlePreferenceChoice(event) {
-        if (currentStage === 'preference' && (event.key === '1' || event.key === '2' || event.key === '3' || event.key === '4') && !window.js_vars.preference_choice_made) {
-            console.log('Preference choice button pressed:', event.key);
-            const preferenceChoiceTime = performance.now() - window.preferenceChoiceStartTime;
-            const preferenceChoice = event.key;
-            liveSend({preference_choice_button_pressed: preferenceChoice, preference_choice_time: preferenceChoiceTime});
-            window.js_vars.preference_choice_made = true;
-            window.js_vars.preference_choice = preferenceChoice;
-            console.log('window.js_vars.preference_choice_made updated:', window.js_vars.preference_choice_made);
-            console.log('window.js_vars.preference_choice updated:', window.js_vars.preference_choice);
-        }
-    }
-
-    document.addEventListener('keydown', handlePreferenceChoice);
-
-    function handleSecondPreferenceChoice(event) {
-        if (currentStage === 'preference_second' && (event.key === '1' || event.key === '2' || event.key === '3' || event.key === '4')) {
-            console.log('Second preference choice button pressed:', event.key);
-            preferenceSecondChoiceTime = performance.now() - window.preferenceSecondChoiceStartTime;
-            const preferenceSecondChoice = event.key;
-            liveSend({preference_second_choice_button_pressed: preferenceSecondChoice, preference_second_choice_time: preferenceSecondChoiceTime});
-            if (preferenceSecondChoice !== window.js_vars.preference_choice && !window.js_vars.preference_second_choice_made) {
-                window.js_vars.preference_second_choice_made = true;
-                window.js_vars.preference_second_choice = preferenceSecondChoice;
-                console.log('window.js_vars.preference_second_choice_made updated:', window.js_vars.preference_second_choice_made);
-                console.log('window.js_vars.preference_second_choice updated:', window.js_vars.preference_second_choice);
-            }
-        }
-    }
-
-    document.addEventListener('keydown', handleSecondPreferenceChoice);
 
     function liveRecv(data) {
         console.log('Received data:', data);
         console.log('Current stage:', currentStage);
-        console.log('window.js_vars.preference_choice_made:', window.js_vars.preference_choice_made);
 
         if ('my_page_load_time' in data) {
             window.myPageLoadTime = data.my_page_load_time;
-        }
-
-        if ('start_initial_choice_timer' in data && data.start_initial_choice_timer && !window.initialChoiceTimerStarted) {
-            window.initialChoiceTimerStarted = true;  // Set the flag to indicate that the initial choice timer has started
-            setTimeout(function() {
-                liveSend({initial_choice_timer_ended: true});
-            }, 8000);
         }
 
         if ('start_choice_phase_timer' in data && data.start_choice_phase_timer && !window.choicePhaseTimerStarted) {
@@ -342,8 +285,6 @@
 
         if ('choice_phase_timer_ended' in data) {
             console.log("Choice phase timer ended for all players in the group");
-            
-            // Move to the next phase regardless of whether all players have made their choices
             liveSend({show_bet_container: true});
         }
 
@@ -369,10 +310,9 @@
         }
 
         if ('start_bet_timer' in data && data.start_bet_timer && !window.betTimerStarted) {
-            window.betTimerStarted = true; // Set the flag to indicate that the bet timer has started
+            window.betTimerStarted = true;
             setTimeout(function() {
                 if (!betMade) {
-                    // If no bet is made within 8000ms, send the bet_timer_ended event
                     liveSend({bet_timer_ended: true});
                 }
             }, 8000);
@@ -383,20 +323,18 @@
             document.getElementById('choice-title').style.display = 'none';
             document.getElementById('bet-title').style.display = 'block';
             currentStage = 'bet';
-            betMade = false; // Reset the betMade flag when the bet container is shown
-            document.addEventListener('keydown', handleKeyDown); // Add the event listener when the bet container is shown
-            window.betPhaseStartTime = performance.now(); // Record the start time of the bet phase
-            window.betContainerLoadTime = performance.now(); // Store the time when the bet container is shown
+            betMade = false;
+            document.addEventListener('keydown', handleKeyDown);
+            window.betPhaseStartTime = performance.now();
+            window.betContainerLoadTime = performance.now();
 
-            // Start a timer for 8000ms
             setTimeout(function() {
                 if (!betMade) {
-                    // If no bet is made within 8000ms, send the bet_timer_ended event
                     liveSend({bet_timer_ended: true});
                 } else {
                     liveSend({bet_timer_ended: true});
                 }
-                document.removeEventListener('keydown', handleKeyDown); // Remove the event listener after 8000ms
+                document.removeEventListener('keydown', handleKeyDown);
             }, 8000);
         }
 
@@ -408,135 +346,21 @@
             document.querySelector(`.bet-options div[data-bet="${data.highlight_selected_bet}"]`).classList.add('selected');
         }
 
-        if ('hide_bet_title' in data && data.hide_bet_title) {
-            document.getElementById('bet-title').style.display = 'none';
+        if (data.hasOwnProperty('computer_assigned_bet')) {
+            console.log('Received computer_assigned_bet:', data.computer_assigned_bet);
+            $('.bet-options > div').removeClass('selected');
+            $(`.bet-options > div[data-bet="${data.computer_assigned_bet}"]`).addClass('selected');
+            betMade = true;
         }
 
-        if ('preference_choice_button_pressed' in data) {
-            console.log('Preference choice button press acknowledged by server');
-            window.js_vars.preference_choice_made = true;
-            window.js_vars.preference_choice = data.preference_choice_button_pressed;
-            console.log('window.js_vars.preference_choice_made updated:', window.js_vars.preference_choice_made);
-            console.log('window.js_vars.preference_choice updated:', window.js_vars.preference_choice);
-        }
-
-        if ('highlight_selected_avatar' in data) {
-            const selectedPlayerId = data.highlight_selected_avatar;
-            const avatarWrappers = document.querySelectorAll('.avatar-wrapper');
-            avatarWrappers.forEach(wrapper => {
-                if (wrapper.dataset.playerId == selectedPlayerId) {
-                    wrapper.classList.add('avatar-selected');
-                } else {
-                    wrapper.classList.remove('avatar-selected');
-                }
-            });
-        }
-
-        if ('preference_second_choice_button_pressed' in data) {
-            console.log('Second preference choice button press acknowledged by server');
-            window.js_vars.preference_second_choice_made = true;
-            window.js_vars.preference_second_choice = data.preference_second_choice_button_pressed;
-            console.log('window.js_vars.preference_second_choice_made updated:', window.js_vars.preference_second_choice_made);
-            console.log('window.js_vars.preference_second_choice updated:', window.js_vars.preference_second_choice);
-        }
-
-        if ('highlight_selected_avatar_second_choice' in data) {
-            const selectedPlayerId = data.highlight_selected_avatar_second_choice;
-            const avatarWrappers = document.querySelectorAll('.avatar-wrapper');
-            avatarWrappers.forEach(wrapper => {
-                if (wrapper.dataset.playerId == selectedPlayerId) {
-                    wrapper.classList.add('avatar-selected-second-choice');
-                } else {
-                    wrapper.classList.remove('avatar-selected-second-choice');
-                }
-            });
-        }
-
-        if ('show_preference_choice' in data && data.show_preference_choice && !window.js_vars.preference_choice_displayed) {
-            window.js_vars.preference_choice_displayed = true;
-            console.log('Showing preference choice');
-            document.getElementById('preference-title').style.display = 'block';
-            window.js_vars.preference_choice = '';
-            currentStage = 'preference';
-            console.log('Current stage updated:', currentStage);
-            console.log('window.js_vars.preference_choice_made:', window.js_vars.preference_choice_made);
-
-            // Start the preference choice timer
-            window.preferenceChoiceStartTime = performance.now();
-
-            // Start a timer for 8000ms
-            setTimeout(function() {
-                liveSend({preference_choice_timer_ended: true});
-            }, 8000);
-        }
-
-        if ('preference_choice_timer_ended' in data) {
-            console.log('Preference choice timer ended');
-            // Move to the next phase regardless of whether all players have made their choices
-            liveSend({show_preference_second_choice: true});
-        }
-
-        if ('show_preference_second_choice' in data && data.show_preference_second_choice && !window.js_vars.show_preference_second_choice_received) {
-            window.js_vars.show_preference_second_choice_received = true;
-            document.getElementById('preference-title').textContent = 'Second Preference?';
-            currentStage = 'preference_second';
-
-            // Start the second preference choice timer
-            window.preferenceSecondChoiceStartTime = performance.now();
-
-            // Start a timer for 8000ms
-            setTimeout(function() {
-                console.log("Second preference choice timer ended");
-                liveSend({preference_second_choice_timer_ended: true});
-            }, 8000);
-        }
-
-        if ('start_preference_second_choice_timer' in data && data.start_preference_second_choice_timer) {
-            setTimeout(function() {
-                if (!window.js_vars.preference_second_choice_made) {
-                    liveSend({preference_second_choice_timer_ended: true});
-                }
-            }, 8000);
-        }
-
-        if ('preference_second_choice_timer_ended' in data) {
-            console.log('Second preference choice timer ended');
-            // Move to the next phase regardless of whether all players have made their choices
-            liveSend({display_chosen_image: true});
-        }
-
-        if ('display_chosen_image' in data && data.display_chosen_image) {
-            const selectedPlayerId = data.selected_player_id;
-            const chosenImage = data.chosen_image;
-            console.log('Displaying chosen image for player:', selectedPlayerId, 'Image:', chosenImage);
-            const avatarWrapper = document.querySelector(`.avatar-wrapper[data-player-id="${selectedPlayerId}"]`);
-            if (avatarWrapper) {
-                const chosenImageElement = avatarWrapper.querySelector('.chosen-image');
-                chosenImageElement.src = `/static/${chosenImage}`;
-                chosenImageElement.style.display = 'block';
-
-                // Send image_displayed event after the image is loaded
-                chosenImageElement.onload = function() {
-                    liveSend({image_displayed: true});
-                };
-            }
-        }
-
-        if ('display_second_chosen_image' in data && data.display_second_chosen_image) {
-            const selectedPlayerId = data.selected_player_id;
-            const secondChosenImage = data.second_chosen_image;
-            console.log('Displaying second chosen image for player:', selectedPlayerId, 'Image:', secondChosenImage);
-            const avatarWrapper = document.querySelector(`.avatar-wrapper[data-player-id="${selectedPlayerId}"]`);
-            if (avatarWrapper) {
-                const secondChosenImageElement = avatarWrapper.querySelector('.second-chosen-image');
-                secondChosenImageElement.src = `/static/${secondChosenImage}`;
-                secondChosenImageElement.style.display = 'block';
-
-                // Send second_image_displayed event after the image is loaded
-                secondChosenImageElement.onload = function() {
-                    liveSend({second_image_displayed: true});
-                };
-            }
+        if (data.hasOwnProperty('show_bet_container') && data.show_bet_container) {
+            $('#bet-container').show();
+            $('#bet-title').show();
+            $('#choice-title').hide();
+            currentStage = 'bet';
+            betMade = false;
+            document.addEventListener('keydown', handleKeyDown);
+            window.betPhaseStartTime = performance.now();
         }
 
         if ('display_all_images' in data && data.display_all_images) {
@@ -545,17 +369,12 @@
             Object.keys(allImages).forEach(playerId => {
                 const avatarWrapper = document.querySelector(`.avatar-wrapper[data-player-id="${playerId}"]`);
                 if (avatarWrapper) {
-                    const remainingImageElement = avatarWrapper.querySelector('.remaining-image');
-                    remainingImageElement.src = `/static/${allImages[playerId]}`;
-                    remainingImageElement.style.display = 'block';
-
-                    // Hide previously displayed images
-                    avatarWrapper.querySelector('.chosen-image').style.display = 'none';
-                    avatarWrapper.querySelector('.second-chosen-image').style.display = 'none';
+                    const chosenImageElement = avatarWrapper.querySelector('.chosen-image');
+                    chosenImageElement.src = `/static/${allImages[playerId]}`;
+                    chosenImageElement.style.display = 'block';
                 }
             });
 
-            // Send all_images_displayed event after a short delay to ensure images are loaded
             setTimeout(() => {
                 liveSend({all_images_displayed: true});
             }, 100);
@@ -569,10 +388,25 @@
         }
     }
 
-    // Time players out after 40 seconds spent on MyPage (this assumes that a player has left the session)
+    $('.bet-options > div').click(function() {
+        if (!betMade) {
+            betMade = true;
+            $('.bet-options > div').removeClass('selected');
+            $(this).addClass('selected');
+            var bet = $(this).attr('data-bet');
+            var betTime = performance.now() - window.betPhaseStartTime;
+            liveSend({
+                'bet': bet,
+                'initial_bet_time': betTime,
+                'id': js_vars.player_id
+            });
+        }
+    });
+
+    // Time players out after 80 seconds spent on MyPage
     document.addEventListener('DOMContentLoaded', function() {
         const pageStartTime = js_vars.page_start_time;
-        const timeoutDuration = 80000; // 40 seconds in milliseconds
+        const timeoutDuration = 80000; // 80 seconds in milliseconds
 
         function checkTimeout() {
             const currentTime = new Date().getTime();
@@ -588,4 +422,4 @@
 
 </script>
 
-{{ endblock }} 
+{{ endblock }}
