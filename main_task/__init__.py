@@ -286,10 +286,10 @@ class Group(BaseGroup):
     print("-----------------------------\n")
 
 #### --------------- Define the intertrial interval ------------------------ ####
-# The intertrial interval is randomly generated between 2000ms and 4000ms
+# The intertrial interval is randomly generated between 3000ms and 4000ms
 
     def generate_intertrial_interval(self):
-        self.intertrial_interval = random.randint(2000, 3000)
+        self.intertrial_interval = random.randint(3000, 4000)
         print(f"Intertrial interval of {self.intertrial_interval}ms generated")
 
 #### ----------- Define and record the reversal learning rounds ------------------- ####
@@ -648,9 +648,9 @@ class MyPage(Page):
         if 'initial_choice_time' in data:
             if data['initial_choice_time'] is not None:
                 actual_choice_time = round((data['initial_choice_time'] - player.individual_page_load_time) / 1000, 2)
-                player.initial_choice_time = min(actual_choice_time, 4.0)
+                player.initial_choice_time = min(actual_choice_time, 3.0)
             else:
-                player.initial_choice_time = 4.0
+                player.initial_choice_time = 3.0
 
             if 'choice' in data and not player.field_maybe_none('chosen_image_one'):
                 player.choice1 = data['choice']
@@ -665,7 +665,7 @@ class MyPage(Page):
                     p.choice1 = random_choice
                     p.chosen_image_one = p.left_image if random_choice == 'left' else p.right_image
                     p.participant.vars['chosen_image_one'] = p.chosen_image_one
-                    p.initial_choice_time = 4.0
+                    p.initial_choice_time = 3.0
                     p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
                     p.computer_choice_one = True
                     if p.chosen_image_one == 'option1A.bmp':
@@ -703,7 +703,6 @@ class MyPage(Page):
             for p in players:
                 p.calculate_choice_comparisons()
 
-            # Start a timer for 4000ms
             player.participant.vars['bet_timer_started'] = True
             player.participant.vars['bet_phase_start_time'] = time.time()  # Record the start time of the bet phase
             pass
@@ -723,7 +722,7 @@ class MyPage(Page):
                     random_bet = random.randint(1, 3)
                     p.bet1 = random_bet
                     p.participant.vars['bet1'] = p.bet1
-                    p.initial_bet_time = 4.0
+                    p.initial_bet_time = 3.0
 
             # Highlight the selected bet for all players
             response = {p.id_in_group: dict(highlight_selected_bet=p.bet1) for p in players}
@@ -863,7 +862,7 @@ class SecondChoicePage(Page):
                         p.chosen_image_computer_two = 'option1A_tr.bmp'
                     elif p.chosen_image_two == 'option1B.bmp':
                         p.chosen_image_computer_two = 'option1B_tr.bmp'
-                    p.second_choice_time = 4.0
+                    p.second_choice_time = 3.0
                     pass
                 else:
                     p.chosen_image_two_binary = 1 if p.chosen_image_two == 'option1A.bmp' else 2
@@ -917,7 +916,7 @@ class SecondChoicePage(Page):
                         p.bet2 = random_bet
                         p.bet2_computer = p.bet2
                         p.computer_choice_two = True
-                        p.second_bet_time = 4.0
+                        p.second_bet_time = 3.0
                         pass
                         response[p.id_in_group] = dict(highlight_computer_bet=p.bet2)
 

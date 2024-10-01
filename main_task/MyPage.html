@@ -312,10 +312,10 @@
                 console.log('Timer ended, sending choice_phase_timer_ended event');
                 liveSend({
                     choice_phase_timer_ended: true,
-                    actual_choice_time: 4000
+                    actual_choice_time: 3000
                 });
                 choicePhaseActive = false;
-            }, 4000);
+            }, 3000);
         }
 
         if ('start_bet_timer' in data && data.start_bet_timer) {
@@ -332,7 +332,7 @@
                     liveSend({bet_timer_ended: true});
                 }
                 document.removeEventListener('keydown', handleKeyDown);
-            }, 4000);
+            }, 3000);
         }
 
         if ('computer_choice' in data) {
@@ -361,7 +361,7 @@
             setTimeout(function() {
                 liveSend({bet_timer_ended: true});
                 document.removeEventListener('keydown', handleKeyDown);
-            }, 4000);
+            }, 3000);
         }
 
         if ('highlight_selected_bet' in data) {
