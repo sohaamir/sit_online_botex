@@ -629,6 +629,7 @@ class MyPage(Page):
 
     @staticmethod
     def live_method(player, data):
+        print(f"Received data: {data}")
         group = player.group
         players = group.get_players()
         response = {}
@@ -716,36 +717,26 @@ class MyPage(Page):
                 player.computer_bet_one = 0
 
         if 'bet_timer_ended' in data:
-            for p in players:
-                if p.field_maybe_none('bet1') == 0:
-                    p.computer_bet_one = 1
-                    random_bet = random.randint(1, 3)
-                    p.bet1 = random_bet
-                    p.participant.vars['bet1'] = p.bet1
-                    p.initial_bet_time = 3.0
-
-            # Highlight the selected bet for all players
-            response = {p.id_in_group: dict(highlight_selected_bet=p.bet1) for p in players}
-
-            if not group.remaining_images_displayed:
-                group.remaining_images_displayed = True
-                display_response = MyPage.display_remaining_images(player, players)
-                
-                # Merge the responses
-                for player_id, player_response in display_response.items():
-                    if player_id in response:
-                        response[player_id].update(player_response)
-                    else:
-                        response[player_id] = player_response
-
-            return response
-
-        if 'all_images_displayed' in data:
-            player.all_images_displayed = True
-            if all(p.all_images_displayed for p in players):
+            if not group.all_manual_bet2:
                 for p in players:
-                    p.participant.vars['display_phase_end_time'] = time.time() + 4
-                return {p.id_in_group: {'start_display_timer': True} for p in players}
+                    if p.field_maybe_none('bet1') == 0:
+                        p.computer_bet_one = 1
+                        random_bet = random.randint(1, 3)
+                        p.bet1 = random_bet
+                        p.participant.vars['bet1'] = p.bet1
+                        p.initial_bet_time = 3.0
+                group.all_manual_bet2 = True
+
+            # Only proceed if all players have made or been assigned a bet
+            if all(p.field_maybe_none('bet1') != 0 for p in players):
+                if not group.remaining_images_displayed:
+                    group.remaining_images_displayed = True
+                    display_response = MyPage.display_remaining_images(player, players)
+                    for p in players:
+                        p.participant.vars['display_phase_end_time'] = time.time() + 4
+                    for p_id, p_response in display_response.items():
+                        p_response['start_display_timer'] = True
+                    return display_response
 
         return response
 

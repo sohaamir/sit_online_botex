@@ -220,6 +220,7 @@
     let choiceMade = false;
     let betMade = false;
     let individualPageLoadTime;
+    let betTimerStarted = false;
 
     document.addEventListener('DOMContentLoaded', function() {
         individualPageLoadTime = performance.now();
@@ -254,7 +255,6 @@
             });
             choose(event.key === 'ArrowLeft' ? 'left' : 'right');
             choiceMade = true;
-            // clearTimeout(initialChoiceTimerId);
         } 
         else if (currentStage === 'bet' && (event.key >= '1' && event.key <= '3') && !betMade) {
             const bet = parseInt(event.key);
@@ -294,6 +294,27 @@
         }
     }
 
+    function startBetTimer() {
+        if (!betTimerStarted) {
+            betTimerStarted = true;
+            document.getElementById('bet-container').style.display = 'block';
+            document.getElementById('choice-title').style.display = 'none';
+            document.getElementById('bet-title').style.display = 'block';
+            currentStage = 'bet';
+            betMade = false;
+            document.addEventListener('keydown', handleKeyDown);
+            betPhaseStartTime = performance.now();
+
+            setTimeout(function() {
+                if (!betMade) {
+                    liveSend({bet_timer_ended: true});
+                    document.removeEventListener('keydown', handleKeyDown);
+                }
+                betTimerStarted = false;
+            }, 3000);
+        }
+    }
+
     function liveRecv(data) {
         console.log('Received data:', data);
 
@@ -318,21 +339,9 @@
             }, 3000);
         }
 
-        if ('start_bet_timer' in data && data.start_bet_timer) {
-            document.getElementById('bet-container').style.display = 'block';
-            document.getElementById('choice-title').style.display = 'none';
-            document.getElementById('bet-title').style.display = 'block';
-            currentStage = 'bet';
-            betMade = false;
-            document.addEventListener('keydown', handleKeyDown);
-            betPhaseStartTime = performance.now();
-
-            setTimeout(function() {
-                if (!betMade) {
-                    liveSend({bet_timer_ended: true});
-                }
-                document.removeEventListener('keydown', handleKeyDown);
-            }, 3000);
+        if (('start_bet_timer' in data && data.start_bet_timer) || 
+            ('show_bet_container' in data && data.show_bet_container)) {
+            startBetTimer();
         }
 
         if ('computer_choice' in data) {
@@ -347,21 +356,6 @@
             const otherOption = document.getElementById(`option_${data.highlight_selected_choice === 'left' ? 'right' : 'left'}`);
             selectedOption.classList.add('selected');
             otherOption.classList.remove('selected');
-        }
-
-        if ('show_bet_container' in data && data.show_bet_container) {
-            document.getElementById('bet-container').style.display = 'block';
-            document.getElementById('choice-title').style.display = 'none';
-            document.getElementById('bet-title').style.display = 'block';
-            currentStage = 'bet';
-            betMade = false;
-            document.addEventListener('keydown', handleKeyDown);
-            betPhaseStartTime = performance.now();
-
-            setTimeout(function() {
-                liveSend({bet_timer_ended: true});
-                document.removeEventListener('keydown', handleKeyDown);
-            }, 3000);
         }
 
         if ('highlight_selected_bet' in data) {
@@ -391,28 +385,28 @@
                 }
             });
 
-            console.log('Sending all_images_displayed event');
-            liveSend({all_images_displayed: true});
-
-            // Ensure the bet is still highlighted after displaying images
-            if ('highlight_selected_bet' in data) {
-                const betElements = document.querySelectorAll('.bet-options div');
-                betElements.forEach(element => {
-                    element.classList.remove('selected');
-                });
-                const selectedBetElement = document.querySelector(`.bet-options div[data-bet="${data.highlight_selected_bet}"]`);
-                if (selectedBetElement) {
-                    selectedBetElement.classList.add('selected');
-                }
+            if (!window.allImagesDisplayed) {
+                console.log('Sending all_images_displayed event');
+                liveSend({all_images_displayed: true});
+                window.allImagesDisplayed = true;
             }
         }
 
         if ('start_display_timer' in data && data.start_display_timer) {
             console.log('Starting 4-second display timer');
-            setTimeout(() => {
+            clearTimeout(window.displayTimerTimeout); // Clear any existing timeout
+            clearTimeout(window.failsafeTimeout); // Clear any existing failsafe timeout
+
+            window.displayTimerTimeout = setTimeout(() => {
                 console.log('Display phase ended, redirecting to SecondChoicePage');
                 document.getElementById('form').submit();
-            }, 4000);
+            }, 3000);
+
+            // Failsafe: Ensure redirection happens after 3 seconds
+            window.failsafeTimeout = setTimeout(() => {
+                console.log('Failsafe: Ensuring redirection to SecondChoicePage');
+                document.getElementById('form').submit();
+            }, 3000);
         }
     }
 
