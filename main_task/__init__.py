@@ -376,6 +376,7 @@ class Player(BasePlayer):
     image_displayed = models.BooleanField(initial=False)
     second_image_displayed = models.BooleanField(initial=False)
     my_page_load_time = models.FloatField()
+    individual_page_load_time = models.FloatField()
     initial_choice_time = models.FloatField()
     initial_bet_time = models.FloatField()
     preference_choice_time = models.FloatField()
@@ -635,55 +636,44 @@ class MyPage(Page):
         # Record the page load time for each player and set the group-level variable when all players have loaded the page
         # This is used to set the round reward and start the choice phase timer
         if 'my_page_load_time' in data:
-            player.my_page_load_time = round(data['my_page_load_time'] / 4000, 2)
+            player.my_page_load_time = round(data['my_page_load_time'] / 1000, 2)
+            player.individual_page_load_time = round(data['individual_page_load_time'] / 1000, 2)
 
             if all(p.field_maybe_none('my_page_load_time') for p in players):
                 group.my_page_load_time = round(max(p.my_page_load_time for p in players), 2)
-                # Set the round reward at the start of each round
                 group.set_round_reward()
-                # Call the reversal_learning method at the start of each round
                 group.reversal_learning()
-                # Start the choice phase timer for 4000ms
-                player.participant.vars['choice_phase_start_time'] = time.time()  # Record the start time of the choice phase
-                pass
                 return {p.id_in_group: dict(start_choice_phase_timer=True) for p in players}
 
-        # Record the choice made by the player and set the chosen_image_one based on the choice
-        # This is used to calculate comparisons and accuracies for the first choice
         if 'initial_choice_time' in data:
-            player.initial_choice_time = round(data['initial_choice_time'] / 4000, 2)
+            if data['initial_choice_time'] is not None:
+                actual_choice_time = round((data['initial_choice_time'] - player.individual_page_load_time) / 1000, 2)
+                player.initial_choice_time = min(actual_choice_time, 4.0)
+            else:
+                player.initial_choice_time = 4.0
+
             if 'choice' in data and not player.field_maybe_none('chosen_image_one'):
-                player.choice1 = data['choice']  # Record the manual choice
+                player.choice1 = data['choice']
                 player.chosen_image_one = player.left_image if data['choice'] == 'left' else player.right_image
                 player.participant.vars['chosen_image_one'] = player.chosen_image_one
-                player.computer_choice_one = False  # Record that the choice was made by the player
-                pass
+                player.computer_choice_one = False
 
-        # Record the choice made by the player and set the chosen_image_one based on the choice
-        # This is used to calculate comparisons and accuracies for the first choice
         if 'choice_phase_timer_ended' in data:
-            pass
-
-            # Record the choice made by the player and set the chosen_image_one based on the choice
-            # This is used to calculate comparisons and accuracies for the first choice 
             for p in players:
                 if p.field_maybe_none('choice1') is None or p.choice1 == '':
                     random_choice = random.choice(['left', 'right'])
                     p.choice1 = random_choice
                     p.chosen_image_one = p.left_image if random_choice == 'left' else p.right_image
                     p.participant.vars['chosen_image_one'] = p.chosen_image_one
-                    p.initial_choice_time = 4.0  # Record as 4.0 if the choice was made randomly
+                    p.initial_choice_time = 4.0
                     p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
-                    p.computer_choice_one = True  # Record that the choice was made by the computer
+                    p.computer_choice_one = True
                     if p.chosen_image_one == 'option1A.bmp':
                         p.chosen_image_computer = 'option1A_tr.bmp'
                     elif p.chosen_image_one == 'option1B.bmp':
                         p.chosen_image_computer = 'option1B_tr.bmp'
                     p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
-                    pass
                 else:
-                    p.chosen_image_one = p.left_image if p.choice1 == 'left' else p.right_image
-                    p.participant.vars['chosen_image_one'] = p.chosen_image_one
                     p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
                     p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
 
@@ -703,8 +693,9 @@ class MyPage(Page):
                 p.player3_choice1_accuracy = other_players[2].choice1_accuracy
                 p.player4_choice1_accuracy = other_players[3].choice1_accuracy
 
-            pass
-            return {p.id_in_group: dict(show_bet_container=True, highlight_selected_choice=p.choice1) for p in players}
+            # Always move to bet phase after choice phase timer ends
+            print("Choice phase timer ended, transitioning to bet phase")
+            return {p.id_in_group: dict(show_bet_container=True, start_bet_timer=True, highlight_selected_choice=p.choice1) for p in players}
 
         # Show the bet container and start the bet phase timer after all players have made their first choice
         if 'show_bet_container' in data and data['show_bet_container']:
@@ -722,17 +713,10 @@ class MyPage(Page):
             if not player.field_maybe_none('bet1') and data.get('id') == player.id_in_group:
                 player.bet1 = int(data['bet'])
                 player.participant.vars['bet1'] = player.bet1
-                player.initial_bet_time = round(data['initial_bet_time'] / 4000, 2)
-                if player.computer_bet_one != 0:
-                    player.computer_bet_one = 0
-                pass
-
-                if all(p.field_maybe_none('bet1') != 0 for p in players):
-                    group.manual_bets = True
+                player.initial_bet_time = round(data['initial_bet_time'] / 1000, 2)
+                player.computer_bet_one = 0
 
         if 'bet_timer_ended' in data:
-            player.participant.vars['bet_timer_started'] = False
-
             for p in players:
                 if p.field_maybe_none('bet1') == 0:
                     p.computer_bet_one = 1
@@ -740,24 +724,29 @@ class MyPage(Page):
                     p.bet1 = random_bet
                     p.participant.vars['bet1'] = p.bet1
                     p.initial_bet_time = 4.0
-                    pass
 
-            # Highlight the computer-selected bet for players who didn't bet manually
-            response = {}
-            for p in players:
-                response[p.id_in_group] = dict(highlight_selected_bet=p.bet1)
+            # Highlight the selected bet for all players
+            response = {p.id_in_group: dict(highlight_selected_bet=p.bet1) for p in players}
 
-            # Trigger the display phase here
-            display_response = MyPage.display_remaining_images(player, players)
-            
-            # Merge the highlight_selected_bet response with the display_remaining_images response
-            for player_id, player_response in display_response.items():
-                if player_id in response:
-                    response[player_id].update(player_response)
-                else:
-                    response[player_id] = player_response
+            if not group.remaining_images_displayed:
+                group.remaining_images_displayed = True
+                display_response = MyPage.display_remaining_images(player, players)
+                
+                # Merge the responses
+                for player_id, player_response in display_response.items():
+                    if player_id in response:
+                        response[player_id].update(player_response)
+                    else:
+                        response[player_id] = player_response
 
             return response
+
+        if 'all_images_displayed' in data:
+            player.all_images_displayed = True
+            if all(p.all_images_displayed for p in players):
+                for p in players:
+                    p.participant.vars['display_phase_end_time'] = time.time() + 4
+                return {p.id_in_group: {'start_display_timer': True} for p in players}
 
         return response
 
@@ -774,10 +763,6 @@ class MyPage(Page):
                 display_all_images=True,
                 all_images=all_images
             )
-        
-        # Set a timer to move to SecondChoicePage after 3 seconds
-        for p in players:
-            p.participant.vars['display_phase_end_time'] = time.time() + 3
         
         return response
 
@@ -847,7 +832,7 @@ class SecondChoicePage(Page):
 
         # Record the time taken to load the second choice page for each player and set the group-level variable when all players have loaded the page
         if 'second_choice_page_loaded' in data:
-            player.second_choice_page_load_time = round(data['page_load_time'] / 4000, 2)
+            player.second_choice_page_load_time = round(data['page_load_time'] / 1000, 2)
             if all(p.field_maybe_none('second_choice_page_load_time') for p in players):
                 return {p.id_in_group: dict(start_second_choice_timer=True) for p in players}
 
@@ -858,7 +843,7 @@ class SecondChoicePage(Page):
             player.choice2_computer = ''
             player.computer_choice_two = False
             if 'second_choice_time' in data:
-                player.second_choice_time = round(data['second_choice_time'] / 4000, 2)
+                player.second_choice_time = round(data['second_choice_time'] / 1000, 2)
             else:
                 player.second_choice_time = None
             pass
@@ -913,7 +898,7 @@ class SecondChoicePage(Page):
             player.bet2 = int(data['second_bet'])
             player.bet2_computer = player.bet2
             player.computer_bet_two = False
-            player.second_bet_time = round(data['second_bet_time'] / 4000, 2)
+            player.second_bet_time = round(data['second_bet_time'] / 1000, 2)
             pass
 
         # Start the second bet timer for all players and assign a random bet to players who haven't made a bet within the time limit

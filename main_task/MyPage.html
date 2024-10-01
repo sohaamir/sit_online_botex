@@ -211,40 +211,54 @@
         player_id: {{ player_id }},
     };
 
-    document.addEventListener('DOMContentLoaded', function() {
-        liveSend({my_page_load_time: performance.now()});
-        
-        initialChoiceTimerId = setTimeout(function() {
-            if (currentStage === 'choice') {
-                liveSend({initial_choice_time: 4000});
-            }
-        }, 4000);
-
-        window.choicePhaseStartTime = performance.now();
-    });
-
-    window.betPhaseStartTime = null;
+    let choicePhaseStartTime;
+    let betPhaseStartTime;
     let initialChoiceTime;
     let initialBetTime;
     let currentStage = 'choice';
     let initialChoiceTimerId;
     let choiceMade = false;
     let betMade = false;
+    let individualPageLoadTime;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        individualPageLoadTime = performance.now();
+        liveSend({
+            my_page_load_time: performance.now(),
+            individual_page_load_time: individualPageLoadTime
+        });
+        
+        // Timeout logic
+        const pageStartTime = js_vars.page_start_time;
+        const timeoutDuration = 4200000; // 42 seconds in milliseconds
+
+        function checkTimeout() {
+            const currentTime = new Date().getTime();
+            if (currentTime - pageStartTime >= timeoutDuration) {
+                document.getElementById('form').submit();
+            } else {
+                setTimeout(checkTimeout, 1000); // Check every second
+            }
+        }
+
+        setTimeout(checkTimeout, 1000); // Start checking after 1 second
+    });
 
     function handleKeyDown(event) {
         if (currentStage === 'choice' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !choiceMade) {
-            initialChoiceTime = performance.now() - window.choicePhaseStartTime;
+            initialChoiceTime = performance.now() - individualPageLoadTime;
             liveSend({
                 initial_choice_time: initialChoiceTime, 
+                actual_choice_time: performance.now() - choicePhaseStartTime,
                 choice: event.key === 'ArrowLeft' ? 'left' : 'right'
             });
             choose(event.key === 'ArrowLeft' ? 'left' : 'right');
             choiceMade = true;
-            clearTimeout(initialChoiceTimerId);
+            // clearTimeout(initialChoiceTimerId);
         } 
         else if (currentStage === 'bet' && (event.key >= '1' && event.key <= '3') && !betMade) {
             const bet = parseInt(event.key);
-            const initialBetTime = performance.now() - window.betPhaseStartTime;
+            const initialBetTime = performance.now() - betPhaseStartTime;
             liveSend({
                 initial_bet_time: initialBetTime, 
                 bet: bet, 
@@ -289,8 +303,35 @@
 
         if ('start_choice_phase_timer' in data && data.start_choice_phase_timer && !window.choicePhaseTimerStarted) {
             window.choicePhaseTimerStarted = true;
+            document.getElementById('option-container').style.display = 'block';
+            document.getElementById('choice-title').style.display = 'block';
+            choicePhaseStartTime = performance.now();
+            choicePhaseActive = true;
+            
+            initialChoiceTimerId = setTimeout(function() {
+                console.log('Timer ended, sending choice_phase_timer_ended event');
+                liveSend({
+                    choice_phase_timer_ended: true,
+                    actual_choice_time: 4000
+                });
+                choicePhaseActive = false;
+            }, 4000);
+        }
+
+        if ('start_bet_timer' in data && data.start_bet_timer) {
+            document.getElementById('bet-container').style.display = 'block';
+            document.getElementById('choice-title').style.display = 'none';
+            document.getElementById('bet-title').style.display = 'block';
+            currentStage = 'bet';
+            betMade = false;
+            document.addEventListener('keydown', handleKeyDown);
+            betPhaseStartTime = performance.now();
+
             setTimeout(function() {
-                liveSend({choice_phase_timer_ended: true});
+                if (!betMade) {
+                    liveSend({bet_timer_ended: true});
+                }
+                document.removeEventListener('keydown', handleKeyDown);
             }, 4000);
         }
 
@@ -308,15 +349,6 @@
             otherOption.classList.remove('selected');
         }
 
-        if ('start_bet_timer' in data && data.start_bet_timer && !window.betTimerStarted) {
-            window.betTimerStarted = true;
-            setTimeout(function() {
-                if (!betMade) {
-                    liveSend({bet_timer_ended: true});
-                }
-            }, 4000);
-        }
-
         if ('show_bet_container' in data && data.show_bet_container) {
             document.getElementById('bet-container').style.display = 'block';
             document.getElementById('choice-title').style.display = 'none';
@@ -324,12 +356,10 @@
             currentStage = 'bet';
             betMade = false;
             document.addEventListener('keydown', handleKeyDown);
-            window.betPhaseStartTime = performance.now();
+            betPhaseStartTime = performance.now();
 
             setTimeout(function() {
-                if (!betMade) {
-                    liveSend({bet_timer_ended: true});
-                }
+                liveSend({bet_timer_ended: true});
                 document.removeEventListener('keydown', handleKeyDown);
             }, 4000);
         }
@@ -375,31 +405,16 @@
                     selectedBetElement.classList.add('selected');
                 }
             }
+        }
 
-            // Set a timer to move to SecondChoicePage after 3 seconds
+        if ('start_display_timer' in data && data.start_display_timer) {
+            console.log('Starting 4-second display timer');
             setTimeout(() => {
-                console.log('Redirecting to SecondChoicePage');
+                console.log('Display phase ended, redirecting to SecondChoicePage');
                 document.getElementById('form').submit();
             }, 4000);
         }
     }
-
-    // Timeout logic
-    document.addEventListener('DOMContentLoaded', function() {
-        const pageStartTime = js_vars.page_start_time;
-        const timeoutDuration = 4200000; // 42 seconds in milliseconds
-
-        function checkTimeout() {
-            const currentTime = new Date().getTime();
-            if (currentTime - pageStartTime >= timeoutDuration) {
-                document.getElementById('form').submit();
-            } else {
-                setTimeout(checkTimeout, 1000); // Check every second
-            }
-        }
-
-        setTimeout(checkTimeout, 1000); // Start checking after 1 second
-    });
 
 </script>
 
