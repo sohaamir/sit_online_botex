@@ -1,3 +1,4 @@
+from ..websocket_utils import safe_websocket
 from otree.api import *
 from . import *
 import random
@@ -628,6 +629,7 @@ class MyPage(Page):
 # --- If players do not respond within the time limit, the computer randomly selects a choice or bet for them
 
     @staticmethod
+    @safe_websocket
     def live_method(player, data):
         print(f"Received data: {data}")
         group = player.group
@@ -816,6 +818,7 @@ class SecondChoicePage(Page):
 # -------------------------------------------------------------------------------------------------------------------- #
 
     @staticmethod
+    @safe_websocket
     def live_method(player, data):
         group = player.group
         players = group.get_players()
