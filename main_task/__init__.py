@@ -9,7 +9,6 @@ from . import *
 import random
 import time
 import csv
-import os
 
 author = 'Aamir Sohail'
 
