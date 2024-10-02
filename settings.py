@@ -125,3 +125,6 @@ DEMO_PAGE_INTRO_HTML = """ """
 
 # Commented out AUTH_LEVEL setting. Uncomment and set to 'STUDY' to password-protect your site.
 # AUTH_LEVEL = os.environ.get('OTREE_AUTH_LEVEL', 'DEMO')
+
+# Add the websocket_utils extension app to the list of installed apps
+EXTENSION_APPS = ['websocket_utils']
