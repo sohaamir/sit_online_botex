@@ -55,7 +55,7 @@ def generate_trial_sequence():
 # The sequence is generated randomly with reversal rounds every 8-12 rounds, but remains the same for all groups
 
 # Define constants at the top level
-NUM_ROUNDS = 40
+NUM_ROUNDS = 60
 REWARD_PROBABILITY_A = 0.7
 REWARD_PROBABILITY_B = 0.3
 
@@ -64,8 +64,8 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
     current_high_prob_image = 'A'
     high_prob_rewards = 0
     low_prob_rewards = 0
-    target_high_rewards = 56
-    target_low_rewards = 24
+    target_high_rewards = 42
+    target_low_rewards = 18
 
     csv_data = [['Round', 'High Prob', 'reward_A', 'reward_B']]
 
@@ -133,7 +133,7 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
 
 # Generate the sequences once when the module is imported
 TRIAL_SEQUENCE, REVERSAL_ROUNDS = generate_trial_sequence()
-REWARD_SEQUENCE = generate_reward_sequence(40, REVERSAL_ROUNDS)
+REWARD_SEQUENCE = generate_reward_sequence(60, REVERSAL_ROUNDS)
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Base Constants: Used to define constants across all pages and subsessions in the game

@@ -52,7 +52,7 @@
     <div class="container">
         <h1><b>Practice Game Instructions</b></h1>
         <br>
-        <p><b>To get familiar with the task, you will now get to play 3 practice rounds with four other players.</b></p>
+        <p><b>To get familiar with the task, you will now get to play 4 practice rounds with four other players.</b></p>
         <br>
         <div class="blue-highlight-box">
             <p>The practice game is set up in the same way as the main game, but there are <b>no reversals,</b> and the reward probabilities <b>are fixed.</b>
@@ -61,13 +61,21 @@
             <p>This is just to get familiar with how the task works: which buttons to press and when.</p>
             <br>
             <p>The <b>time provided for each of the individual sections is also longer</b> in the practice game (approximately 8 seconds per decision), 
-                compared to the actual game (between 2-3 seconds per decision), so you can understand the different components and have more time to make your decisions.</p>
+                compared to the actual game (3 seconds per decision), so you can understand the different components and have more time to make your decisions.</p>
         </div>
         <br>
-        <p>Please press the next button when you are ready to play the practice game. We will put you into a waiting room where you will be matched with four other players.</p> 
-        <p><b>It should take no longer than a few minutes to be matched (which is factored into your payment).</b></p> 
+        <p>The practice task itself will last approximately 4 minutes.</p>
         <br>
-        <p>The practice task itself will last approximately 3 minutes. <b>Please also change the size of your browser window to match the page if needed.</b></p>
+        <p><b>Please also change the size of your browser window during this practice session to match the page if needed.</b>
+        <p>You should be able to see the white boundaries around the page as demonstrated below:</p>
+            <div class="image-container">
+                <img src="{% static 'instructions/example_dimensions.png' %}" alt="Bet 2" width="800" height="auto" class="bordered-image">
+            </div>
+        <br>
+        <p><b>Please ensure that these white boundaries are correctly proportioned to your screen, so you can see the images.</b></p>
+        <br>
+        <p>When you are ready, press the next button when you are ready to play the practice game. We will put you into a waiting room where you will be matched with four other players.</p> 
+        <p><b>It should take no longer than a minute or two to be matched (which is factored into your payment).</b></p> 
         {% next_button %}
     </div>
 {% endblock %}

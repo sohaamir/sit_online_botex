@@ -105,14 +105,13 @@
     <div class="container">
         <h2><b>First Choice and Bet</b></h2>
         <br>
-        <p>At the beginning of each round, you will be presented with the screen below, where you will make your first choice for <b>which image you think will give a reward.</b></p>
+        <p>At the beginning of each round, you will be presented with the screen below, where you will make your first choice for <b>which image you think will give you points.</b></p>
 
         <div class="image-container">
             <img src="{% static 'instructions/TaskInstructionsPage1/choice1.png' %}" alt="Choice 1" width="600" height="auto">
         </div>
         <br>
-        <p>The two images have different probabilities of giving a reward, with one being more likely to give a reward, and the other more likely to give a loss.
-            Which image gives which is <b>randomly determined at the start.</b></p>
+        <p>Which image gives which is <b>randomly determined at the start.</b> so your first attempt will be a guess.</p>
         <br>
 
         <p>The other four players in the group are represented by avatars, towards the top of the screen.</p>
@@ -125,7 +124,7 @@
             </div>
         </div>
         <br>
-        <p>You will have 2.5 seconds to make this first choice between the two images.
+        <p>You will have 3 seconds to make this first choice between the two images.
             <b>Importantly, you cannot change your choice once it is made</b>.
             If you do not make a choice within this time limit, an image will be selected at random for you.</p>
 
@@ -162,7 +161,7 @@
                 </div>
             </div>
         <br>
-        <p><b>Again, you have 2.5 seconds to make your bet. If you do not make a bet within this time, a random bet will be placed for you.</b></p>
+        <p><b>Again, you have 3 seconds to make your bet. If you do not make a bet within this time, a random bet will be placed for you.</b></p>
 
         <p>The chosen bet is highlighted with a yellow box when the bet is made.</p>
 
@@ -183,12 +182,6 @@
             </p>
         </div>
         <br>
-        <p>Specifically, you should answer based on how confident you are because the number of points is multiplied by the bet.</p>
-            <br>
-        <div class="red-highlight-box">
-            <p><b>This means that if you bet high, you win more if you are correct, but lose more if you are incorrect.</b></p>
-        </div>
-        <br>
         <p>After you have made your choice and bet, the choices of the other players in the group are revealed.</p>
         <br>
         <div class="image-container">
@@ -197,6 +190,7 @@
         <br>
         <p><b>Where players do not make their first choice with in the time-limit, and are therefore made by the computer, 
             the image displayed below their avatar choice will be dimmer.</b></p>
+            <br>
         <p>In the example below, the choice for Player 1 and 2 was made by themselves, whilst it was made for Player 3 and 4 by the computer.</p>
         <div class="image-container">
             <img src="{% static 'instructions/TaskInstructionsPage1/preference_computer.png' %}" alt="First Preference Computer" width="600" height="auto">
