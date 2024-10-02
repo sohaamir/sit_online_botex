@@ -44,6 +44,9 @@ class TaskInstructionsPage1(Page):
 class TaskInstructionsPage2(Page):
     pass
 
+class RewardStructure(Page):
+    pass
+
 class Leaving(Page):
     pass
 
@@ -79,4 +82,4 @@ class TransitionToPracticeTask(Page):
             'transition_time': C.TRANSITION_TIME,
         }
 
-page_sequence = [Welcome, Consent, TaskOverview, TaskInstructionsPage1, TaskInstructionsPage2, Leaving, Comprehension, PracticeInstructions, WaitPage1, TransitionToPracticeTask]
+page_sequence = [Welcome, Consent, TaskOverview, TaskInstructionsPage1, TaskInstructionsPage2, RewardStructure, Leaving, Comprehension, PracticeInstructions, WaitPage1, TransitionToPracticeTask]

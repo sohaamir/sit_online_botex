@@ -33,9 +33,18 @@
         flex-direction: column;
         align-items: flex-start;
         font-size: 1.4rem;
+        width: 90%;  /* Adjust this value as needed */
+        margin: 0 auto;  /* Center the container */
+    }
+    .answer-options label {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 10px;
+        word-wrap: break-word;
     }
     .answer-options input[type="radio"] {
         margin-right: 10px;
+        margin-top: 10px;  /* Align radio button with first line of text */
     }
     .correct-answer {
         background-color: #8AE8A1;
@@ -55,6 +64,10 @@
     }
     #question3-options {
         margin-left: 10%;
+    }
+    #question4-options {
+        margin-left: 10%;
+        text-align: left;
     }
 
     .otree-btn-next {
@@ -147,6 +160,22 @@
     <p id="incorrect3" class="hidden incorrect-answer">That is not the correct answer, please try again!</p>
 
     <br>
+    <h3>Question 4.</h3>
+
+    <p>Which accurately describes how likely the images will give a reward/loss in each block?</p>
+
+    <div class="answer-options" id="question4-options">
+        <label><input type="radio" name="question4" value="1"> Randomly determined</label>
+        <label><input type="radio" name="question4" value="2"> One image will give you a reward everytime, and the other will give you a loss everytime</label>
+        <label><input type="radio" name="question4" value="3"> One image will give you a reward sometimes, and the other will give you a loss sometimes</label>
+        <label><input type="radio" name="question4" value="4"> One image will give you a reward most of the time, and the other will give you a loss most of the time</label>
+    </div>
+    <br>
+    <p id="answer4" class="hidden correct-answer">Correct! Yes, within each block, one image will be more likely than not to give you points (but will sometimes give a loss) 
+        whilst the other is more likely than not to give you a loss (but will sometimes reward you).</p>
+    <p id="incorrect4" class="hidden incorrect-answer">That is not the correct answer, please try again!</p>
+
+    <br>
     <p id="play-game" class="hidden">Please now press the button below to play a practice game.</p>
 
     <div id="next-button-container" class="hidden">
@@ -159,12 +188,15 @@
         var question1 = document.getElementsByName('question1');
         var question2 = document.getElementsByName('question2');
         var question3 = document.getElementsByName('question3');
+        var question4 = document.getElementsByName('question4');
         var answer1 = document.getElementById('answer1');
         var answer2 = document.getElementById('answer2');
         var answer3 = document.getElementById('answer3');
+        var answer4 = document.getElementById('answer4');
         var incorrect1 = document.getElementById('incorrect1');
         var incorrect2 = document.getElementById('incorrect2');
         var incorrect3 = document.getElementById('incorrect3');
+        var incorrect4 = document.getElementById('incorrect4');
         var playGame = document.getElementById('play-game');
         var nextButtonContainer = document.getElementById('next-button-container');
     
@@ -204,11 +236,24 @@
             checkAllAnswers();
         }
     
+        function checkAnswer4() {
+            var isQuestion4Correct = question4[3].checked;
+            if (isQuestion4Correct) {
+                answer4.classList.remove('hidden');
+                incorrect4.classList.add('hidden');
+            } else {
+                answer4.classList.add('hidden');
+                incorrect4.classList.remove('hidden');
+            }
+            checkAllAnswers();
+        }
+    
         function checkAllAnswers() {
             var isQuestion1Correct = question1[3].checked;
             var isQuestion2Correct = question2[3].checked;
             var isQuestion3Correct = question3[2].checked;
-            if (isQuestion1Correct && isQuestion2Correct && isQuestion3Correct) {
+            var isQuestion4Correct = question4[3].checked;
+            if (isQuestion1Correct && isQuestion2Correct && isQuestion3Correct && isQuestion4Correct) {
                 playGame.classList.remove('hidden');
                 nextButtonContainer.classList.remove('hidden');
             } else {
@@ -227,6 +272,10 @@
     
         for (var i = 0; i < question3.length; i++) {
             question3[i].addEventListener('change', checkAnswer3);
+        }
+    
+        for (var i = 0; i < question4.length; i++) {
+            question4[i].addEventListener('change', checkAnswer4);
         }
     });
 </script>
