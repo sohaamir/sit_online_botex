@@ -1,13 +1,14 @@
 # from ..websocket_utils import safe_websocket
-
+import sys
+import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from websocket_utils import safe_websocket
+
 from otree.api import *
 from . import *
 import random
 import time
 import csv
-import sys
 import os
 
 author = 'Aamir Sohail'
