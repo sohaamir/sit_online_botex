@@ -7,14 +7,17 @@ from asgiref.sync import async_to_sync
 def safe_websocket(f):
     @wraps(f)
     def wrapped(player, data):
+        print(f"Entering safe_websocket wrapper for {f.__name__}")
         try:
-            return f(player, data)
+            result = f(player, data)
+            print(f"Exiting safe_websocket wrapper for {f.__name__}")
+            return result
         except Exception as e:
-            print(f"WebSocket error: {e}")
-            # Attempt to close the websocket gracefully
+            print(f"WebSocket error in {f.__name__}: {e}")
             try:
                 async_to_sync(player.group.session.get_consumer().close)()
+                print(f"WebSocket closed for {f.__name__}")
             except Exception as close_error:
-                print(f"Error closing WebSocket: {close_error}")
+                print(f"Error closing WebSocket in {f.__name__}: {close_error}")
         return None
     return wrapped
