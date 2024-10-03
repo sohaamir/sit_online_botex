@@ -1,9 +1,7 @@
-# from ..websocket_utils import safe_websocket
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from websocket_utils import safe_websocket
-
 from otree.api import *
 from . import *
 import random
@@ -28,7 +26,8 @@ The task is the same as reported in (Zhang & Glascher, 2020) https://www.science
 
 def generate_trial_sequence():
     # Set a fixed random seed to ensure the same sequence every time
-    random.seed(42)  # You can change this number, but keep it constant
+    # Or you can remove this line to generate a new sequence each time
+    random.seed(49)  # You can change this number, but keep it constant
 
     sequence = []
     current_image = random.choice(['option1A.bmp', 'option1B.bmp'])

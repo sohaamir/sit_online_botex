@@ -1,3 +1,6 @@
+# Prevent the WebSocket from crashing the server when an error occurs
+# In response to OSError: [Errno 107] Transport endpoint is not connected
+
 from functools import wraps
 from asgiref.sync import async_to_sync
 
