@@ -4,3 +4,4 @@ python-dotenv==1.0.1
 sentry_sdk
 websockets==10.1
 asgiref==3.8.1
+asyncio==3.4.3
