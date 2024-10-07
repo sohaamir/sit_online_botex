@@ -218,51 +218,6 @@
 <script>
     window.otherPlayerIds = {{ other_player_ids|json }};
     window.chosenImages = {{ chosen_images|json }};
-    window.js_vars = {
-        player_id: {{ player_id }},
-        heartbeat_interval: {{ C.HEARTBEAT_INTERVAL * 1000 }},
-    };
-
-    let heartbeatInterval;
-    let secondChoiceTime;
-    let secondBetStartTime;
-    let currentStage = 'choice';
-    let choiceMade = false;
-    let betMade = false;
-    let betPhaseEnded = false;
-    let resultsShown = false;
-
-    function startHeartbeat() {
-        heartbeatInterval = setInterval(() => {
-            liveSend({ type: 'heartbeat' });
-        }, js_vars.heartbeat_interval);
-    }
-
-    function stopHeartbeat() {
-        clearInterval(heartbeatInterval);
-    }
-
-    function connectWebSocket() {
-        console.log('WebSocket connected');
-        startHeartbeat();
-    }
-
-    function disconnectWebSocket() {
-        console.log('WebSocket disconnected');
-        stopHeartbeat();
-    }
-
-    function onMessage(data) {
-        if (data.error) {
-            console.error('Error from server:', data.error);
-        } else {
-            // Process the message normally
-            liveRecv(data);
-        }
-    }
-
-    // Stop the heartbeat when the page is unloaded
-    window.addEventListener('beforeunload', stopHeartbeat);
 
     document.addEventListener('DOMContentLoaded', function() {
         // Display the chosen images from MyPage on page load
@@ -276,9 +231,20 @@
         });
 
         liveSend({second_choice_page_loaded: true, page_load_time: performance.now()});
-        startHeartbeat();
     });
 
+    // Initialize variables to track the state of the task
+    // These variables are used to track the state of the task and the player's choices and bets
+    let secondChoiceTime;
+    let secondBetStartTime;
+    let currentStage = 'choice'; // Initialize currentStage variable
+    let choiceMade = false;
+    let betMade = false; // Define the betMade variable
+    let betPhaseEnded = false;
+    let resultsShown = false;
+
+    // Define the handleKeyDown function to handle keydown events for choices and bets
+    // This function is called when a key is pressed on the keyboard
     function handleKeyDown(event) {
         if (currentStage === 'choice' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !choiceMade) {
             const secondChoiceTime = Math.round((performance.now() - secondChoiceStartTime) * 100) / 100;
@@ -295,6 +261,8 @@
 
     document.addEventListener('keydown', handleKeyDown);
 
+    // Define the choose function when an option is selected
+    // This function is called when an option is selected by clicking on the image or pressing the arrow keys
     function choose(option) {
         if (currentStage === 'choice') {
             const selectedOption = document.getElementById(`option_${option}`);
@@ -313,6 +281,8 @@
         }
     }
 
+    // Define the selectBet function when a bet is selected
+    // This function is called when a bet is made manually by pressing the number keys 1, 2, or 3
     function selectBet(bet) {
         const betElements = document.querySelectorAll('.bet-options div');
         betElements.forEach(element => {
@@ -329,15 +299,14 @@
         }
     }
 
+// Live communication functions to send and receive data 
+// These functions are used to send and receive data between the server and the client in real-time
+// The liveSend function sends data to the server, while the liveRecv function receives data from the server
+
     function liveRecv(data) {
         console.log('Received data:', data);
 
-        if (data.error && data.error === 'Not all players are active') {
-            console.error('Disconnection detected:', data.error);
-            // Handle the disconnection, perhaps by showing a message to the user
-            return;
-        }
-
+        // If the second_choice_page_loaded flag is received, log the page load time
         if ('start_second_choice_timer' in data && data.start_second_choice_timer) {
             secondChoiceStartTime = performance.now();
             setTimeout(function() {
@@ -347,6 +316,8 @@
             }, 3000);
         }
 
+        // Highlight the selected image if the highlight_selected_image flag is received
+        // This is to ensure that the selected image is highlighted when the second choice page is loaded
         if ('highlight_selected_image' in data) {
             const selectedOption = document.querySelector(`#option_${data.highlight_selected_image === '{{ player.left_image }}' ? 'left' : 'right'}`);
             const otherOption = document.querySelector(`#option_${data.highlight_selected_image === '{{ player.left_image }}' ? 'right' : 'left'}`);
@@ -356,23 +327,30 @@
             otherOption.classList.remove('selected-from-previous');
         }
 
+        // If the second_choice_timer_ended flag is received, send the second_choice_timer_ended event
+        // This is to ensure that the second choice phase ends after 3000ms even if no choice is made
         if ('second_choice_timer_ended' in data && data.second_choice_timer_ended) {
             if (currentStage === 'choice') {
+                // Start the second bet phase after the second choice phase ends
                 document.getElementById('bet-container').style.display = 'block';
                 document.getElementById('choice-title').style.display = 'none';
                 document.getElementById('bet-title').style.display = 'block';
                 currentStage = 'bet';
-                betMade = false;
+                betMade = false; // Reset betMade to false when the second bet container is shown
 
+                // Record the start time of the second bet phase
                 secondBetStartTime = performance.now();
                 console.log('Second bet phase start time:', secondBetStartTime);
 
+                // Start the second bet timer for 3000ms
                 setTimeout(function() {
                     if (currentStage === 'bet' && !betMade) {
+                        // If no bet is made within 3000ms, send the second_bet_timer_ended event
                         liveSend({second_bet_timer_ended: true});
                     }
                 }, 3000);
 
+                // Print the correct choice2 value based on whether it was made manually or assigned by the computer
                 if (choiceMade) {
                     console.log('Player', js_vars.player_id, 'made a manual second choice:', document.getElementById('choice2_field').value);
                 } else {
@@ -381,6 +359,8 @@
             }
         }
 
+        // If the second_bet_timer_ended flag is received, send the second_bet_timer_ended event
+        // This is to ensure that the second bet phase ends after 3000ms even if no bet is made
         if ('show_bet_container' in data && data.show_bet_container) {
             if (!window.betContainerDisplayed) {
                 window.betContainerDisplayed = true;
@@ -398,14 +378,17 @@
             }
         }
 
+        // Add this condition to highlight the computer-selected bet
         if ('highlight_computer_bet' in data) {
             selectBet(data.highlight_computer_bet);
         }
 
+        // Add this condition to check if show_results has already been received
         if (window.showResultsReceived) {
             return;
         }
 
+        // Show the results if the show_results flag is received
         if ('show_results' in data && data.show_results && !resultsShown) {
             resultsShown = true;
             betPhaseEnded = true;
@@ -428,38 +411,45 @@
                 winLossImage.style.display = 'block';
             });
 
+            // Display the win/loss image for the current participant
             const playerWinLossImage = data.player_win_loss_image;
             document.getElementById('player-win-loss-image').src = `/static/${playerWinLossImage}`;
             document.getElementById('player-win-loss-container').style.display = 'block';
 
+            // Modify this part to ensure the bet is highlighted
             const betContainer = document.getElementById('bet-container');
             betContainer.style.pointerEvents = 'none';
             betContainer.style.opacity = '1.0';
 
+            // Ensure the selected bet is highlighted
             if (data.selected_bet) {
                 selectBet(data.selected_bet);
             }
 
+            // Hide the 'Your bet?' text
             document.getElementById('bet-title').style.display = 'none';
 
+            // Display the calculated reward based on the second bet for the current participant
             const secondBetReward = data.second_bet_reward;
             document.getElementById('trial-reward').textContent = `${secondBetReward} points`;
             document.getElementById('trial-reward').style.display = 'block';
 
+            // Set a timeout to log a message and transition to the next round after the intertrial interval has finished
             setTimeout(() => {
                 console.log(`Intertrial interval of ${data.intertrial_interval}ms has finished.`);
                 console.log(`Round ${data.round_number} finished. Transitioning to the next round.`);
                 console.log('Transitioning to the next round');
 
+                // Set default values for the choice2 and bet2 fields if they are empty
                 const choice2Field = document.getElementById('choice2_field');
                 const bet2Field = document.getElementById('bet2_field');
 
                 if (!choice2Field.value) {
-                    choice2Field.value = 'left';
+                    choice2Field.value = 'left'; // Set a default value (e.g., 'left')
                 }
 
                 if (!bet2Field.value) {
-                    bet2Field.value = 1;
+                    bet2Field.value = 1; // Set a default value (e.g., 1)
                 }
 
                 setTimeout(function() {
