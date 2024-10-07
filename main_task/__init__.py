@@ -634,7 +634,6 @@ class MyPage(Page):
     @staticmethod
     @safe_websocket(max_retries=3, retry_delay=1)
     def live_method(player, data):
-        print(f"Received data: {data}")
         group = player.group
         players = group.get_players()
         response = {}
@@ -700,7 +699,6 @@ class MyPage(Page):
                 p.player4_choice1_accuracy = other_players[3].choice1_accuracy
 
             # Always move to bet phase after choice phase timer ends
-            print("Choice phase timer ended, transitioning to bet phase")
             return {p.id_in_group: dict(show_bet_container=True, start_bet_timer=True, highlight_selected_choice=p.choice1) for p in players}
 
         # Show the bet container and start the bet phase timer after all players have made their first choice

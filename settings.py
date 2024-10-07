@@ -128,3 +128,6 @@ DEMO_PAGE_INTRO_HTML = """ """
 
 # Add the websocket_utils extension app to the list of installed apps
 EXTENSION_APPS = ['websocket_utils']
+
+# Set the timeout for the WebSocket connection to 70 seconds to prevent timeouts
+WEBSOCKET_TIMEOUT_SECONDS = 70  # Increase this value if you experience WebSocket timeouts
