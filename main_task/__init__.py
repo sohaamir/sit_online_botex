@@ -158,6 +158,8 @@ class C(BaseConstants):
         'avatar_male.png': '_static/main_task/avatar_male.png',
     }
     REWARD_SEQUENCE = REWARD_SEQUENCE
+    HEARTBEAT_INTERVAL = 20
+    DISCONNECT_TIMEOUT = HEARTBEAT_INTERVAL * 3  # 60 seconds
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Generate a sequence of earnings types for the experiment based on the number of rounds
@@ -343,6 +345,28 @@ class Group(BaseGroup):
         self.next_round_transition_time = None
         self.reversal_happened = False
 
+#### ------------- Define the heartbeat ------------------- ####
+# The heartbeat is used to check if all players are still active in the group
+
+    @staticmethod
+    def live_method(player, data):
+        current_time = time.time()
+        
+        if data.get('type') == 'heartbeat':
+            player.last_active = current_time
+            player.save()
+            return  # Don't process heartbeats further
+        
+        # Check if all players are still active
+        all_active = all(
+            p.last_active > current_time - C.DISCONNECT_TIMEOUT
+            for p in player.group.get_players()
+        )
+        
+        if not all_active:
+            # Handle the case where not all players are active
+            return {p.id_in_group: {'error': 'Not all players are active'} for p in player.group.get_players()}
+
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- PLAYER-LEVEL VARIABLES: USED TO TRACK CHOICES, BETS, EARNINGS AND A WHOLE LOT ELSE ------ #
 # -------------------------------------------------------------------------------------------------------------------- #
@@ -433,6 +457,7 @@ class Player(BasePlayer):
     loss_or_gain_player3 = models.IntegerField()
     loss_or_gain_player4 = models.IntegerField()
     all_images_displayed = models.BooleanField(initial=False)
+    last_active = models.FloatField(initial=0)
 
 # Reset the player-level variables at the start of each round 
 
@@ -555,7 +580,8 @@ class MyPage(Page):
     @staticmethod
     def js_vars(player: Player):
         return dict(
-            page_start_time=int(time.time() * 1000)
+            page_start_time=int(time.time() * 1000),
+            heartbeat_interval=C.HEARTBEAT_INTERVAL * 1000  # Convert to milliseconds for JS
         )
 
 # Time players out after 42 seconds spent on MyPage (this assumes that a player has left the session)
