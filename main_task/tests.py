@@ -1,29 +1,42 @@
-from otree.api import Bot, Submission
+from otree.api import Bot, Submission, expect
 from . import *
 import random
 import time
 
 class PlayerBot(Bot):
-    def play_round(self):
-        yield Submission(MyPage, check_html=False)
-        yield Submission(SecondChoicePage, check_html=False)
-        if self.round_number == C.NUM_ROUNDS:
-            yield Submission(FinalResults, check_html=False)
-
-    def make_choice(self):
+    def make_random_choice(self):
         return random.choice(['left', 'right'])
 
-    def make_bet(self):
+    def make_random_bet(self):
         return random.randint(1, 3)
 
-    def live_MyPage(self, data):
-        if 'start_choice_phase_timer' in data:
-            return dict(choice=self.make_choice())
-        elif 'show_bet_container' in data:
-            return dict(bet=self.make_bet())
+    def call_live_method(self, method):
+        # Initial choice
+        choice = self.make_random_choice()
+        method(self.player.id_in_group, {'choice': choice, 'initial_choice_time': 1500})
 
-    def live_SecondChoicePage(self, data):
-        if 'start_second_choice_timer' in data:
-            return dict(second_choice=self.make_choice())
-        elif 'show_bet_container' in data:
-            return dict(second_bet=self.make_bet())
+        # Initial bet
+        bet = self.make_random_bet()
+        method(self.player.id_in_group, {'bet': bet, 'initial_bet_time': 1500})
+
+        # Second choice
+        second_choice = self.make_random_choice()
+        method(self.player.id_in_group, {'second_choice': second_choice, 'second_choice_time': 1500})
+
+        # Second bet
+        second_bet = self.make_random_bet()
+        method(self.player.id_in_group, {'second_bet': second_bet, 'second_bet_time': 1500})
+
+    def play_round(self):
+        # MyPage
+        yield MyPage, dict(choice1=self.make_random_choice(), bet1=self.make_random_bet())
+
+        # SecondChoicePage
+        yield SecondChoicePage, dict(choice2=self.make_random_choice(), bet2=self.make_random_bet())
+
+        # FinalResults
+        yield FinalResults
+
+def call_live_method(method, **kwargs):
+    bot = PlayerBot(None)
+    bot.call_live_method(method)
