@@ -459,26 +459,7 @@
             }, data.intertrial_interval);
         }
     }
-
-    // Add this to your existing JavaScript code
-    function sendHeartbeat() {
-        liveSend({heartbeat: true});
-    }
-
-    // Send a heartbeat every 5 seconds
-    setInterval(sendHeartbeat, 5000);
-
-    // Handle page visibility changes
-    document.addEventListener("visibilitychange", function() {
-        if (document.hidden) {
-            // Page is hidden, stop heartbeat
-            clearInterval(heartbeatInterval);
-        } else {
-            // Page is visible again, restart heartbeat
-            heartbeatInterval = setInterval(sendHeartbeat, 5000);
-        }
-    });
-
+    
 </script>
 
 {{ endblock }}

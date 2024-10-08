@@ -158,8 +158,6 @@ class C(BaseConstants):
         'avatar_male.png': '_static/main_task/avatar_male.png',
     }
     REWARD_SEQUENCE = REWARD_SEQUENCE
-    DISCONNECTION_TIMEOUT = 10  # seconds to wait before considering a player disconnected
-
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Generate a sequence of earnings types for the experiment based on the number of rounds
@@ -245,18 +243,6 @@ class Group(BaseGroup):
     remaining_images_displayed = models.BooleanField(initial=False)
     reversal_happened = models.BooleanField(initial=False)
     round_reward_set = models.BooleanField(initial=False)
-
-    # Add a new field to track disconnected players
-    disconnected_players = models.StringField(initial="")
-
-    def player_disconnected(self, player_id):
-        disconnected = set(int(id) for id in self.disconnected_players.split(',') if id)
-        disconnected.add(player_id)
-        self.disconnected_players = ','.join(str(id) for id in disconnected)
-
-    def is_player_disconnected(self, player_id):
-        disconnected = set(int(id) for id in self.disconnected_players.split(',') if id)
-        return player_id in disconnected
 
 #### ---------------- Define the round reward ------------------------ ####
 # The round reward is randomly generated based on the reward probabilities for each image
@@ -447,16 +433,6 @@ class Player(BasePlayer):
     loss_or_gain_player3 = models.IntegerField()
     loss_or_gain_player4 = models.IntegerField()
     all_images_displayed = models.BooleanField(initial=False)
-
-    # Add a new field to track the last action timestamp
-    last_action_timestamp = models.FloatField(initial=0)
-
-    def update_last_action(self):
-        self.last_action_timestamp = time.time()
-
-    def is_disconnected(self):
-        return time.time() - self.last_action_timestamp > C.DISCONNECTION_TIMEOUT
-
 
 # Reset the player-level variables at the start of each round 
 
@@ -662,19 +638,17 @@ class MyPage(Page):
         players = group.get_players()
         response = {}
 
-        player.update_last_action()
-
         # Record the page load time for each player and set the group-level variable when all players have loaded the page
         # This is used to set the round reward and start the choice phase timer
         if 'my_page_load_time' in data:
             player.my_page_load_time = round(data['my_page_load_time'] / 1000, 2)
             player.individual_page_load_time = round(data['individual_page_load_time'] / 1000, 2)
 
-            if all(p.field_maybe_none('my_page_load_time') or group.is_player_disconnected(p.id_in_group) for p in players):
-                group.my_page_load_time = round(max(p.my_page_load_time for p in players if not group.is_player_disconnected(p.id_in_group)), 2)
+            if all(p.field_maybe_none('my_page_load_time') for p in players):
+                group.my_page_load_time = round(max(p.my_page_load_time for p in players), 2)
                 group.set_round_reward()
                 group.reversal_learning()
-                return {p.id_in_group: dict(start_choice_phase_timer=True) for p in players if not group.is_player_disconnected(p.id_in_group)}
+                return {p.id_in_group: dict(start_choice_phase_timer=True) for p in players}
 
         if 'initial_choice_time' in data:
             if data['initial_choice_time'] is not None:
@@ -691,7 +665,7 @@ class MyPage(Page):
 
         if 'choice_phase_timer_ended' in data:
             for p in players:
-                if p.field_maybe_none('choice1') is None or p.choice1 == '' or group.is_player_disconnected(p.id_in_group):
+                if p.field_maybe_none('choice1') is None or p.choice1 == '':
                     random_choice = random.choice(['left', 'right'])
                     p.choice1 = random_choice
                     p.chosen_image_one = p.left_image if random_choice == 'left' else p.right_image
@@ -707,7 +681,6 @@ class MyPage(Page):
                 else:
                     p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
                     p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
-
 
             # Calculate the values for the first choice from the perspective of each player
             for p in players:
@@ -749,7 +722,7 @@ class MyPage(Page):
         if 'bet_timer_ended' in data:
             if not group.all_manual_bet2:
                 for p in players:
-                    if p.field_maybe_none('bet1') == 0 or group.is_player_disconnected(p.id_in_group):
+                    if p.field_maybe_none('bet1') == 0:
                         p.computer_bet_one = 1
                         random_bet = random.randint(1, 3)
                         p.bet1 = random_bet
@@ -851,14 +824,13 @@ class SecondChoicePage(Page):
         group = player.group
         players = group.get_players()
 
-        player.update_last_action()
-
         # Record the time taken to load the second choice page for each player and set the group-level variable when all players have loaded the page
         if 'second_choice_page_loaded' in data:
             player.second_choice_page_load_time = round(data['page_load_time'] / 1000, 2)
-            if all(p.field_maybe_none('second_choice_page_load_time') or group.is_player_disconnected(p.id_in_group) for p in players):
-                return {p.id_in_group: dict(start_second_choice_timer=True) for p in players if not group.is_player_disconnected(p.id_in_group)}
+            if all(p.field_maybe_none('second_choice_page_load_time') for p in players):
+                return {p.id_in_group: dict(start_second_choice_timer=True) for p in players}
 
+        # Record the second choice made by the player and set the chosen_image_two based on the choice
         if 'second_choice' in data:
             player.chosen_image_two = data['second_choice']
             player.choice2 = 'left' if player.chosen_image_two == player.left_image else 'right'
@@ -868,10 +840,13 @@ class SecondChoicePage(Page):
                 player.second_choice_time = round(data['second_choice_time'] / 1000, 2)
             else:
                 player.second_choice_time = None
+            pass
 
+        # Start the second choice timer for all players and assign a random choice to players who haven't made a choice within the time limit
         if 'second_choice_timer_ended' in data:
+            pass
             for p in players:
-                if p.field_maybe_none('chosen_image_two') is None or group.is_player_disconnected(p.id_in_group):
+                if p.field_maybe_none('chosen_image_two') is None:
                     random_image = random.choice([p.left_image, p.right_image])
                     p.chosen_image_two = random_image
                     p.choice2 = 'left' if random_image == p.left_image else 'right'
@@ -883,10 +858,13 @@ class SecondChoicePage(Page):
                     elif p.chosen_image_two == 'option1B.bmp':
                         p.chosen_image_computer_two = 'option1B_tr.bmp'
                     p.second_choice_time = 3.0
+                    pass
+                else:
+                    p.chosen_image_two_binary = 1 if p.chosen_image_two == 'option1A.bmp' else 2
+                    p.choice2_computer = p.choice2
 
                 p.choice2_accuracy = p.chosen_image_two == p.group.seventy_percent_image
                 p.switch_vs_stay = 1 if p.chosen_image_one != p.chosen_image_two else 0
-
 
             # Calculate the values for the second choice from the perspective of each player and display the bet container
             for p in players:
@@ -915,7 +893,9 @@ class SecondChoicePage(Page):
             player.bet2_computer = player.bet2
             player.computer_bet_two = False
             player.second_bet_time = round(data['second_bet_time'] / 1000, 2)
+            pass
 
+        # Start the second bet timer for all players and assign a random bet to players who haven't made a bet within the time limit
         if 'second_bet_timer_ended' in data:
             # Calculate comparisons for the first choice
             for p in players:
@@ -926,14 +906,14 @@ class SecondChoicePage(Page):
                 response = {}
 
                 for p in players:
-                    if p.bet2 == 0 or group.is_player_disconnected(p.id_in_group):
+                    if p.bet2 == 0:
                         random_bet = random.randint(1, 3)
                         p.bet2 = random_bet
                         p.bet2_computer = p.bet2
                         p.computer_choice_two = True
                         p.second_bet_time = 3.0
+                        pass
                         response[p.id_in_group] = dict(highlight_computer_bet=p.bet2)
-
 
                 # Set round rewards if not already set
                 if not group.round_reward_set:
