@@ -3,8 +3,6 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from websocket_utils import safe_websocket
 from otree.api import *
-from otree.api import Bot
-from . import bot_behaviour
 from . import *
 import random
 import time
@@ -16,21 +14,6 @@ doc = """
 This is a multiplayer social influence task where players in groups of 5 make choices and bets to earn rewards in real time. 
 The task is the same as reported in (Zhang & Glascher, 2020) https://www.science.org/doi/full/10.1126/sciadv.abb4159
 """
-
-def get_bot_choice():
-    return random.choice(['left', 'right'])
-
-def get_bot_bet():
-    return random.randint(1, 3)
-
-def replace_player_with_bot(player):
-    player.is_bot = True
-    return Bot(player)
-
-def check_and_replace_disconnected_players(group):
-    for player in group.get_players():
-        if player.participant._index_in_pages == 0 and not player.is_bot:
-            replace_player_with_bot(player)
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- CONSTANTS: DEFINE CONSTANTS USED IN THE GAME INCLUDING NUMBER OF PLAYERS, ROUNDS AND TRIAL SEQUENCE------ #
@@ -202,19 +185,6 @@ class Subsession(BaseSubsession):
         if self.round_number > 1:
             for group in self.get_groups():
                 group.round_reward_set = False
-        
-        for group in self.get_groups():
-            for player in group.get_players():
-                player.is_bot = False
-            check_and_replace_disconnected_players(group)
-
-    def group_by_arrival_time_method(self, waiting_players):
-        if len(waiting_players) == C.PLAYERS_PER_GROUP:
-            return waiting_players
-        for player in waiting_players:
-            if player.participant._index_in_pages == 0:  # Player disconnected
-                replace_player_with_bot(player)
-        return []
 
 # Define the sequence of rounds for the experiment based on the trial sequence generated earlier
 # The sequence is the same for all groups and is used to determine the reward probabilities for each round
@@ -463,7 +433,6 @@ class Player(BasePlayer):
     loss_or_gain_player3 = models.IntegerField()
     loss_or_gain_player4 = models.IntegerField()
     all_images_displayed = models.BooleanField(initial=False)
-    is_bot = models.BooleanField(initial=False)
 
 # Reset the player-level variables at the start of each round 
 
@@ -597,11 +566,8 @@ class MyPage(Page):
 # Time out players who leave the session and set the chosen_image_one based on the manual choice
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
-        if timeout_happened or player.is_bot:
-            player.choice1 = get_bot_choice()
-            player.bet1 = get_bot_bet()
-            player.choice2 = get_bot_choice()
-            player.bet2 = get_bot_bet()
+        if timeout_happened:
+            player.participant.vars['timed_out'] = True
 
         if player.field_maybe_none('choice1') is None:
             # Set choice1 if it is None (i.e., no manual choice was made)
@@ -631,12 +597,6 @@ class MyPage(Page):
     @staticmethod
     def vars_for_template(player: Player):
         group = player.group
-
-        # Check for disconnected players and replace them with bots
-        for p in group.get_players():
-            if p.participant._index_in_pages == 0 and not p.participant.is_bot:
-                replace_player_with_bot(p)
-
         if group.round_number > 1:
             group.reset_fields()
             for p in group.get_players():
@@ -674,13 +634,6 @@ class MyPage(Page):
     @staticmethod
     @safe_websocket(max_retries=3, retry_delay=1)
     def live_method(player, data):
-        check_and_replace_disconnected_players(player.group)
-
-        if player.is_bot:
-            from .bot_behaviour import bot_play_round
-            bot_play_round(player)
-            return {0: dict(bot_finished=True)}
-    
         group = player.group
         players = group.get_players()
         response = {}
@@ -817,15 +770,8 @@ class SecondChoicePage(Page):
     # Get the variables for the template and pass them so they can be displayed (i.e., left and right images, player ID, etc.)
     @staticmethod
     def vars_for_template(player: Player):
-
         group = player.group
-        # Check for disconnected players and replace them with bots
-        for p in group.get_players():
-            if p.participant._index_in_pages == 0 and not p.participant.is_bot:
-                replace_player_with_bot(p)
-        
         players = group.get_players()
-
         chosen_images = {
             p.id_in_group: f"main_task/{p.field_maybe_none('chosen_image_computer') or p.field_maybe_none('chosen_image_one') or 'default_image.png'}" 
             for p in players
@@ -853,12 +799,6 @@ class SecondChoicePage(Page):
             player.choice2 = 'left' if player.chosen_image_two == player.left_image else 'right'
             player.choice2_computer = player.choice2 if player.computer_choice_two else ''
 
-        if timeout_happened or player.is_bot:  # Changed from player.participant.is_bot to player.is_bot
-            player.choice1 = get_bot_choice()
-            player.bet1 = get_bot_bet()
-            player.choice2 = get_bot_choice()
-            player.bet2 = get_bot_bet()
-
         # Calculate and update bonus_payment_score
         earnings_type = EARNINGS_SEQUENCE[player.round_number - 1]
         current_round_earnings = player.choice1_earnings if earnings_type == 'choice1_earnings' else player.choice2_earnings
@@ -881,13 +821,6 @@ class SecondChoicePage(Page):
     @staticmethod
     @safe_websocket(max_retries=3, retry_delay=1)
     def live_method(player, data):
-        check_and_replace_disconnected_players(player.group)
-
-        if player.is_bot:
-            from .bot_behaviour import bot_play_round
-            bot_play_round(player)
-            return {0: dict(bot_finished=True)}
-    
         group = player.group
         players = group.get_players()
 
