@@ -181,6 +181,10 @@ EARNINGS_SEQUENCE = generate_earnings_sequence(NUM_ROUNDS)
 
 class Subsession(BaseSubsession):
 
+    def creating_session(self):
+        if self.round_number > 1:
+            for group in self.get_groups():
+                group.round_reward_set = False
 
 # Define the sequence of rounds for the experiment based on the trial sequence generated earlier
 # The sequence is the same for all groups and is used to determine the reward probabilities for each round
@@ -400,34 +404,6 @@ class Player(BasePlayer):
     computer_preference_choice_two = models.BooleanField(initial=True)
     computer_choice_two = models.BooleanField(initial=True)
     computer_bet_two = models.BooleanField(initial=False)
-    player_1_choice_one = models.IntegerField()
-    player_2_choice_one = models.IntegerField()
-    player_3_choice_one = models.IntegerField()
-    player_4_choice_one = models.IntegerField()
-    player_1_choice_two = models.IntegerField()
-    player_2_choice_two = models.IntegerField()
-    player_3_choice_two = models.IntegerField()
-    player_4_choice_two = models.IntegerField()
-    player_1_computer_choice_one = models.BooleanField()
-    player_2_computer_choice_one = models.BooleanField()
-    player_3_computer_choice_one = models.BooleanField()
-    player_4_computer_choice_one = models.BooleanField()
-    player_1_computer_choice_two = models.BooleanField()
-    player_2_computer_choice_two = models.BooleanField()
-    player_3_computer_choice_two = models.BooleanField()
-    player_4_computer_choice_two = models.BooleanField()
-    player1_choice1_accuracy = models.BooleanField()
-    player2_choice1_accuracy = models.BooleanField()
-    player3_choice1_accuracy = models.BooleanField()
-    player4_choice1_accuracy = models.BooleanField()
-    player1_choice2_accuracy = models.BooleanField()
-    player2_choice2_accuracy = models.BooleanField()
-    player3_choice2_accuracy = models.BooleanField()
-    player4_choice2_accuracy = models.BooleanField()
-    loss_or_gain_player1 = models.IntegerField()
-    loss_or_gain_player2 = models.IntegerField()
-    loss_or_gain_player3 = models.IntegerField()
-    loss_or_gain_player4 = models.IntegerField()
     all_images_displayed = models.BooleanField(initial=False)
 
 # Reset the player-level variables at the start of each round 
