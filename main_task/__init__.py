@@ -181,10 +181,6 @@ EARNINGS_SEQUENCE = generate_earnings_sequence(NUM_ROUNDS)
 
 class Subsession(BaseSubsession):
 
-    def creating_session(self):
-        if self.round_number > 1:
-            for group in self.get_groups():
-                group.round_reward_set = False
 
 # Define the sequence of rounds for the experiment based on the trial sequence generated earlier
 # The sequence is the same for all groups and is used to determine the reward probabilities for each round
