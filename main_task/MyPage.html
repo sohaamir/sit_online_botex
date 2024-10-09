@@ -311,7 +311,7 @@
                     document.removeEventListener('keydown', handleKeyDown);
                 }
                 betTimerStarted = false;
-            }, 3000);
+            }, 900);
         }
     }
 
@@ -333,10 +333,10 @@
                 console.log('Timer ended, sending choice_phase_timer_ended event');
                 liveSend({
                     choice_phase_timer_ended: true,
-                    actual_choice_time: 3000
+                    actual_choice_time: 900
                 });
                 choicePhaseActive = false;
-            }, 3000);
+            }, 900);
         }
 
         if (('start_bet_timer' in data && data.start_bet_timer) || 
@@ -400,13 +400,13 @@
             window.displayTimerTimeout = setTimeout(() => {
                 console.log('Display phase ended, redirecting to SecondChoicePage');
                 document.getElementById('form').submit();
-            }, 3000);
+            }, 900);
 
             // Failsafe: Ensure redirection happens after 3 seconds
             window.failsafeTimeout = setTimeout(() => {
                 console.log('Failsafe: Ensuring redirection to SecondChoicePage');
                 document.getElementById('form').submit();
-            }, 3000);
+            }, 900);
         }
     }
 
