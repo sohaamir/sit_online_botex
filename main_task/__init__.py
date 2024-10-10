@@ -404,6 +404,34 @@ class Player(BasePlayer):
     computer_preference_choice_two = models.BooleanField(initial=True)
     computer_choice_two = models.BooleanField(initial=True)
     computer_bet_two = models.BooleanField(initial=False)
+    player_1_choice_one = models.IntegerField()
+    player_2_choice_one = models.IntegerField()
+    player_3_choice_one = models.IntegerField()
+    player_4_choice_one = models.IntegerField()
+    player_1_choice_two = models.IntegerField()
+    player_2_choice_two = models.IntegerField()
+    player_3_choice_two = models.IntegerField()
+    player_4_choice_two = models.IntegerField()
+    player_1_computer_choice_one = models.BooleanField()
+    player_2_computer_choice_one = models.BooleanField()
+    player_3_computer_choice_one = models.BooleanField()
+    player_4_computer_choice_one = models.BooleanField()
+    player_1_computer_choice_two = models.BooleanField()
+    player_2_computer_choice_two = models.BooleanField()
+    player_3_computer_choice_two = models.BooleanField()
+    player_4_computer_choice_two = models.BooleanField()
+    player1_choice1_accuracy = models.BooleanField()
+    player2_choice1_accuracy = models.BooleanField()
+    player3_choice1_accuracy = models.BooleanField()
+    player4_choice1_accuracy = models.BooleanField()
+    player1_choice2_accuracy = models.BooleanField()
+    player2_choice2_accuracy = models.BooleanField()
+    player3_choice2_accuracy = models.BooleanField()
+    player4_choice2_accuracy = models.BooleanField()
+    loss_or_gain_player1 = models.IntegerField()
+    loss_or_gain_player2 = models.IntegerField()
+    loss_or_gain_player3 = models.IntegerField()
+    loss_or_gain_player4 = models.IntegerField()
     all_images_displayed = models.BooleanField(initial=False)
 
 # Reset the player-level variables at the start of each round 
@@ -606,6 +634,7 @@ class MyPage(Page):
     @staticmethod
     @safe_websocket(max_retries=3, retry_delay=1)
     def live_method(player, data):
+        print(f"Received data: {data}")
         group = player.group
         players = group.get_players()
         response = {}
@@ -671,6 +700,7 @@ class MyPage(Page):
                 p.player4_choice1_accuracy = other_players[3].choice1_accuracy
 
             # Always move to bet phase after choice phase timer ends
+            print("Choice phase timer ended, transitioning to bet phase")
             return {p.id_in_group: dict(show_bet_container=True, start_bet_timer=True, highlight_selected_choice=p.choice1) for p in players}
 
         # Show the bet container and start the bet phase timer after all players have made their first choice
