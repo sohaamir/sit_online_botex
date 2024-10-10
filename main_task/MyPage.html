@@ -221,46 +221,6 @@
     let betMade = false;
     let individualPageLoadTime;
     let betTimerStarted = false;
-    let heartbeatInterval;
-
-    function startHeartbeat() {
-        heartbeatInterval = setInterval(() => {
-            liveSend({ type: 'heartbeat' });
-        }, js_vars.heartbeat_interval);
-    }
-
-    function stopHeartbeat() {
-        clearInterval(heartbeatInterval);
-    }
-
-    function connectWebSocket() {
-        // This function is called automatically by oTree
-        // when the page loads and WebSocket connection is established
-        console.log('WebSocket connected');
-        startHeartbeat();
-    }
-
-    function disconnectWebSocket() {
-        // This function is called automatically by oTree
-        // when the WebSocket connection is closed
-        console.log('WebSocket disconnected');
-        stopHeartbeat();
-    }
-
-    function onMessage(data) {
-        // This function is called automatically by oTree
-        // when a message is received from the server
-        if (data.error) {
-            console.error('Error from server:', data.error);
-            // Handle the error, maybe show a message to the user
-        } else {
-            // Process the message normally
-            // Your existing message handling code here
-        }
-    }
-
-    // Stop the heartbeat when the page is unloaded
-    window.addEventListener('beforeunload', stopHeartbeat);
 
     document.addEventListener('DOMContentLoaded', function() {
         individualPageLoadTime = performance.now();
@@ -351,11 +311,12 @@
                     document.removeEventListener('keydown', handleKeyDown);
                 }
                 betTimerStarted = false;
-            }, 3000);
+            }, 900);
         }
     }
 
     function liveRecv(data) {
+        console.log('Received data:', data);
 
         if ('my_page_load_time' in data) {
             window.myPageLoadTime = data.my_page_load_time;
@@ -372,10 +333,10 @@
                 console.log('Timer ended, sending choice_phase_timer_ended event');
                 liveSend({
                     choice_phase_timer_ended: true,
-                    actual_choice_time: 3000
+                    actual_choice_time: 900
                 });
                 choicePhaseActive = false;
-            }, 3000);
+            }, 900);
         }
 
         if (('start_bet_timer' in data && data.start_bet_timer) || 
@@ -439,13 +400,13 @@
             window.displayTimerTimeout = setTimeout(() => {
                 console.log('Display phase ended, redirecting to SecondChoicePage');
                 document.getElementById('form').submit();
-            }, 3000);
+            }, 900);
 
             // Failsafe: Ensure redirection happens after 3 seconds
             window.failsafeTimeout = setTimeout(() => {
                 console.log('Failsafe: Ensuring redirection to SecondChoicePage');
                 document.getElementById('form').submit();
-            }, 3000);
+            }, 900);
         }
     }
 
