@@ -130,4 +130,4 @@ DEMO_PAGE_INTRO_HTML = """ """
 EXTENSION_APPS = ['websocket_utils']
 
 # Set the timeout for the WebSocket connection to 70 seconds to prevent timeouts
-WEBSOCKET_TIMEOUT_SECONDS = 150  # Increase this value if you experience WebSocket timeouts
+WEBSOCKET_TIMEOUT = 150  # Increase this value if you experience WebSocket timeouts
