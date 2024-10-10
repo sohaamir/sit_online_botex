@@ -182,7 +182,10 @@ EARNINGS_SEQUENCE = generate_earnings_sequence(NUM_ROUNDS)
 class Subsession(BaseSubsession):
 
     def creating_session(self):
-        if self.round_number > 1:
+        if self.round_number == 1:
+            # Initialize first round
+            pass
+        else:
             for group in self.get_groups():
                 group.round_reward_set = False
 
