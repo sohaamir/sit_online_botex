@@ -14,7 +14,10 @@ doc = """
 This is a multiplayer social influence task where players in groups of 5 make choices and bets to earn rewards in real time. 
 The task is the same as reported in (Zhang & Glascher, 2020) https://www.science.org/doi/full/10.1126/sciadv.abb4159
 """
-
+def player_disconnected(self, player):
+    self.session.vars['active_players'][player.id_in_group] = False
+    print(f"Player {player.id_in_group} disconnected")
+    
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- CONSTANTS: DEFINE CONSTANTS USED IN THE GAME INCLUDING NUMBER OF PLAYERS, ROUNDS AND TRIAL SEQUENCE------ #
 # -------------------------------------------------------------------------------------------------------------------- #
@@ -183,6 +186,7 @@ class Subsession(BaseSubsession):
 
     def creating_session(self):
         if self.round_number > 1:
+            self.session.vars['active_players'] = {p.id_in_group: True for p in self.get_players()}
             for group in self.get_groups():
                 group.round_reward_set = False
 
@@ -542,6 +546,11 @@ class Player(BasePlayer):
             return
 
         self.choice1_earnings = self.bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * self.bet1 * 20
+    
+    @staticmethod
+    def live_ping(player, data):
+        if data.get('ping'):
+            return {player.id_in_group: {'pong': True}}
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- MYPAGE: WHERE PLAYERS MAKE THEIR FIRST CHOICE, FIRST BET AND PREFERENCE CHOICES ------ #
@@ -740,6 +749,28 @@ class MyPage(Page):
                     for p_id, p_response in display_response.items():
                         p_response['start_display_timer'] = True
                     return display_response
+            
+            # Add this at the end of the live_method
+        if 'ping' in data:
+            return player.live_ping(data)
+
+        # Check if the player is still in the session
+        if player.participant._is_bot:
+            return  # Skip processing for bots
+
+        if not player.session.vars.get('active_players', {}).get(player.id_in_group, True):
+            # Player is disconnected, automate their response
+            if 'choice_phase_timer_ended' in data:
+                player.choice1 = random.choice(['left', 'right'])
+                player.chosen_image_one = player.left_image if player.choice1 == 'left' else player.right_image
+                player.initial_choice_time = 1000
+                player.computer_choice_one = True
+                player.chosen_image_one_binary = 1 if player.chosen_image_one == 'option1A.bmp' else 2
+                player.choice1_accuracy = player.chosen_image_one == group.seventy_percent_image
+            elif 'bet_timer_ended' in data:
+                player.bet1 = random.randint(1, 3)
+                player.computer_bet_one = 1
+                player.initial_bet_time = 1000
 
         return response
 
@@ -823,6 +854,7 @@ class SecondChoicePage(Page):
     def live_method(player, data):
         group = player.group
         players = group.get_players()
+        response = {}
 
         # Record the time taken to load the second choice page for each player and set the group-level variable when all players have loaded the page
         if 'second_choice_page_loaded' in data:
@@ -958,8 +990,34 @@ class SecondChoicePage(Page):
                             selected_bet=p.bet2
                         )
                     }
-
+            
                 return response
+
+        # Add this at the end of the live_method
+        if 'ping' in data:
+            return player.live_ping(data)
+
+        # Check if the player is still in the session
+        if player.participant._is_bot:
+            return  # Skip processing for bots
+
+        if not player.session.vars.get('active_players', {}).get(player.id_in_group, True):
+            # Player is disconnected, automate their response
+            if 'second_choice_timer_ended' in data:
+                player.choice2 = random.choice(['left', 'right'])
+                player.chosen_image_two = player.left_image if player.choice2 == 'left' else player.right_image
+                player.second_choice_time = 1000
+                player.computer_choice_two = True
+                player.chosen_image_two_binary = 1 if player.chosen_image_two == 'option1A.bmp' else 2
+                player.choice2_accuracy = player.chosen_image_two == group.seventy_percent_image
+                player.switch_vs_stay = 1 if player.chosen_image_one != player.chosen_image_two else 0
+            elif 'second_bet_timer_ended' in data:
+                player.bet2 = random.randint(1, 3)
+                player.bet2_computer = player.bet2
+                player.computer_bet_two = True
+                player.second_bet_time = 1000
+
+        return response
             
     @staticmethod
     def after_all_players_arrive(group: Group):

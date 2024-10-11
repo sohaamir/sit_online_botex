@@ -219,7 +219,24 @@
     window.otherPlayerIds = {{ other_player_ids|json }};
     window.chosenImages = {{ chosen_images|json }};
 
+    // Ping-pong mechanism
+    function startPingPong() {
+        setInterval(() => {
+            liveSend({ping: true});
+        }, 5000);  // Send a ping every 5 seconds
+    }
+
+    let lastPongTime = Date.now();
+    function checkConnection() {
+        if (Date.now() - lastPongTime > 15000) {  // No pong for 15 seconds
+            console.log('Connection lost. Reloading page.');
+            location.reload();
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
+        startPingPong();
+        setInterval(checkConnection, 5000);  // Check connection every 5 seconds
         // Display the chosen images from MyPage on page load
         const chosenImages = {{ chosen_images|json }};
         const avatarWrappers = document.querySelectorAll('.avatar-wrapper');
@@ -457,8 +474,13 @@
                     console.log('Form submitted');
                 }, 100);
             }, data.intertrial_interval);
+
+            // Add this at the end of the existing liveRecv function
+            if (data.pong) {
+                lastPongTime = Date.now();
+                }
+            }
         }
-    }
 
 </script>
 
