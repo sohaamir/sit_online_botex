@@ -1,17 +1,27 @@
 import time
 from functools import wraps
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def safe_websocket(max_retries=3, retry_delay=1):
-    def decorator(f):
-        @wraps(f)
-        def wrapped(player, data):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
             for attempt in range(max_retries):
                 try:
-                    return f(player, data)
+                    result = func(*args, **kwargs) 
+                    return result
                 except Exception as e:
-                    if attempt == max_retries - 1:  # Only log on the last attempt
-                        print(f"WebSocket error in {f.__name__} after {max_retries} attempts: {e}")
-                    time.sleep(retry_delay)
-            return None
-        return wrapped
+                    logger.error(f"Error in live method (attempt {attempt + 1}/{max_retries}): {str(e)}")
+                    if attempt < max_retries - 1:
+                        logger.info(f"Retrying in {retry_delay} seconds...")
+                        time.sleep(retry_delay)
+                    else:
+                        logger.error("Max retries reached. Returning empty dict.")
+                        return {}
+            return {}
+        return wrapper
     return decorator
