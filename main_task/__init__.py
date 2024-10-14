@@ -293,7 +293,7 @@ class Group(BaseGroup):
 # The intertrial interval is randomly generated between 3000ms and 4000ms
 
     def generate_intertrial_interval(self):
-        self.intertrial_interval = random.randint(3000, 4000)
+        self.intertrial_interval = random.randint(800, 900)
         print(f"Intertrial interval of {self.intertrial_interval}ms generated")
 
 #### ----------- Define and record the reversal learning rounds ------------------- ####
