@@ -182,10 +182,7 @@ EARNINGS_SEQUENCE = generate_earnings_sequence(NUM_ROUNDS)
 class Subsession(BaseSubsession):
 
     def creating_session(self):
-        if self.round_number == 1:
-            # Initialize first round
-            pass
-        else:
+        if self.round_number > 1:
             for group in self.get_groups():
                 group.round_reward_set = False
 
@@ -296,7 +293,7 @@ class Group(BaseGroup):
 # The intertrial interval is randomly generated between 3000ms and 4000ms
 
     def generate_intertrial_interval(self):
-        self.intertrial_interval = random.randint(3000, 4000)
+        self.intertrial_interval = random.randint(800, 900)
         print(f"Intertrial interval of {self.intertrial_interval}ms generated")
 
 #### ----------- Define and record the reversal learning rounds ------------------- ####
