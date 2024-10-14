@@ -249,7 +249,9 @@ class Group(BaseGroup):
 
     def set_round_reward(self):
         if not self.round_reward_set:
-            self.round_reward_A, self.round_reward_B = C.REWARD_SEQUENCE[self.round_number - 1]
+            reward_A, reward_B = C.REWARD_SEQUENCE[self.round_number - 1]
+            self.round_reward_A = reward_A
+            self.round_reward_B = reward_B
             self.round_reward_set = True
             print(f"Round {self.round_number}: reward_A = {self.round_reward_A}, reward_B = {self.round_reward_B}")
 
@@ -258,10 +260,17 @@ class Group(BaseGroup):
             if p.field_maybe_none('chosen_image_two') is None:
                 continue  # Skip players who haven't made a choice yet
 
+            reward_A = self.field_maybe_none('round_reward_A')
+            reward_B = self.field_maybe_none('round_reward_B')
+            
+            if reward_A is None or reward_B is None:
+                print(f"Warning: Rewards not set for round {self.round_number}")
+                continue
+
             if p.chosen_image_two == self.seventy_percent_image:
-                potential_reward = self.round_reward_A if self.seventy_percent_image == 'option1A.bmp' else self.round_reward_B
+                potential_reward = reward_A if self.seventy_percent_image == 'option1A.bmp' else reward_B
             else:
-                potential_reward = self.round_reward_B if self.seventy_percent_image == 'option1A.bmp' else self.round_reward_A
+                potential_reward = reward_B if self.seventy_percent_image == 'option1A.bmp' else reward_A
 
             p.trial_reward = potential_reward
 
@@ -533,12 +542,18 @@ class Player(BasePlayer):
         self.total_payoff = self.base_payoff + self.bonus_payoff
 
     def calculate_choice1_earnings(self):
+        reward_A = self.group.field_maybe_none('round_reward_A')
+        reward_B = self.group.field_maybe_none('round_reward_B')
+        
+        if reward_A is None or reward_B is None:
+            print(f"Warning: Rewards not set for round {self.round_number}")
+            return
+
         if self.chosen_image_one == 'option1A.bmp':
-            choice1_reward = self.group.round_reward_A
+            choice1_reward = reward_A
         elif self.chosen_image_one == 'option1B.bmp':
-            choice1_reward = self.group.round_reward_B
+            choice1_reward = reward_B
         else:
-            pass
             return
 
         self.choice1_earnings = self.bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * self.bet1 * 20
