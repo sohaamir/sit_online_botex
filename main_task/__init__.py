@@ -182,7 +182,10 @@ EARNINGS_SEQUENCE = generate_earnings_sequence(NUM_ROUNDS)
 class Subsession(BaseSubsession):
 
     def creating_session(self):
-        if self.round_number > 1:
+        if self.round_number == 1:
+            # Initialize first round
+            pass
+        else:
             for group in self.get_groups():
                 group.round_reward_set = False
 
@@ -293,7 +296,7 @@ class Group(BaseGroup):
 # The intertrial interval is randomly generated between 3000ms and 4000ms
 
     def generate_intertrial_interval(self):
-        self.intertrial_interval = random.randint(800, 900)
+        self.intertrial_interval = random.randint(3000, 4000)
         print(f"Intertrial interval of {self.intertrial_interval}ms generated")
 
 #### ----------- Define and record the reversal learning rounds ------------------- ####
@@ -632,6 +635,7 @@ class MyPage(Page):
 # --- If players do not respond within the time limit, the computer randomly selects a choice or bet for them
 
     @staticmethod
+    @safe_websocket(max_retries=3, retry_delay=1)
     def live_method(player, data):
         group = player.group
         players = group.get_players()
@@ -818,6 +822,7 @@ class SecondChoicePage(Page):
 # -------------------------------------------------------------------------------------------------------------------- #
 
     @staticmethod
+    @safe_websocket(max_retries=3, retry_delay=1)
     def live_method(player, data):
         group = player.group
         players = group.get_players()
