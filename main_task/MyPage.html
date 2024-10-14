@@ -39,7 +39,7 @@
         flex-direction: column;
         justify-content: flex-start;
         align-items: center;
-        width: 900px;
+        width: 3000px;
         height: 600px;
         border: 7.5px solid white;
         padding: 30px;
@@ -311,7 +311,7 @@
                     document.removeEventListener('keydown', handleKeyDown);
                 }
                 betTimerStarted = false;
-            }, 900);
+            }, 3000);
         }
     }
 
@@ -333,10 +333,10 @@
                 console.log('Timer ended, sending choice_phase_timer_ended event');
                 liveSend({
                     choice_phase_timer_ended: true,
-                    actual_choice_time: 900
+                    actual_choice_time: 3000
                 });
                 choicePhaseActive = false;
-            }, 900);
+            }, 3000);
         }
 
         if (('start_bet_timer' in data && data.start_bet_timer) || 
@@ -400,13 +400,13 @@
             window.displayTimerTimeout = setTimeout(() => {
                 console.log('Display phase ended, redirecting to SecondChoicePage');
                 document.getElementById('form').submit();
-            }, 900);
+            }, 3000);
 
             // Failsafe: Ensure redirection happens after 3 seconds
             window.failsafeTimeout = setTimeout(() => {
                 console.log('Failsafe: Ensuring redirection to SecondChoicePage');
                 document.getElementById('form').submit();
-            }, 900);
+            }, 3000);
         }
     }
 
