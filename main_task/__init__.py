@@ -293,7 +293,7 @@ class Group(BaseGroup):
 # The intertrial interval is randomly generated between 3000ms and 4000ms
 
     def generate_intertrial_interval(self):
-        self.intertrial_interval = random.randint(800, 900)
+        self.intertrial_interval = random.randint(3000, 4000)
         print(f"Intertrial interval of {self.intertrial_interval}ms generated")
 
 #### ----------- Define and record the reversal learning rounds ------------------- ####
@@ -634,6 +634,7 @@ class MyPage(Page):
     @staticmethod
     @safe_websocket(max_retries=3, retry_delay=1)
     def live_method(player, data):
+        print(f"Received data: {data}")
         group = player.group
         players = group.get_players()
         response = {}
@@ -699,6 +700,7 @@ class MyPage(Page):
                 p.player4_choice1_accuracy = other_players[3].choice1_accuracy
 
             # Always move to bet phase after choice phase timer ends
+            print("Choice phase timer ended, transitioning to bet phase")
             return {p.id_in_group: dict(show_bet_container=True, start_bet_timer=True, highlight_selected_choice=p.choice1) for p in players}
 
         # Show the bet container and start the bet phase timer after all players have made their first choice
@@ -720,28 +722,32 @@ class MyPage(Page):
                 player.computer_bet_one = 0
 
         if 'bet_timer_ended' in data:
-            if not group.all_manual_bet2:
+            response = {}
+            all_bets_made = True
+            for p in players:
+                if p.field_maybe_none('bet1') == 0:
+                    p.computer_bet_one = 1
+                    random_bet = random.randint(1, 3)
+                    p.bet1 = random_bet
+                    p.participant.vars['bet1'] = p.bet1
+                    p.initial_bet_time = 3.0
+                    response[p.id_in_group] = dict(highlight_computer_bet=p.bet1)
+                else:
+                    p.computer_bet_one = 0
+
+            # Always proceed to display remaining images when bet timer ends
+            if not group.remaining_images_displayed:
+                group.remaining_images_displayed = True
+                display_response = MyPage.display_remaining_images(player, players)
                 for p in players:
-                    if p.field_maybe_none('bet1') == 0:
-                        p.computer_bet_one = 1
-                        random_bet = random.randint(1, 3)
-                        p.bet1 = random_bet
-                        p.participant.vars['bet1'] = p.bet1
-                        p.initial_bet_time = 3.0
-                group.all_manual_bet2 = True
+                    p.participant.vars['display_phase_end_time'] = time.time() + 4
+                for p_id, p_response in display_response.items():
+                    p_response['start_display_timer'] = True
+                    if p_id in response:
+                        p_response.update(response[p_id])
+                return display_response
 
-            # Only proceed if all players have made or been assigned a bet
-            if all(p.field_maybe_none('bet1') != 0 for p in players):
-                if not group.remaining_images_displayed:
-                    group.remaining_images_displayed = True
-                    display_response = MyPage.display_remaining_images(player, players)
-                    for p in players:
-                        p.participant.vars['display_phase_end_time'] = time.time() + 4
-                    for p_id, p_response in display_response.items():
-                        p_response['start_display_timer'] = True
-                    return display_response
-
-        return response
+            return response
 
     @staticmethod
     def display_remaining_images(player, players):
