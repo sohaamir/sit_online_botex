@@ -402,11 +402,6 @@
                 document.getElementById('form').submit();
             }, 900);
 
-            // Failsafe: Ensure redirection happens after 3 seconds
-            window.failsafeTimeout = setTimeout(() => {
-                console.log('Failsafe: Ensuring redirection to SecondChoicePage');
-                document.getElementById('form').submit();
-            }, 900);
         }
     }
 

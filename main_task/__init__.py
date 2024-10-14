@@ -632,7 +632,6 @@ class MyPage(Page):
 # --- If players do not respond within the time limit, the computer randomly selects a choice or bet for them
 
     @staticmethod
-    @safe_websocket(max_retries=3, retry_delay=1)
     def live_method(player, data):
         group = player.group
         players = group.get_players()
@@ -819,7 +818,6 @@ class SecondChoicePage(Page):
 # -------------------------------------------------------------------------------------------------------------------- #
 
     @staticmethod
-    @safe_websocket(max_retries=3, retry_delay=1)
     def live_method(player, data):
         group = player.group
         players = group.get_players()
