@@ -221,7 +221,6 @@
     let betMade = false;
     let individualPageLoadTime;
     let betTimerStarted = false;
-    let betPhaseEnded = false;
 
     document.addEventListener('DOMContentLoaded', function() {
         individualPageLoadTime = performance.now();
@@ -283,17 +282,15 @@
     }
 
     function selectBet(bet) {
-        const betElements = document.querySelectorAll('.bet-options div');
-        betElements.forEach(element => {
-            element.classList.remove('selected');
-        });
-        const selectedBetElement = document.querySelector(`.bet-options div[data-bet="${bet}"]`);
-        if (selectedBetElement) {
-            selectedBetElement.classList.add('selected');
-        }
         if (currentStage === 'bet' && !betMade) {
-            liveSend({ bet: bet, initial_bet_time: performance.now() - betPhaseStartTime, id: js_vars.player_id });
+            const betElements = document.querySelectorAll('.bet-options div');
+            betElements.forEach(element => {
+                element.classList.remove('selected');
+            });
+            document.querySelector(`.bet-options div[data-bet="${bet}"]`).classList.add('selected');
+            liveSend({ bet: bet });
             betMade = true;
+            document.removeEventListener('keydown', handleKeyDown);
         }
     }
 
@@ -309,10 +306,12 @@
             betPhaseStartTime = performance.now();
 
             setTimeout(function() {
-                liveSend({bet_timer_ended: true});
-                document.removeEventListener('keydown', handleKeyDown);
+                if (!betMade) {
+                    liveSend({bet_timer_ended: true});
+                    document.removeEventListener('keydown', handleKeyDown);
+                }
                 betTimerStarted = false;
-            }, 3000);
+            }, 900);
         }
     }
 
@@ -334,10 +333,10 @@
                 console.log('Timer ended, sending choice_phase_timer_ended event');
                 liveSend({
                     choice_phase_timer_ended: true,
-                    actual_choice_time: 3000
+                    actual_choice_time: 900
                 });
                 choicePhaseActive = false;
-            }, 3000);
+            }, 900);
         }
 
         if (('start_bet_timer' in data && data.start_bet_timer) || 
@@ -368,10 +367,6 @@
             if (selectedBetElement) {
                 selectedBetElement.classList.add('selected');
             }
-        }
-
-        if ('highlight_computer_bet' in data) {
-            selectBet(data.highlight_computer_bet);
         }
 
         if ('display_all_images' in data && data.display_all_images) {
@@ -405,13 +400,13 @@
             window.displayTimerTimeout = setTimeout(() => {
                 console.log('Display phase ended, redirecting to SecondChoicePage');
                 document.getElementById('form').submit();
-            }, 3000);
+            }, 900);
 
             // Failsafe: Ensure redirection happens after 3 seconds
             window.failsafeTimeout = setTimeout(() => {
                 console.log('Failsafe: Ensuring redirection to SecondChoicePage');
                 document.getElementById('form').submit();
-            }, 3000);
+            }, 900);
         }
     }
 
