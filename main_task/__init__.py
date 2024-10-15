@@ -185,6 +185,11 @@ class Subsession(BaseSubsession):
         if self.round_number > 1:
             for group in self.get_groups():
                 group.round_reward_set = False
+        
+        for group in self.get_groups():
+            group.connected_players = ''
+            for player in group.get_players():
+                player.last_connection_time = time.time()
 
 # Define the sequence of rounds for the experiment based on the trial sequence generated earlier
 # The sequence is the same for all groups and is used to determine the reward probabilities for each round
@@ -243,6 +248,8 @@ class Group(BaseGroup):
     remaining_images_displayed = models.BooleanField(initial=False)
     reversal_happened = models.BooleanField(initial=False)
     round_reward_set = models.BooleanField(initial=False)
+    connected_players = models.StringField(initial='')
+    last_connection_update = models.FloatField(initial=0)
 
 #### ---------------- Define the round reward ------------------------ ####
 # The round reward is randomly generated based on the reward probabilities for each image
@@ -433,6 +440,10 @@ class Player(BasePlayer):
     loss_or_gain_player3 = models.IntegerField()
     loss_or_gain_player4 = models.IntegerField()
     all_images_displayed = models.BooleanField(initial=False)
+    connection_time = models.FloatField()
+    disconnection_time = models.FloatField()
+    is_connected = models.BooleanField(initial=False)
+    last_connection_time = models.FloatField(initial=0)
 
 # Reset the player-level variables at the start of each round 
 
@@ -638,6 +649,30 @@ class MyPage(Page):
         group = player.group
         players = group.get_players()
         response = {}
+        current_time = time.time()
+
+        if data.get('type') in ['player_connected', 'player_disconnected']:
+            # Only process if it's been more than 2 seconds since the last update for this player
+            if current_time - player.last_connection_time > 2:
+                player.last_connection_time = current_time
+                is_connected = data['type'] == 'player_connected'
+                
+                if player.is_connected != is_connected:
+                    player.is_connected = is_connected
+                    print(f"Player {player.id_in_group} {'connected' if is_connected else 'disconnected'}")
+
+                    # Update group's connected players
+                    connected = set(group.connected_players.split(',') if group.connected_players else [])
+                    if is_connected:
+                        connected.add(str(player.id_in_group))
+                    else:
+                        connected.discard(str(player.id_in_group))
+                    group.connected_players = ','.join(connected) if connected else ''
+
+                    # Only update and print group status if it's been more than 2 seconds since last group update
+                    if current_time - group.last_connection_update > 2:
+                        group.last_connection_update = current_time
+                        print(f"Group {group.id_in_subsession} connected players: {group.connected_players}")
 
         # Record the page load time for each player and set the group-level variable when all players have loaded the page
         # This is used to set the round reward and start the choice phase timer
@@ -748,6 +783,8 @@ class MyPage(Page):
                 return display_response
 
             return response
+        
+        return {p.id_in_group: data for p in group.get_players()}
 
     @staticmethod
     def display_remaining_images(player, players):
@@ -829,6 +866,30 @@ class SecondChoicePage(Page):
     def live_method(player, data):
         group = player.group
         players = group.get_players()
+        current_time = time.time()
+
+        if data.get('type') in ['player_connected', 'player_disconnected']:
+            # Only process if it's been more than 2 seconds since the last update for this player
+            if current_time - player.last_connection_time > 2:
+                player.last_connection_time = current_time
+                is_connected = data['type'] == 'player_connected'
+                
+                if player.is_connected != is_connected:
+                    player.is_connected = is_connected
+                    print(f"Player {player.id_in_group} {'connected' if is_connected else 'disconnected'}")
+
+                    # Update group's connected players
+                    connected = set(group.connected_players.split(',') if group.connected_players else [])
+                    if is_connected:
+                        connected.add(str(player.id_in_group))
+                    else:
+                        connected.discard(str(player.id_in_group))
+                    group.connected_players = ','.join(connected) if connected else ''
+
+                    # Only update and print group status if it's been more than 2 seconds since last group update
+                    if current_time - group.last_connection_update > 2:
+                        group.last_connection_update = current_time
+                        print(f"Group {group.id_in_subsession} connected players: {group.connected_players}")
 
         # Record the time taken to load the second choice page for each player and set the group-level variable when all players have loaded the page
         if 'second_choice_page_loaded' in data:
@@ -967,6 +1028,8 @@ class SecondChoicePage(Page):
 
                 return response
             
+        return {p.id_in_group: data for p in group.get_players()}
+    
     @staticmethod
     def after_all_players_arrive(group: Group):
         group.set_payoffs()
