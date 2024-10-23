@@ -1,7 +1,7 @@
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from websocket_utils import safe_websocket
+# from websocket_utils import safe_websocket # Uncomment to enable safe websocket
 from otree.api import *
 from . import *
 import random
@@ -185,11 +185,6 @@ class Subsession(BaseSubsession):
         if self.round_number > 1:
             for group in self.get_groups():
                 group.round_reward_set = False
-        
-        for group in self.get_groups():
-            group.connected_players = ''
-            for player in group.get_players():
-                player.last_connection_time = time.time()
 
 # Define the sequence of rounds for the experiment based on the trial sequence generated earlier
 # The sequence is the same for all groups and is used to determine the reward probabilities for each round
@@ -205,8 +200,6 @@ class Subsession(BaseSubsession):
                 'player_id': p.id_in_group,
                 'choice1': p.choice1,
                 'bet1': p.bet1,
-                'preference_choice': p.preference_choice,
-                'preference_second_choice': p.preference_second_choice,
                 'choice2': p.choice2,
                 'bet2': p.bet2,
                 'trial_reward': p.trial_reward,
@@ -223,17 +216,8 @@ class Group(BaseGroup):
     current_round = models.IntegerField(initial=1)
     my_page_load_time = models.FloatField()
     round_reward_A = models.IntegerField()
-    round_reward_B = models.IntegerField()
-    second_choice_timer_started = models.BooleanField(initial=False)
-    all_players_made_choice2 = models.BooleanField(initial=False)
-    all_manual_bet2 = models.BooleanField(initial=False)    
-    all_players_preference_second_choice_time = models.FloatField()
+    round_reward_B = models.IntegerField()  
     intertrial_interval = models.IntegerField(initial=0)
-    manual_bets = models.BooleanField(initial=False)
-    manual_preference_choices = models.BooleanField(initial=False)
-    manual_second_preference_choices = models.BooleanField(initial=False)
-    show_results_sent = models.BooleanField(initial=False)
-    show_results_executed = models.BooleanField(initial=False)
     second_bet_timer_ended_executed = models.BooleanField(initial=False)
     next_round_transition_time = models.FloatField()
     reward_probability_A = models.FloatField(initial=0.7)
@@ -241,15 +225,10 @@ class Group(BaseGroup):
     seventy_percent_image = models.StringField(initial='option1A.bmp')
     thirty_percent_image = models.StringField(initial='option1B.bmp')
     reversal_rounds = models.StringField(initial='')
-    redirect_triggered = models.BooleanField(initial=False)
-    preference_choices_presented = models.BooleanField(initial=False)
-    second_preference_choices_displayed = models.BooleanField(initial=False)
     bet_container_displayed = models.BooleanField(initial=False)
     remaining_images_displayed = models.BooleanField(initial=False)
     reversal_happened = models.BooleanField(initial=False)
     round_reward_set = models.BooleanField(initial=False)
-    connected_players = models.StringField(initial='')
-    last_connection_update = models.FloatField(initial=0)
 
 #### ---------------- Define the round reward ------------------------ ####
 # The round reward is randomly generated based on the reward probabilities for each image
@@ -283,7 +262,7 @@ class Group(BaseGroup):
 
         for p in self.get_players():
             # Calculate choice2_earnings (based on second choice and bet)
-            p.choice2_earnings = p.bet2_computer * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2_computer * 20
+            p.choice2_earnings = p.bet2 * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2 * 20
             
             # Calculate choice1_earnings (based on first choice and bet)
             choice1_reward = 0
@@ -337,15 +316,7 @@ class Group(BaseGroup):
         self.my_page_load_time = None
         self.round_reward_A = 0
         self.round_reward_B = 0
-        self.second_choice_timer_started = False
-        self.all_players_made_choice2 = False
-        self.all_manual_bet2 = False
         self.intertrial_interval = 0
-        self.manual_bets = False
-        self.manual_preference_choices = False
-        self.manual_second_preference_choices = False
-        self.show_results_sent = False
-        self.show_results_executed = False
         self.second_bet_timer_ended_executed = False
         self.next_round_transition_time = None
         self.reversal_happened = False
@@ -360,16 +331,16 @@ class Group(BaseGroup):
 class Player(BasePlayer):
     choice1 = models.StringField(initial='')
     choice2 = models.StringField(initial='')
-    choice2_computer = models.StringField(initial='')
+    computer_choice1 = models.StringField(initial='')
+    computer_choice2 = models.StringField(initial='')
     bet1 = models.IntegerField(initial=0)
     bet2 = models.IntegerField(initial=0)
-    bet2_computer = models.IntegerField(initial=0)
     left_image = models.StringField()
     right_image = models.StringField()
     trial_reward = models.IntegerField(initial=0)
     chosen_image_one = models.StringField()
     chosen_image_one_binary = models.IntegerField()
-    chosen_image_two = models.StringField()
+    chosen_image_two = models.StringField(initial=None)
     chosen_image_two_binary = models.IntegerField()
     choice1_with = models.IntegerField(initial=0)
     choice1_against = models.IntegerField(initial=0)
@@ -380,19 +351,10 @@ class Player(BasePlayer):
     choice1_accuracy = models.BooleanField()
     choice2_accuracy = models.BooleanField()
     switch_vs_stay = models.IntegerField()
-    preference_choice = models.StringField(initial=0)
-    preference_second_choice = models.StringField(initial=0)
-    preference_choice_made = models.BooleanField(initial=False)
-    preference_second_choice_made = models.BooleanField(initial=False)
-    image_displayed = models.BooleanField(initial=False)
-    second_image_displayed = models.BooleanField(initial=False)
     my_page_load_time = models.FloatField()
     individual_page_load_time = models.FloatField()
     initial_choice_time = models.FloatField()
     initial_bet_time = models.FloatField()
-    preference_choice_time = models.FloatField()
-    preference_second_choice_time = models.FloatField()
-    second_choice_page_load_time = models.FloatField()
     second_choice_time = models.FloatField()
     second_bet_time = models.FloatField()
     choice1_earnings = models.IntegerField(initial=0)
@@ -405,10 +367,7 @@ class Player(BasePlayer):
     total_payoff = models.CurrencyField(initial=0)
     loss_or_gain = models.IntegerField()
     computer_choice_one = models.BooleanField(initial=True)
-    computer_bet_one = models.IntegerField(initial=1)
-    computer_preference_choice_one = models.BooleanField(initial=True)
-    button_pressed = models.BooleanField(initial=False)
-    computer_preference_choice_two = models.BooleanField(initial=True)
+    computer_bet_one = models.BooleanField(initial=False)
     computer_choice_two = models.BooleanField(initial=True)
     computer_bet_two = models.BooleanField(initial=False)
     player_1_choice_one = models.IntegerField()
@@ -439,11 +398,7 @@ class Player(BasePlayer):
     loss_or_gain_player2 = models.IntegerField()
     loss_or_gain_player3 = models.IntegerField()
     loss_or_gain_player4 = models.IntegerField()
-    all_images_displayed = models.BooleanField(initial=False)
-    connection_time = models.FloatField()
-    disconnection_time = models.FloatField()
-    is_connected = models.BooleanField(initial=False)
-    last_connection_time = models.FloatField(initial=0)
+    manual_second_choice = models.BooleanField(initial=False)
 
 # Reset the player-level variables at the start of each round 
 
@@ -452,51 +407,39 @@ class Player(BasePlayer):
         self.bet1 = 0
         self.trial_reward = 0
         self.chosen_image_one = ''
-        self.chosen_image_one_binary = None  # Changed to None
+        self.chosen_image_one_binary = None
         self.chosen_image_two = None
-        self.chosen_image_two_binary = None  # Changed to None
+        self.chosen_image_two_binary = None
         self.choice1_with = 0
         self.choice1_against = 0
         self.choice2_with = 0
         self.choice2_against = 0
         self.chosen_image_computer = ''
         self.chosen_image_computer_two = ''
-        self.choice1_accuracy = None  # Reset choice1_accuracy
-        self.choice2_accuracy = None  # Reset choice2_accuracy
-        self.switch_vs_stay = None  # Changed to None
-        self.preference_choice = '0'
-        self.preference_second_choice = '0'
-        self.preference_choice_made = False
-        self.preference_second_choice_made = False
-        self.image_displayed = False
-        self.second_image_displayed = False
-        self.my_page_load_time = None  # Changed to None
-        self.initial_choice_time = None  # Changed to None
-        self.initial_bet_time = None  # Changed to None
-        self.preference_choice_time = None  # Changed to None
-        self.preference_second_choice_time = None  # Changed to None
-        self.second_choice_page_load_time = None  # Changed to None
-        self.second_choice_time = None  # Changed to None
-        self.second_bet_time = None  # Changed to None
+        self.choice1_accuracy = None
+        self.choice2_accuracy = None
+        self.switch_vs_stay = None
+        self.my_page_load_time = None
+        self.initial_choice_time = None
+        self.initial_bet_time = None
+        self.second_choice_time = None
+        self.second_bet_time = None
         self.computer_choice_one = True
-        self.computer_bet_one = 1
-        self.computer_preference_choice_one = True
-        self.button_pressed = False
-        self.computer_preference_choice_two = True
+        self.computer_bet_one = False
         self.computer_choice_two = True
         self.computer_bet_two = False
-        self.player_1_choice_one = None  # Changed to None
-        self.player_1_choice_two = None  # Changed to None
-        self.player_2_choice_one = None  # Changed to None
-        self.player_2_choice_two = None  # Changed to None
-        self.player_1_computer_choice_one = None  # Changed to None
-        self.player_1_computer_choice_two = None  # Changed to None
-        self.player_2_computer_choice_one = None  # Changed to None
-        self.player_2_computer_choice_two = None  # Changed to None
-        self.player1_choice1_accuracy = None  # Reset player1_choice1_accuracy
-        self.player1_choice2_accuracy = None  # Reset player1_choice2_accuracy
-        self.player2_choice1_accuracy = None  # Reset player2_choice1_accuracy
-        self.player2_choice2_accuracy = None  # Reset player2_choice2_accuracy
+        self.player_1_choice_one = None
+        self.player_1_choice_two = None
+        self.player_2_choice_one = None
+        self.player_2_choice_two = None
+        self.player_1_computer_choice_one = None
+        self.player_1_computer_choice_two = None
+        self.player_2_computer_choice_one = None
+        self.player_2_computer_choice_two = None
+        self.player1_choice1_accuracy = None 
+        self.player1_choice2_accuracy = None
+        self.player2_choice1_accuracy = None
+        self.player2_choice2_accuracy = None
         self.loss_or_gain = None
         self.loss_or_gain_player1 = None
         self.loss_or_gain_player2 = None
@@ -514,7 +457,6 @@ class Player(BasePlayer):
         self.player4_choice2_accuracy = None
         self.loss_or_gain_player3 = None
         self.loss_or_gain_player4 = None
-        self.all_images_displayed = False
 
 # Calculate the number of players who made the same choice as the current player
 # This is used to calculate the social influence effect
@@ -560,50 +502,90 @@ class Player(BasePlayer):
 
 class MyPage(Page):
     form_model = 'player'
-    form_fields = []
+    form_fields = ['choice1', 'bet1', 'choice2', 'bet2']
 
-# Get the start time of the page
     @staticmethod
     def js_vars(player: Player):
         return dict(
             page_start_time=int(time.time() * 1000)
         )
 
-# Time players out after 42 seconds spent on MyPage (this assumes that a player has left the session)
     @staticmethod
     def get_timeout_seconds(player: Player):
         return 4200
 
-# Time out players who leave the session and set the chosen_image_one based on the manual choice
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
         if timeout_happened:
             player.participant.vars['timed_out'] = True
 
-        if player.field_maybe_none('choice1') is None:
-            # Set choice1 if it is None (i.e., no manual choice was made)
-            player.choice1 = 'left' if player.chosen_image_one == player.left_image else 'right'
-        else:
-            # Ensure chosen_image_one is set based on the manual choice
-            player.chosen_image_one = player.left_image if player.choice1 == 'left' else player.right_image
-            player.participant.vars['chosen_image_one'] = player.chosen_image_one
+        # Handle both first and second choices/bets
+        for choice_field, computer_choice_field, bet_field, image_field in [
+            ('choice1', 'computer_choice1', 'bet1', 'chosen_image_one'),
+            ('choice2', 'computer_choice2', 'bet2', 'chosen_image_two')
+        ]:
+            manual_choice = player.field_maybe_none(choice_field)
+            computer_choice = player.field_maybe_none(computer_choice_field)
 
-        # Calculate choice1_earnings
+            # Specific condition to keep manual choice if computer choice is not 'left' or 'right'
+            if manual_choice is not None and (computer_choice is None or computer_choice not in ['left', 'right']):
+                # Keep the manual choice, do nothing
+                pass
+            elif computer_choice in ['left', 'right']:
+                # If there's a valid computer choice, use it and clear the manual choice
+                setattr(player, choice_field, None)
+                setattr(player, computer_choice_field, computer_choice)
+            elif manual_choice is None and computer_choice is None:
+                # If both are None, ensure both fields are explicitly set to None
+                setattr(player, choice_field, None)
+                setattr(player, computer_choice_field, None)
+
+            # Determine the final choice for setting the chosen image
+            final_choice = getattr(player, computer_choice_field) or getattr(player, choice_field)
+
+            # Set the chosen image field based on the final choice
+            if final_choice in ['left', 'right']:
+                chosen_image = player.left_image if final_choice == 'left' else player.right_image
+                setattr(player, image_field, chosen_image)
+                player.participant.vars[image_field] = chosen_image
+            else:
+                setattr(player, image_field, None)
+                player.participant.vars[image_field] = None
+
+            # Handle bets
+            bet_value = player.field_maybe_none(bet_field)
+            if bet_value is None:
+                setattr(player, bet_field, 1)  # Default to 1 if no bet was made
+
+        # The rest of the method remains the same
+        # Calculate earnings
         player.calculate_choice1_earnings()
+        player.choice2_earnings = player.bet2 * 20 * player.trial_reward if player.trial_reward == 1 else -1 * player.bet2 * 20
 
-        # Check if it's time to move to SecondChoicePage
-        if time.time() >= player.participant.vars.get('display_phase_end_time', 0):
-            return 'SecondChoicePage'
-    
-# If a player leaves the session, redirect the remaining players to the player_left page
+        # Calculate and update bonus_payment_score
+        earnings_type = EARNINGS_SEQUENCE[player.round_number - 1]
+        current_round_earnings = player.choice1_earnings if earnings_type == 'choice1_earnings' else player.choice2_earnings
+
+        if player.round_number == 1:
+            player.bonus_payment_score = current_round_earnings
+            player.choice1_sum_earnings = player.choice1_earnings
+            player.choice2_sum_earnings = player.choice2_earnings
+        else:
+            previous_player = player.in_round(player.round_number - 1)
+            player.bonus_payment_score = previous_player.bonus_payment_score + current_round_earnings
+            player.choice1_sum_earnings = previous_player.choice1_sum_earnings + player.choice1_earnings
+            player.choice2_sum_earnings = previous_player.choice2_sum_earnings + player.choice2_earnings
+
+        # Calculate choice comparisons and accuracies
+        player.calculate_choice_comparisons()
+        player.choice1_accuracy = player.chosen_image_one == player.group.seventy_percent_image
+        player.choice2_accuracy = player.chosen_image_two == player.group.seventy_percent_image
+        player.switch_vs_stay = 1 if player.chosen_image_one != player.chosen_image_two else 0
 
     @staticmethod
     def app_after_this_page(player: Player, upcoming_apps):
         if player.participant.vars.get('timed_out', False):
-            return 'player_left'  # This will return 'player_left' if a player leaves
-
-# Define the vars_for_template method to pass variables to the template
-# This method is used to pass the left and right images to the template, as well as the player's ID and avatar image
+            return 'player_left'
 
     @staticmethod
     def vars_for_template(player: Player):
@@ -627,6 +609,10 @@ class MyPage(Page):
             'player_id': player.id_in_group,
             'avatar_image': C.AVATAR_IMAGE,
             'other_player_ids': [p.id_in_group for p in other_players],
+            'chosen_images': {p.id_in_group: f"main_task/{p.field_maybe_none('chosen_image_computer') or p.field_maybe_none('chosen_image_one') or 'default_image.png'}" for p in group.get_players()},
+            'previous_choice': player.participant.vars.get('chosen_image_one'),
+            'previous_bet': player.participant.vars.get('bet1'),
+            'round_number': player.round_number,
         }
 
 # -------------------------------------------------------------------------------------------------------------------- #
@@ -643,39 +629,13 @@ class MyPage(Page):
 # --- If players do not respond within the time limit, the computer randomly selects a choice or bet for them
 
     @staticmethod
-    @safe_websocket(max_retries=3, retry_delay=1)
+    # @safe_websocket(max_retries=3, retry_delay=1) # Uncomment to enable safe websocket
     def live_method(player, data):
-        print(f"Received data: {data}")
+        # print(f"Received data: {data}") # Uncomment to print received data
         group = player.group
         players = group.get_players()
         response = {}
-        current_time = time.time()
 
-        if data.get('type') in ['player_connected', 'player_disconnected']:
-            # Only process if it's been more than 2 seconds since the last update for this player
-            if current_time - player.last_connection_time > 2:
-                player.last_connection_time = current_time
-                is_connected = data['type'] == 'player_connected'
-                
-                if player.is_connected != is_connected:
-                    player.is_connected = is_connected
-                    print(f"Player {player.id_in_group} {'connected' if is_connected else 'disconnected'}")
-
-                    # Update group's connected players
-                    connected = set(group.connected_players.split(',') if group.connected_players else [])
-                    if is_connected:
-                        connected.add(str(player.id_in_group))
-                    else:
-                        connected.discard(str(player.id_in_group))
-                    group.connected_players = ','.join(connected) if connected else ''
-
-                    # Only update and print group status if it's been more than 2 seconds since last group update
-                    if current_time - group.last_connection_update > 2:
-                        group.last_connection_update = current_time
-                        print(f"Group {group.id_in_subsession} connected players: {group.connected_players}")
-
-        # Record the page load time for each player and set the group-level variable when all players have loaded the page
-        # This is used to set the round reward and start the choice phase timer
         if 'my_page_load_time' in data:
             player.my_page_load_time = round(data['my_page_load_time'] / 1000, 2)
             player.individual_page_load_time = round(data['individual_page_load_time'] / 1000, 2)
@@ -704,6 +664,7 @@ class MyPage(Page):
                 if p.field_maybe_none('choice1') is None or p.choice1 == '':
                     random_choice = random.choice(['left', 'right'])
                     p.choice1 = random_choice
+                    p.computer_choice1 = random_choice  # Store the computer-made choice
                     p.chosen_image_one = p.left_image if random_choice == 'left' else p.right_image
                     p.participant.vars['chosen_image_one'] = p.chosen_image_one
                     p.initial_choice_time = 3.0
@@ -718,7 +679,6 @@ class MyPage(Page):
                     p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
                     p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
 
-            # Calculate the values for the first choice from the perspective of each player
             for p in players:
                 other_players = p.get_others_in_group()
                 p.player_1_choice_one = other_players[0].chosen_image_one_binary
@@ -734,43 +694,36 @@ class MyPage(Page):
                 p.player3_choice1_accuracy = other_players[2].choice1_accuracy
                 p.player4_choice1_accuracy = other_players[3].choice1_accuracy
 
-            # Always move to bet phase after choice phase timer ends
-            print("Choice phase timer ended, transitioning to bet phase")
             return {p.id_in_group: dict(show_bet_container=True, start_bet_timer=True, highlight_selected_choice=p.choice1) for p in players}
 
-        # Show the bet container and start the bet phase timer after all players have made their first choice
         if 'show_bet_container' in data and data['show_bet_container']:
-            # Calculate comparisons for the first choice
             for p in players:
                 p.calculate_choice_comparisons()
 
             player.participant.vars['bet_timer_started'] = True
-            player.participant.vars['bet_phase_start_time'] = time.time()  # Record the start time of the bet phase
-            pass
+            player.participant.vars['bet_phase_start_time'] = time.time()
             return {player.id_in_group: dict(start_bet_timer=True)}
 
         if 'bet' in data:
-            if not player.field_maybe_none('bet1') and data.get('id') == player.id_in_group:
+            # Only process the manual bet if a computer bet hasn't been made yet
+            if not player.computer_bet_one:  # Add this condition
                 player.bet1 = int(data['bet'])
                 player.participant.vars['bet1'] = player.bet1
                 player.initial_bet_time = round(data['initial_bet_time'] / 1000, 2)
-                player.computer_bet_one = 0
+                player.computer_bet_one = False
 
         if 'bet_timer_ended' in data:
             response = {}
-            all_bets_made = True
             for p in players:
-                if p.field_maybe_none('bet1') == 0:
-                    p.computer_bet_one = 1
+                # Only assign computer bet if no bet has been made yet
+                if not p.field_maybe_none('bet1') and not p.computer_bet_one:  # Modified condition
                     random_bet = random.randint(1, 3)
                     p.bet1 = random_bet
                     p.participant.vars['bet1'] = p.bet1
                     p.initial_bet_time = 3.0
+                    p.computer_bet_one = True
                     response[p.id_in_group] = dict(highlight_computer_bet=p.bet1)
-                else:
-                    p.computer_bet_one = 0
 
-            # Always proceed to display remaining images when bet timer ends
             if not group.remaining_images_displayed:
                 group.remaining_images_displayed = True
                 display_response = MyPage.display_remaining_images(player, players)
@@ -783,7 +736,139 @@ class MyPage(Page):
                 return display_response
 
             return response
-        
+
+        # Second choice phase
+        if 'second_choice' in data and data.get('manual_second_choice', False):
+            print(f"Received manual second choice for player {player.id_in_group}")
+            
+            player.choice2 = data['second_choice']
+            player.chosen_image_two = player.left_image if data['second_choice'] == 'left' else player.right_image
+            player.participant.vars['chosen_image_two'] = player.chosen_image_two
+            player.computer_choice_two = False
+            player.manual_second_choice = True
+            player.second_choice_time = round(data['second_choice_time'] / 1000, 2)
+            player.chosen_image_two_binary = 1 if player.chosen_image_two == 'option1A.bmp' else 2
+            player.choice2_accuracy = player.chosen_image_two == player.group.seventy_percent_image
+            player.switch_vs_stay = 1 if player.field_maybe_none('chosen_image_one') != player.chosen_image_two else 0
+            player.chosen_image_computer_two = ''
+            player.computer_choice2 = ''
+            
+            return {player.id_in_group: dict(highlight_selected_second_choice=player.choice2)}
+
+        if 'second_choice_timer_ended' in data:
+            for p in players:
+                if not p.field_maybe_none('choice2'):  # If no manual choice was made
+                    p.computer_choice2 = random.choice(['left', 'right'])
+                    p.choice2 = p.computer_choice2
+                    p.chosen_image_two = p.left_image if p.computer_choice2 == 'left' else p.right_image
+                    
+                    if p.chosen_image_two == 'option1A.bmp':
+                        p.chosen_image_computer_two = 'option1A_tr.bmp'
+                    else:
+                        p.chosen_image_computer_two = 'option1B_tr.bmp'
+                
+                # These calculations are done for both manual and computer choices
+                if p.field_maybe_none('chosen_image_two') is not None:
+                    p.chosen_image_two_binary = 1 if p.chosen_image_two == 'option1A.bmp' else 2
+                    p.choice2_accuracy = p.chosen_image_two == p.group.seventy_percent_image
+                    p.switch_vs_stay = 1 if p.field_maybe_none('chosen_image_one') != p.chosen_image_two else 0
+                else:
+                    print(f"Warning: chosen_image_two is None for player {p.id_in_group}")
+
+            for p in players:
+                other_players = p.get_others_in_group()
+                p.player_1_choice_two = other_players[0].chosen_image_two_binary
+                p.player_2_choice_two = other_players[1].chosen_image_two_binary
+                p.player_3_choice_two = other_players[2].chosen_image_two_binary
+                p.player_4_choice_two = other_players[3].chosen_image_two_binary
+                p.player_1_computer_choice_two = other_players[0].computer_choice_two
+                p.player_2_computer_choice_two = other_players[1].computer_choice_two
+                p.player_3_computer_choice_two = other_players[2].computer_choice_two
+                p.player_4_computer_choice_two = other_players[3].computer_choice_two
+                p.player1_choice2_accuracy = other_players[0].choice2_accuracy
+                p.player2_choice2_accuracy = other_players[1].choice2_accuracy
+                p.player3_choice2_accuracy = other_players[2].choice2_accuracy
+                p.player4_choice2_accuracy = other_players[3].choice2_accuracy
+
+            # Calculate comparisons for the second choice
+            for p in players:
+                p.calculate_choice_comparisons()
+
+            if not group.bet_container_displayed:
+                group.bet_container_displayed = True
+                return {p.id_in_group: dict(
+                    second_choice_timer_ended=True,
+                    show_bet_container=True, 
+                    start_second_bet_timer=True, 
+                    highlight_selected_image=p.chosen_image_two,
+                    computer_second_choice=p.computer_choice2 if not p.field_maybe_none('choice2') else p.choice2
+                ) for p in players}
+    
+        # Second bet phase
+        if 'second_bet' in data:
+            player.bet2 = int(data['second_bet'])
+            player.bet2 = player.bet2
+            player.computer_bet_two = False
+            player.second_bet_time = round(data['second_bet_time'] / 1000, 2)
+
+        if 'second_bet_timer_ended' in data:
+            if not group.second_bet_timer_ended_executed:
+                group.second_bet_timer_ended_executed = True
+                response = {}
+
+                for p in players:
+                    if p.bet2 == 0:
+                        random_bet = random.randint(1, 3)
+                        p.bet2 = random_bet
+                        p.bet2 = p.bet2
+                        p.computer_bet_two = True
+                        p.second_bet_time = 3.0
+                        response[p.id_in_group] = dict(highlight_computer_second_bet=p.bet2)
+
+                # Calculate rewards and prepare results for all players
+                group.set_round_reward()
+                group.calculate_player_rewards()
+
+                for p in players:
+                    p.choice2_earnings = p.bet2 * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2 * 20
+                    p.choice2_sum_earnings = sum([prev_player.choice2_earnings for prev_player in p.in_previous_rounds()]) + p.choice2_earnings
+                    p.loss_or_gain = -1 if p.choice2_earnings < 0 else 1
+
+                for p in players:
+                    other_players = p.get_others_in_group()
+                    p.loss_or_gain_player1 = 0 if other_players[0].choice2_earnings < 0 else 1
+                    p.loss_or_gain_player2 = 0 if other_players[1].choice2_earnings < 0 else 1
+                    p.loss_or_gain_player3 = 0 if other_players[2].choice2_earnings < 0 else 1
+                    p.loss_or_gain_player4 = 0 if other_players[3].choice2_earnings < 0 else 1
+
+                group.generate_intertrial_interval()
+                group.next_round_transition_time = time.time() * 1000 + group.intertrial_interval
+
+                chosen_images_secondchoicepage = {
+                    p.id_in_group: f"main_task/{p.chosen_image_computer_two if p.computer_choice_two else p.chosen_image_two}" 
+                    for p in players
+                }
+                win_loss_images = {p.id_in_group: f'main_task/{"win" if p.trial_reward == 1 else "loss"}.png' for p in players}
+
+                for p in players:
+                    response[p.id_in_group] = {
+                        **response.get(p.id_in_group, {}),
+                        **dict(
+                            show_results=True,
+                            second_bet_reward=p.choice2_earnings,
+                            chosen_images=chosen_images_secondchoicepage,
+                            win_loss_images=win_loss_images,
+                            player_win_loss_image=win_loss_images[p.id_in_group],
+                            intertrial_interval=group.intertrial_interval,
+                            round_number=player.round_number,
+                            num_rounds=C.NUM_ROUNDS,
+                            selected_bet=p.bet2,
+                            second_choice=p.choice2
+                        )
+                    }
+
+                return response
+
         return {p.id_in_group: data for p in group.get_players()}
 
     @staticmethod
@@ -802,234 +887,6 @@ class MyPage(Page):
         
         return response
 
-# -------------------------------------------------------------------------------------------------------------------- #
-# ---- SECOND CHOICE PAGE: WHERE PLAYERS MAKE THEIR SECOND CHOICE, SECOND BET AND GET FEEDBACK ------ #
-# -------------------------------------------------------------------------------------------------------------------- #
-
-class SecondChoicePage(Page):
-    form_model = 'player'
-    form_fields = ['choice2', 'bet2']
-
-    # Get the variables for the template and pass them so they can be displayed (i.e., left and right images, player ID, etc.)
-    @staticmethod
-    def vars_for_template(player: Player):
-        group = player.group
-        players = group.get_players()
-        chosen_images = {
-            p.id_in_group: f"main_task/{p.field_maybe_none('chosen_image_computer') or p.field_maybe_none('chosen_image_one') or 'default_image.png'}" 
-            for p in players
-        }
-        other_players = player.get_others_in_group()
-        previous_choice = player.participant.vars.get('chosen_image_one')
-
-        return {
-            'left_image': f'main_task/{player.left_image}',
-            'right_image': f'main_task/{player.right_image}',
-            'player_id': player.id_in_group,
-            'avatar_image': C.AVATAR_IMAGE,
-            'other_player_ids': [p.id_in_group for p in other_players],
-            'chosen_images': chosen_images,
-            'previous_choice': previous_choice,
-            'previous_bet': player.participant.vars.get('bet1'),
-            'round_number': player.round_number,
-        }
-
-    # Before the next page, set the choice2 based on the chosen_image_two value if it's not already set
-    @staticmethod
-    def before_next_page(player: Player, timeout_happened):
-        # Set choice2 based on the chosen_image_two value if it's not already set
-        if not player.field_maybe_none('choice2'):
-            player.choice2 = 'left' if player.chosen_image_two == player.left_image else 'right'
-            player.choice2_computer = player.choice2 if player.computer_choice_two else ''
-
-        # Calculate and update bonus_payment_score
-        earnings_type = EARNINGS_SEQUENCE[player.round_number - 1]
-        current_round_earnings = player.choice1_earnings if earnings_type == 'choice1_earnings' else player.choice2_earnings
-
-        if player.round_number == 1:
-            player.bonus_payment_score = current_round_earnings
-            player.choice1_sum_earnings = player.choice1_earnings
-        else:
-            previous_score = player.in_round(player.round_number - 1).bonus_payment_score
-            player.bonus_payment_score = previous_score + current_round_earnings
-            
-            previous_choice1_sum = player.in_round(player.round_number - 1).choice1_sum_earnings
-            player.choice1_sum_earnings = previous_choice1_sum + player.choice1_earnings
-
-
-# -------------------------------------------------------------------------------------------------------------------- #
-# -------- The live_method: Used to handle real-time data from the players and progress them through the task--------- #
-# -------------------------------------------------------------------------------------------------------------------- #
-
-    @staticmethod
-    @safe_websocket(max_retries=3, retry_delay=1)
-    def live_method(player, data):
-        group = player.group
-        players = group.get_players()
-        current_time = time.time()
-
-        if data.get('type') in ['player_connected', 'player_disconnected']:
-            # Only process if it's been more than 2 seconds since the last update for this player
-            if current_time - player.last_connection_time > 2:
-                player.last_connection_time = current_time
-                is_connected = data['type'] == 'player_connected'
-                
-                if player.is_connected != is_connected:
-                    player.is_connected = is_connected
-                    print(f"Player {player.id_in_group} {'connected' if is_connected else 'disconnected'}")
-
-                    # Update group's connected players
-                    connected = set(group.connected_players.split(',') if group.connected_players else [])
-                    if is_connected:
-                        connected.add(str(player.id_in_group))
-                    else:
-                        connected.discard(str(player.id_in_group))
-                    group.connected_players = ','.join(connected) if connected else ''
-
-                    # Only update and print group status if it's been more than 2 seconds since last group update
-                    if current_time - group.last_connection_update > 2:
-                        group.last_connection_update = current_time
-                        print(f"Group {group.id_in_subsession} connected players: {group.connected_players}")
-
-        # Record the time taken to load the second choice page for each player and set the group-level variable when all players have loaded the page
-        if 'second_choice_page_loaded' in data:
-            player.second_choice_page_load_time = round(data['page_load_time'] / 1000, 2)
-            if all(p.field_maybe_none('second_choice_page_load_time') for p in players):
-                return {p.id_in_group: dict(start_second_choice_timer=True) for p in players}
-
-        # Record the second choice made by the player and set the chosen_image_two based on the choice
-        if 'second_choice' in data:
-            player.chosen_image_two = data['second_choice']
-            player.choice2 = 'left' if player.chosen_image_two == player.left_image else 'right'
-            player.choice2_computer = ''
-            player.computer_choice_two = False
-            if 'second_choice_time' in data:
-                player.second_choice_time = round(data['second_choice_time'] / 1000, 2)
-            else:
-                player.second_choice_time = None
-            pass
-
-        # Start the second choice timer for all players and assign a random choice to players who haven't made a choice within the time limit
-        if 'second_choice_timer_ended' in data:
-            pass
-            for p in players:
-                if p.field_maybe_none('chosen_image_two') is None:
-                    random_image = random.choice([p.left_image, p.right_image])
-                    p.chosen_image_two = random_image
-                    p.choice2 = 'left' if random_image == p.left_image else 'right'
-                    p.choice2_computer = p.choice2
-                    p.chosen_image_two_binary = 1 if p.chosen_image_two == 'option1A.bmp' else 2
-                    p.computer_choice_two = True
-                    if p.chosen_image_two == 'option1A.bmp':
-                        p.chosen_image_computer_two = 'option1A_tr.bmp'
-                    elif p.chosen_image_two == 'option1B.bmp':
-                        p.chosen_image_computer_two = 'option1B_tr.bmp'
-                    p.second_choice_time = 3.0
-                    pass
-                else:
-                    p.chosen_image_two_binary = 1 if p.chosen_image_two == 'option1A.bmp' else 2
-                    p.choice2_computer = p.choice2
-
-                p.choice2_accuracy = p.chosen_image_two == p.group.seventy_percent_image
-                p.switch_vs_stay = 1 if p.chosen_image_one != p.chosen_image_two else 0
-
-            # Calculate the values for the second choice from the perspective of each player and display the bet container
-            for p in players:
-                other_players = p.get_others_in_group()
-                p.player_1_choice_two = other_players[0].chosen_image_two_binary
-                p.player_2_choice_two = other_players[1].chosen_image_two_binary
-                p.player_3_choice_two = other_players[2].chosen_image_two_binary
-                p.player_4_choice_two = other_players[3].chosen_image_two_binary
-                p.player_1_computer_choice_two = other_players[0].computer_choice_two
-                p.player_2_computer_choice_two = other_players[1].computer_choice_two
-                p.player_3_computer_choice_two = other_players[2].computer_choice_two
-                p.player_4_computer_choice_two = other_players[3].computer_choice_two
-                p.player1_choice2_accuracy = other_players[0].choice2_accuracy
-                p.player2_choice2_accuracy = other_players[1].choice2_accuracy
-                p.player3_choice2_accuracy = other_players[2].choice2_accuracy
-                p.player4_choice2_accuracy = other_players[3].choice2_accuracy
-
-            if not player.group.bet_container_displayed:
-                player.group.bet_container_displayed = True
-                return {p.id_in_group: dict(show_bet_container=True, start_second_bet_timer=True, highlight_selected_image=p.chosen_image_two) for p in players}
-
-
-        # Record the bet made by the player and set the bet2 based on the choice if it's not already set 
-        if 'second_bet' in data:
-            player.bet2 = int(data['second_bet'])
-            player.bet2_computer = player.bet2
-            player.computer_bet_two = False
-            player.second_bet_time = round(data['second_bet_time'] / 1000, 2)
-            pass
-
-        # Start the second bet timer for all players and assign a random bet to players who haven't made a bet within the time limit
-        if 'second_bet_timer_ended' in data:
-            # Calculate comparisons for the first choice
-            for p in players:
-                p.calculate_choice_comparisons()
-                
-            if not group.second_bet_timer_ended_executed:
-                group.second_bet_timer_ended_executed = True
-                response = {}
-
-                for p in players:
-                    if p.bet2 == 0:
-                        random_bet = random.randint(1, 3)
-                        p.bet2 = random_bet
-                        p.bet2_computer = p.bet2
-                        p.computer_choice_two = True
-                        p.second_bet_time = 3.0
-                        pass
-                        response[p.id_in_group] = dict(highlight_computer_bet=p.bet2)
-
-                # Set round rewards if not already set
-                if not group.round_reward_set:
-                    group.set_round_reward()
-
-                # Calculate player rewards
-                group.calculate_player_rewards()
-
-                # Calculate choice2_earnings for each player
-                for p in players:
-                    p.choice2_earnings = p.bet2_computer * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2_computer * 20
-                    p.choice2_sum_earnings = sum([prev_player.choice2_earnings for prev_player in p.in_previous_rounds()]) + p.choice2_earnings
-                    p.loss_or_gain = -1 if p.choice2_earnings < 0 else 1
-
-                # Calculate loss_or_gain for other players in the group from the perspective of each player
-                for p in players:
-                    other_players = p.get_others_in_group()
-                    p.loss_or_gain_player1 = 0 if other_players[0].choice2_earnings < 0 else 1
-                    p.loss_or_gain_player2 = 0 if other_players[1].choice2_earnings < 0 else 1
-                    p.loss_or_gain_player3 = 0 if other_players[2].choice2_earnings < 0 else 1
-                    p.loss_or_gain_player4 = 0 if other_players[3].choice2_earnings < 0 else 1
-
-                # Generate the intertrial interval and set the next round transition time
-                group.generate_intertrial_interval()
-                group.next_round_transition_time = time.time() * 1000 + group.intertrial_interval
-
-                chosen_images_secondchoicepage = {p.id_in_group: f"main_task/{p.chosen_image_computer_two}" if p.chosen_image_computer_two else f"main_task/{p.chosen_image_two}" for p in players}
-                win_loss_images = {p.id_in_group: f'main_task/{"win" if p.trial_reward == 1 else "loss"}.png' for p in players}
-
-                for p in players:
-                    response[p.id_in_group] = {
-                        **response.get(p.id_in_group, {}),
-                        **dict(
-                            show_results=True,
-                            second_bet_reward=p.choice2_earnings,
-                            chosen_images=chosen_images_secondchoicepage,
-                            win_loss_images=win_loss_images,
-                            player_win_loss_image=win_loss_images[p.id_in_group],
-                            intertrial_interval=group.intertrial_interval,
-                            round_number=player.round_number,
-                            num_rounds=C.NUM_ROUNDS,
-                            selected_bet=p.bet2
-                        )
-                    }
-
-                return response
-            
-        return {p.id_in_group: data for p in group.get_players()}
-    
     @staticmethod
     def after_all_players_arrive(group: Group):
         group.set_payoffs()
@@ -1100,6 +957,6 @@ class FinalResults(Page):
         print('upcoming_apps is', upcoming_apps)
         return "submission"  # Hardcoded name of the last app
 
-page_sequence = [MyPage, SecondChoicePage, FinalResults]  
+page_sequence = [MyPage, FinalResults]  
 
 # -------------------------------------------------------------------------------------------------------------------- #

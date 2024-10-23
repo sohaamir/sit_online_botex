@@ -72,7 +72,7 @@
     .title {
         text-align: center;
         position: absolute;
-        top: -110px;
+        top: -45px;
         left: 50%;
         transform: translateX(-50%);
         white-space: pre-line;
@@ -89,7 +89,7 @@
     .bet-options {
         display: flex;
         justify-content: center;
-        margin-top: -60px;
+        margin-top: 60px;
     }
 
     .bet-options div {
@@ -101,7 +101,7 @@
     #trial-reward {
         color: rgb(30, 236, 30);
         font-size: 36px;
-        margin-top: 4.5px;
+        margin-top: -0px;
         font-weight: bold;
         text-align: center;
     }
@@ -165,7 +165,7 @@
     #player-win-loss-container {
         display: flex;
         justify-content: center;
-        margin-top: 20px;
+        margin-top: -250px;
     }
 
     #player-win-loss-image {
@@ -301,7 +301,7 @@
                 if (currentStage === 'choice') {
                     liveSend({second_choice_timer_ended: true});
                 }
-            }, 8000);
+            }, 6000);
         }
 
         if ('highlight_selected_image' in data) {
@@ -326,13 +326,13 @@
                 secondBetStartTime = performance.now();
                 console.log('Second bet phase start time:', secondBetStartTime);
 
-                // Start the second bet timer for 8000ms
+                // Start the second bet timer for 6000ms
                 setTimeout(function() {
                     if (currentStage === 'bet' && !betMade) {
-                        // If no bet is made within 8000ms, send the second_bet_timer_ended event
+                        // If no bet is made within 6000ms, send the second_bet_timer_ended event
                         liveSend({second_bet_timer_ended: true});
                     }
-                }, 8000);
+                }, 6000);
 
                 // Print the correct choice2 value based on whether it was made manually or assigned by the computer
                 if (choiceMade) {
@@ -363,7 +363,7 @@
             setTimeout(function() {
                 betPhaseEnded = true;
                 liveSend({second_bet_timer_ended: true});
-            }, 8000);
+            }, 6000);
         }
 
         if ('second_bet_timer_ended' in data && data.second_bet_timer_ended) {

@@ -299,61 +299,12 @@
         }
     }
 
-    let connectedPlayers = new Set();
-    let lastConnectionTime = {};
-    const THROTTLE_TIME = 2000; // 2 seconds
-
-    function throttle(playerId, action) {
-        const now = Date.now();
-        if (!lastConnectionTime[playerId] || now - lastConnectionTime[playerId] > THROTTLE_TIME) {
-            lastConnectionTime[playerId] = now;
-            return true;
-        }
-        return false;
-    }
-
-    function updateConnectedPlayers(players) {
-        console.log("Connected players:", Array.from(players));
-    }
-
-    function playerConnected(playerId) {
-        if (!connectedPlayers.has(playerId) && throttle(playerId, 'connect')) {
-            connectedPlayers.add(playerId);
-            updateConnectedPlayers(connectedPlayers);
-            liveSend({type: 'player_connected', player_id: playerId});
-            console.log(`Player ${playerId} connected`);
-        }
-    }
-
-    function playerDisconnected(playerId) {
-        if (connectedPlayers.has(playerId) && throttle(playerId, 'disconnect')) {
-            connectedPlayers.delete(playerId);
-            updateConnectedPlayers(connectedPlayers);
-            liveSend({type: 'player_disconnected', player_id: playerId});
-            console.log(`Player ${playerId} disconnected`);
-        }
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        playerConnected(js_vars.player_id);
-    });
-
-    window.addEventListener('beforeunload', function() {
-        playerDisconnected(js_vars.player_id);
-    });
-
 // Live communication functions to send and receive data 
 // These functions are used to send and receive data between the server and the client in real-time
 // The liveSend function sends data to the server, while the liveRecv function receives data from the server
 
     function liveRecv(data) {
         console.log('Received data:', data);
-
-        if (data.type === 'player_connected') {
-            playerConnected(data.player_id);
-        } else if (data.type === 'player_disconnected') {
-            playerDisconnected(data.player_id);
-        }
 
         // If the second_choice_page_loaded flag is received, log the page load time
         if ('start_second_choice_timer' in data && data.start_second_choice_timer) {
@@ -508,6 +459,7 @@
             }, data.intertrial_interval);
         }
     }
+
 </script>
 
 {{ endblock }}

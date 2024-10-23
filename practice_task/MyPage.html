@@ -208,9 +208,9 @@
         liveSend({my_page_load_time: performance.now()});
         initialChoiceTimerId = setTimeout(function() {
             if (currentStage === 'choice') {
-                liveSend({initial_choice_time: 8000});
+                liveSend({initial_choice_time: 6000});
             }
-        }, 8000);
+        }, 6000);
 
         window.choicePhaseStartTime = performance.now();
     });
@@ -280,7 +280,7 @@
             window.choicePhaseTimerStarted = true;
             setTimeout(function() {
                 liveSend({choice_phase_timer_ended: true});
-            }, 8000);
+            }, 6000);
         }
 
         if ('choice_phase_timer_ended' in data) {
@@ -315,7 +315,7 @@
                 if (!betMade) {
                     liveSend({bet_timer_ended: true});
                 }
-            }, 8000);
+            }, 6000);
         }
 
         if ('show_bet_container' in data && data.show_bet_container) {
@@ -335,7 +335,7 @@
                     liveSend({bet_timer_ended: true});
                 }
                 document.removeEventListener('keydown', handleKeyDown);
-            }, 8000);
+            }, 6000);
         }
 
         if ('highlight_selected_bet' in data) {
@@ -406,7 +406,7 @@
     // Time players out after 80 seconds spent on MyPage
     document.addEventListener('DOMContentLoaded', function() {
         const pageStartTime = js_vars.page_start_time;
-        const timeoutDuration = 80000; // 80 seconds in milliseconds
+        const timeoutDuration = 60000; // 80 seconds in milliseconds
 
         function checkTimeout() {
             const currentTime = new Date().getTime();
