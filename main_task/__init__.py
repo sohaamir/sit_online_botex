@@ -465,11 +465,11 @@ class Player(BasePlayer):
         other_players = self.get_others_in_group()
         
         # For choice1
-        self.choice1_with = sum(1 for p in other_players if p.field_maybe_none('chosen_image_one') == self.field_maybe_none('chosen_image_one'))
+        self.choice1_with = sum(1 for p in other_players if p.chosen_image_one == self.chosen_image_one)
         self.choice1_against = len(other_players) - self.choice1_with
         
         # For choice2
-        self.choice2_with = sum(1 for p in other_players if p.field_maybe_none('chosen_image_two') == self.field_maybe_none('chosen_image_two'))
+        self.choice2_with = sum(1 for p in other_players if p.chosen_image_two == self.chosen_image_two)
         self.choice2_against = len(other_players) - self.choice2_with
 
 # Calculate the payoffs for each player based on their choices and rewards
@@ -486,12 +486,12 @@ class Player(BasePlayer):
         self.total_payoff = self.base_payoff + self.bonus_payoff
 
     def calculate_choice1_earnings(self):
-        chosen_image = self.field_maybe_none('chosen_image_one')
-        if chosen_image == 'option1A.bmp':
+        if self.chosen_image_one == 'option1A.bmp':
             choice1_reward = self.group.round_reward_A
-        elif chosen_image == 'option1B.bmp':
+        elif self.chosen_image_one == 'option1B.bmp':
             choice1_reward = self.group.round_reward_B
         else:
+            pass
             return
 
         self.choice1_earnings = self.bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * self.bet1 * 20
@@ -661,10 +661,10 @@ class MyPage(Page):
 
         if 'choice_phase_timer_ended' in data:
             for p in players:
-                if not p.field_maybe_none('choice1'):  # Changed from if not p.choice1
+                if p.field_maybe_none('choice1') is None or p.choice1 == '':
                     random_choice = random.choice(['left', 'right'])
                     p.choice1 = random_choice
-                    p.computer_choice1 = random_choice
+                    p.computer_choice1 = random_choice  # Store the computer-made choice
                     p.chosen_image_one = p.left_image if random_choice == 'left' else p.right_image
                     p.participant.vars['chosen_image_one'] = p.chosen_image_one
                     p.initial_choice_time = 3.0
@@ -676,10 +676,8 @@ class MyPage(Page):
                         p.chosen_image_computer = 'option1B_tr.bmp'
                     p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
                 else:
-                    chosen_image = p.field_maybe_none('chosen_image_one')
-                    if chosen_image is not None:  # Only set these if chosen_image_one is not None
-                        p.chosen_image_one_binary = 1 if chosen_image == 'option1A.bmp' else 2
-                        p.choice1_accuracy = chosen_image == group.seventy_percent_image
+                    p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
+                    p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
 
             for p in players:
                 other_players = p.get_others_in_group()
