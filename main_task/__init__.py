@@ -8,6 +8,17 @@ import random
 import time
 import csv
 
+import logging
+import time
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    filename='task_debug.log',
+    level=logging.DEBUG,
+    format='%(asctime)s - %(message)s'
+)
+
 author = 'Aamir Sohail'
 
 doc = """
@@ -629,247 +640,267 @@ class MyPage(Page):
 # --- If players do not respond within the time limit, the computer randomly selects a choice or bet for them
 
     @staticmethod
-    @safe_websocket(max_retries=5, retry_delay=0.2) # Uncomment to enable safe websocket
+    @safe_websocket(max_retries=5, retry_delay=0.2)
     def live_method(player, data):
-        # print(f"Received data: {data}") # Uncomment to print received data
-        group = player.group
-        players = group.get_players()
-        response = {}
-
-        if 'my_page_load_time' in data:
-            player.my_page_load_time = round(data['my_page_load_time'] / 1000, 2)
-            player.individual_page_load_time = round(data['individual_page_load_time'] / 1000, 2)
-
-            if all(p.field_maybe_none('my_page_load_time') for p in players):
-                group.my_page_load_time = round(max(p.my_page_load_time for p in players), 2)
-                group.set_round_reward()
-                group.reversal_learning()
-                return {p.id_in_group: dict(start_choice_phase_timer=True) for p in players}
-
-        if 'initial_choice_time' in data:
-            if data['initial_choice_time'] is not None:
-                actual_choice_time = round((data['initial_choice_time'] - player.individual_page_load_time) / 1000, 2)
-                player.initial_choice_time = min(actual_choice_time, 3.0)
-            else:
-                player.initial_choice_time = 3.0
-
-            if 'choice' in data and not player.field_maybe_none('chosen_image_one'):
-                player.choice1 = data['choice']
-                player.chosen_image_one = player.left_image if data['choice'] == 'left' else player.right_image
-                player.participant.vars['chosen_image_one'] = player.chosen_image_one
-                player.computer_choice_one = False
-
-        if 'choice_phase_timer_ended' in data:
-            for p in players:
-                if p.field_maybe_none('choice1') is None or p.choice1 == '':
-                    random_choice = random.choice(['left', 'right'])
-                    p.choice1 = random_choice
-                    p.computer_choice1 = random_choice  # Store the computer-made choice
-                    p.chosen_image_one = p.left_image if random_choice == 'left' else p.right_image
-                    p.participant.vars['chosen_image_one'] = p.chosen_image_one
-                    p.initial_choice_time = 3.0
-                    p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
-                    p.computer_choice_one = True
-                    if p.chosen_image_one == 'option1A.bmp':
-                        p.chosen_image_computer = 'option1A_tr.bmp'
-                    elif p.chosen_image_one == 'option1B.bmp':
-                        p.chosen_image_computer = 'option1B_tr.bmp'
-                    p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
-                else:
-                    p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
-                    p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
-
-            for p in players:
-                other_players = p.get_others_in_group()
-                p.player_1_choice_one = other_players[0].chosen_image_one_binary
-                p.player_2_choice_one = other_players[1].chosen_image_one_binary
-                p.player_3_choice_one = other_players[2].chosen_image_one_binary
-                p.player_4_choice_one = other_players[3].chosen_image_one_binary
-                p.player_1_computer_choice_one = other_players[0].computer_choice_one
-                p.player_2_computer_choice_one = other_players[1].computer_choice_one
-                p.player_3_computer_choice_one = other_players[2].computer_choice_one
-                p.player_4_computer_choice_one = other_players[3].computer_choice_one
-                p.player1_choice1_accuracy = other_players[0].choice1_accuracy
-                p.player2_choice1_accuracy = other_players[1].choice1_accuracy
-                p.player3_choice1_accuracy = other_players[2].choice1_accuracy
-                p.player4_choice1_accuracy = other_players[3].choice1_accuracy
-
-            return {p.id_in_group: dict(show_bet_container=True, start_bet_timer=True, highlight_selected_choice=p.choice1) for p in players}
-
-        if 'show_bet_container' in data and data['show_bet_container']:
-            for p in players:
-                p.calculate_choice_comparisons()
-
-            player.participant.vars['bet_timer_started'] = True
-            player.participant.vars['bet_phase_start_time'] = time.time()
-            return {player.id_in_group: dict(start_bet_timer=True)}
-
-        if 'bet' in data:
-            # Only process the manual bet if a computer bet hasn't been made yet
-            if not player.computer_bet_one:  # Add this condition
-                player.bet1 = int(data['bet'])
-                player.participant.vars['bet1'] = player.bet1
-                player.initial_bet_time = round(data['initial_bet_time'] / 1000, 2)
-                player.computer_bet_one = False
-
-        if 'bet_timer_ended' in data:
+        try:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+            logger.debug(f"[{timestamp}] Player {player.id_in_group}, Round {player.round_number}: Received data: {data}")
+            
+            group = player.group
+            players = group.get_players()
             response = {}
-            for p in players:
-                # Only assign computer bet if no bet has been made yet
-                if not p.field_maybe_none('bet1') and not p.computer_bet_one:  # Modified condition
-                    random_bet = random.randint(1, 3)
-                    p.bet1 = random_bet
-                    p.participant.vars['bet1'] = p.bet1
-                    p.initial_bet_time = 3.0
-                    p.computer_bet_one = True
-                    response[p.id_in_group] = dict(highlight_computer_bet=p.bet1)
 
-            if not group.remaining_images_displayed:
-                group.remaining_images_displayed = True
-                display_response = MyPage.display_remaining_images(player, players)
-                for p in players:
-                    p.participant.vars['display_phase_end_time'] = time.time() + 4
-                for p_id, p_response in display_response.items():
-                    p_response['start_display_timer'] = True
-                    if p_id in response:
-                        p_response.update(response[p_id])
-                return display_response
+            if 'my_page_load_time' in data:
+                logger.debug(f"[{timestamp}] Page load phase - Player {player.id_in_group}")
+                player.my_page_load_time = round(data['my_page_load_time'] / 1000, 2)
+                player.individual_page_load_time = round(data['individual_page_load_time'] / 1000, 2)
 
-            return response
+                if all(p.field_maybe_none('my_page_load_time') for p in players):
+                    logger.debug(f"[{timestamp}] All players loaded, starting choice phase")
+                    group.my_page_load_time = round(max(p.my_page_load_time for p in players), 2)
+                    group.set_round_reward()
+                    group.reversal_learning()
+                    return {p.id_in_group: dict(start_choice_phase_timer=True) for p in players}
 
-        # Second choice phase
-        if 'second_choice' in data and data.get('manual_second_choice', False):
-            print(f"Received manual second choice for player {player.id_in_group}")
-            
-            player.choice2 = data['second_choice']
-            player.chosen_image_two = player.left_image if data['second_choice'] == 'left' else player.right_image
-            player.participant.vars['chosen_image_two'] = player.chosen_image_two
-            player.computer_choice_two = False
-            player.manual_second_choice = True
-            player.second_choice_time = round(data['second_choice_time'] / 1000, 2)
-            player.chosen_image_two_binary = 1 if player.chosen_image_two == 'option1A.bmp' else 2
-            player.choice2_accuracy = player.chosen_image_two == player.group.seventy_percent_image
-            player.switch_vs_stay = 1 if player.field_maybe_none('chosen_image_one') != player.chosen_image_two else 0
-            player.chosen_image_computer_two = ''
-            player.computer_choice2 = ''
-            
-            return {player.id_in_group: dict(highlight_selected_second_choice=player.choice2)}
-
-        if 'second_choice_timer_ended' in data:
-            for p in players:
-                if not p.field_maybe_none('choice2'):  # If no manual choice was made
-                    p.computer_choice2 = random.choice(['left', 'right'])
-                    p.choice2 = p.computer_choice2
-                    p.chosen_image_two = p.left_image if p.computer_choice2 == 'left' else p.right_image
-                    
-                    if p.chosen_image_two == 'option1A.bmp':
-                        p.chosen_image_computer_two = 'option1A_tr.bmp'
-                    else:
-                        p.chosen_image_computer_two = 'option1B_tr.bmp'
-                
-                # These calculations are done for both manual and computer choices
-                if p.field_maybe_none('chosen_image_two') is not None:
-                    p.chosen_image_two_binary = 1 if p.chosen_image_two == 'option1A.bmp' else 2
-                    p.choice2_accuracy = p.chosen_image_two == p.group.seventy_percent_image
-                    p.switch_vs_stay = 1 if p.field_maybe_none('chosen_image_one') != p.chosen_image_two else 0
+            if 'initial_choice_time' in data:
+                logger.debug(f"[{timestamp}] Initial choice time received - Player {player.id_in_group}")
+                if data['initial_choice_time'] is not None:
+                    actual_choice_time = round((data['initial_choice_time'] - player.individual_page_load_time) / 1000, 2)
+                    player.initial_choice_time = min(actual_choice_time, 3.0)
                 else:
-                    print(f"Warning: chosen_image_two is None for player {p.id_in_group}")
+                    player.initial_choice_time = 3.0
 
-            for p in players:
-                other_players = p.get_others_in_group()
-                p.player_1_choice_two = other_players[0].chosen_image_two_binary
-                p.player_2_choice_two = other_players[1].chosen_image_two_binary
-                p.player_3_choice_two = other_players[2].chosen_image_two_binary
-                p.player_4_choice_two = other_players[3].chosen_image_two_binary
-                p.player_1_computer_choice_two = other_players[0].computer_choice_two
-                p.player_2_computer_choice_two = other_players[1].computer_choice_two
-                p.player_3_computer_choice_two = other_players[2].computer_choice_two
-                p.player_4_computer_choice_two = other_players[3].computer_choice_two
-                p.player1_choice2_accuracy = other_players[0].choice2_accuracy
-                p.player2_choice2_accuracy = other_players[1].choice2_accuracy
-                p.player3_choice2_accuracy = other_players[2].choice2_accuracy
-                p.player4_choice2_accuracy = other_players[3].choice2_accuracy
+                if 'choice' in data and not player.field_maybe_none('chosen_image_one'):
+                    logger.debug(f"[{timestamp}] Manual choice made - Player {player.id_in_group}: {data['choice']}")
+                    player.choice1 = data['choice']
+                    player.chosen_image_one = player.left_image if data['choice'] == 'left' else player.right_image
+                    player.participant.vars['chosen_image_one'] = player.chosen_image_one
+                    player.computer_choice_one = False
 
-            # Calculate comparisons for the second choice
-            for p in players:
-                p.calculate_choice_comparisons()
-
-            if not group.bet_container_displayed:
-                group.bet_container_displayed = True
-                return {p.id_in_group: dict(
-                    second_choice_timer_ended=True,
-                    show_bet_container=True, 
-                    start_second_bet_timer=True, 
-                    highlight_selected_image=p.chosen_image_two,
-                    computer_second_choice=p.computer_choice2 if not p.field_maybe_none('choice2') else p.choice2
-                ) for p in players}
-    
-        # Second bet phase
-        if 'second_bet' in data:
-            player.bet2 = int(data['second_bet'])
-            player.bet2 = player.bet2
-            player.computer_bet_two = False
-            player.second_bet_time = round(data['second_bet_time'] / 1000, 2)
-
-        if 'second_bet_timer_ended' in data:
-            if not group.second_bet_timer_ended_executed:
-                group.second_bet_timer_ended_executed = True
-                response = {}
-
+            if 'choice_phase_timer_ended' in data:
+                logger.debug(f"[{timestamp}] Choice phase ended")
                 for p in players:
-                    if p.bet2 == 0:
-                        random_bet = random.randint(1, 3)
-                        p.bet2 = random_bet
-                        p.bet2 = p.bet2
-                        p.computer_bet_two = True
-                        p.second_bet_time = 3.0
-                        response[p.id_in_group] = dict(highlight_computer_second_bet=p.bet2)
-
-                # Calculate rewards and prepare results for all players
-                group.set_round_reward()
-                group.calculate_player_rewards()
-
-                for p in players:
-                    p.choice2_earnings = p.bet2 * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2 * 20
-                    p.choice2_sum_earnings = sum([prev_player.choice2_earnings for prev_player in p.in_previous_rounds()]) + p.choice2_earnings
-                    p.loss_or_gain = -1 if p.choice2_earnings < 0 else 1
+                    if p.field_maybe_none('choice1') is None or p.choice1 == '':
+                        logger.debug(f"[{timestamp}] Assigning computer choice for Player {p.id_in_group}")
+                        random_choice = random.choice(['left', 'right'])
+                        p.choice1 = random_choice
+                        p.computer_choice1 = random_choice
+                        p.chosen_image_one = p.left_image if random_choice == 'left' else p.right_image
+                        p.participant.vars['chosen_image_one'] = p.chosen_image_one
+                        p.initial_choice_time = 3.0
+                        p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
+                        p.computer_choice_one = True
+                        if p.chosen_image_one == 'option1A.bmp':
+                            p.chosen_image_computer = 'option1A_tr.bmp'
+                        elif p.chosen_image_one == 'option1B.bmp':
+                            p.chosen_image_computer = 'option1B_tr.bmp'
+                        p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
+                    else:
+                        p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
+                        p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
 
                 for p in players:
                     other_players = p.get_others_in_group()
-                    p.loss_or_gain_player1 = 0 if other_players[0].choice2_earnings < 0 else 1
-                    p.loss_or_gain_player2 = 0 if other_players[1].choice2_earnings < 0 else 1
-                    p.loss_or_gain_player3 = 0 if other_players[2].choice2_earnings < 0 else 1
-                    p.loss_or_gain_player4 = 0 if other_players[3].choice2_earnings < 0 else 1
+                    p.player_1_choice_one = other_players[0].chosen_image_one_binary
+                    p.player_2_choice_one = other_players[1].chosen_image_one_binary
+                    p.player_3_choice_one = other_players[2].chosen_image_one_binary
+                    p.player_4_choice_one = other_players[3].chosen_image_one_binary
+                    p.player_1_computer_choice_one = other_players[0].computer_choice_one
+                    p.player_2_computer_choice_one = other_players[1].computer_choice_one
+                    p.player_3_computer_choice_one = other_players[2].computer_choice_one
+                    p.player_4_computer_choice_one = other_players[3].computer_choice_one
+                    p.player1_choice1_accuracy = other_players[0].choice1_accuracy
+                    p.player2_choice1_accuracy = other_players[1].choice1_accuracy
+                    p.player3_choice1_accuracy = other_players[2].choice1_accuracy
+                    p.player4_choice1_accuracy = other_players[3].choice1_accuracy
 
-                group.generate_intertrial_interval()
-                group.next_round_transition_time = time.time() * 1000 + group.intertrial_interval
-
-                chosen_images_secondchoicepage = {
-                    p.id_in_group: f"main_task/{p.chosen_image_computer_two if p.computer_choice_two else p.chosen_image_two}" 
-                    for p in players
-                }
-                win_loss_images = {p.id_in_group: f'main_task/{"win" if p.trial_reward == 1 else "loss"}.png' for p in players}
-
+                return {p.id_in_group: dict(show_bet_container=True, start_bet_timer=True, highlight_selected_choice=p.choice1) for p in players}
+        
+            if 'show_bet_container' in data and data['show_bet_container']:
+                logger.debug(f"[{timestamp}] Showing bet container - Player {player.id_in_group}")
                 for p in players:
-                    response[p.id_in_group] = {
-                        **response.get(p.id_in_group, {}),
-                        **dict(
-                            show_results=True,
-                            second_bet_reward=p.choice2_earnings,
-                            chosen_images=chosen_images_secondchoicepage,
-                            win_loss_images=win_loss_images,
-                            player_win_loss_image=win_loss_images[p.id_in_group],
-                            intertrial_interval=group.intertrial_interval,
-                            round_number=player.round_number,
-                            num_rounds=C.NUM_ROUNDS,
-                            selected_bet=p.bet2,
-                            second_choice=p.choice2
-                        )
-                    }
+                    p.calculate_choice_comparisons()
+
+                player.participant.vars['bet_timer_started'] = True
+                player.participant.vars['bet_phase_start_time'] = time.time()
+                return {player.id_in_group: dict(start_bet_timer=True)}
+
+            if 'bet' in data:
+                logger.debug(f"[{timestamp}] Bet received - Player {player.id_in_group}: {data['bet']}")
+                if not player.computer_bet_one:
+                    player.bet1 = int(data['bet'])
+                    player.participant.vars['bet1'] = player.bet1
+                    player.initial_bet_time = round(data['initial_bet_time'] / 1000, 2)
+                    player.computer_bet_one = False
+
+            if 'bet_timer_ended' in data:
+                logger.debug(f"[{timestamp}] Bet timer ended")
+                response = {}
+                for p in players:
+                    if not p.field_maybe_none('bet1') and not p.computer_bet_one:
+                        logger.debug(f"[{timestamp}] Assigning computer bet for Player {p.id_in_group}")
+                        random_bet = random.randint(1, 3)
+                        p.bet1 = random_bet
+                        p.participant.vars['bet1'] = p.bet1
+                        p.initial_bet_time = 3.0
+                        p.computer_bet_one = True
+                        response[p.id_in_group] = dict(highlight_computer_bet=p.bet1)
+
+                if not group.remaining_images_displayed:
+                    logger.debug(f"[{timestamp}] Displaying remaining images")
+                    group.remaining_images_displayed = True
+                    display_response = MyPage.display_remaining_images(player, players)
+                    for p in players:
+                        p.participant.vars['display_phase_end_time'] = time.time() + 4
+                    for p_id, p_response in display_response.items():
+                        p_response['start_display_timer'] = True
+                        if p_id in response:
+                            p_response.update(response[p_id])
+                    return display_response
 
                 return response
 
-        return {p.id_in_group: data for p in group.get_players()}
+            if 'second_choice' in data and data.get('manual_second_choice', False):
+                logger.debug(f"[{timestamp}] Manual second choice received - Player {player.id_in_group}")
+                print(f"Received manual second choice for player {player.id_in_group}")
+                
+                player.choice2 = data['second_choice']
+                player.chosen_image_two = player.left_image if data['second_choice'] == 'left' else player.right_image
+                player.participant.vars['chosen_image_two'] = player.chosen_image_two
+                player.computer_choice_two = False
+                player.manual_second_choice = True
+                player.second_choice_time = round(data['second_choice_time'] / 1000, 2)
+                player.chosen_image_two_binary = 1 if player.chosen_image_two == 'option1A.bmp' else 2
+                player.choice2_accuracy = player.chosen_image_two == group.seventy_percent_image
+                player.switch_vs_stay = 1 if player.field_maybe_none('chosen_image_one') != player.chosen_image_two else 0
+                player.chosen_image_computer_two = ''
+                player.computer_choice2 = ''
+                
+                return {player.id_in_group: dict(highlight_selected_second_choice=player.choice2)}
+
+            if 'second_choice_timer_ended' in data:
+                logger.debug(f"[{timestamp}] Second choice timer ended")
+                for p in players:
+                    if not p.field_maybe_none('choice2'):
+                        logger.debug(f"[{timestamp}] Assigning computer second choice for Player {p.id_in_group}")
+                        p.computer_choice2 = random.choice(['left', 'right'])
+                        p.choice2 = p.computer_choice2
+                        p.chosen_image_two = p.left_image if p.computer_choice2 == 'left' else p.right_image
+                        
+                        if p.chosen_image_two == 'option1A.bmp':
+                            p.chosen_image_computer_two = 'option1A_tr.bmp'
+                        else:
+                            p.chosen_image_computer_two = 'option1B_tr.bmp'
+                    
+                    if p.field_maybe_none('chosen_image_two') is not None:
+                        p.chosen_image_two_binary = 1 if p.chosen_image_two == 'option1A.bmp' else 2
+                        p.choice2_accuracy = p.chosen_image_two == p.group.seventy_percent_image
+                        p.switch_vs_stay = 1 if p.field_maybe_none('chosen_image_one') != p.chosen_image_two else 0
+                    else:
+                        logger.warning(f"[{timestamp}] Warning: chosen_image_two is None for player {p.id_in_group}")
+                        print(f"Warning: chosen_image_two is None for player {p.id_in_group}")
+
+                for p in players:
+                    other_players = p.get_others_in_group()
+                    p.player_1_choice_two = other_players[0].chosen_image_two_binary
+                    p.player_2_choice_two = other_players[1].chosen_image_two_binary
+                    p.player_3_choice_two = other_players[2].chosen_image_two_binary
+                    p.player_4_choice_two = other_players[3].chosen_image_two_binary
+                    p.player_1_computer_choice_two = other_players[0].computer_choice_two
+                    p.player_2_computer_choice_two = other_players[1].computer_choice_two
+                    p.player_3_computer_choice_two = other_players[2].computer_choice_two
+                    p.player_4_computer_choice_two = other_players[3].computer_choice_two
+                    p.player1_choice2_accuracy = other_players[0].choice2_accuracy
+                    p.player2_choice2_accuracy = other_players[1].choice2_accuracy
+                    p.player3_choice2_accuracy = other_players[2].choice2_accuracy
+                    p.player4_choice2_accuracy = other_players[3].choice2_accuracy
+
+                for p in players:
+                    p.calculate_choice_comparisons()
+
+                if not group.bet_container_displayed:
+                    group.bet_container_displayed = True
+                    return {p.id_in_group: dict(
+                        second_choice_timer_ended=True,
+                        show_bet_container=True, 
+                        start_second_bet_timer=True, 
+                        highlight_selected_image=p.chosen_image_two,
+                        computer_second_choice=p.computer_choice2 if not p.field_maybe_none('choice2') else p.choice2
+                    ) for p in players}
+            
+            if 'second_bet' in data:
+                logger.debug(f"[{timestamp}] Second bet received - Player {player.id_in_group}: {data['second_bet']}")
+                player.bet2 = int(data['second_bet'])
+                player.bet2 = player.bet2
+                player.computer_bet_two = False
+                player.second_bet_time = round(data['second_bet_time'] / 1000, 2)
+
+            if 'second_bet_timer_ended' in data:
+                logger.debug(f"[{timestamp}] Second bet timer ended")
+                if not group.second_bet_timer_ended_executed:
+                    group.second_bet_timer_ended_executed = True
+                    response = {}
+
+                    for p in players:
+                        if p.bet2 == 0:
+                            logger.debug(f"[{timestamp}] Assigning computer second bet for Player {p.id_in_group}")
+                            random_bet = random.randint(1, 3)
+                            p.bet2 = random_bet
+                            p.bet2 = p.bet2
+                            p.computer_bet_two = True
+                            p.second_bet_time = 3.0
+                            response[p.id_in_group] = dict(highlight_computer_second_bet=p.bet2)
+
+                    group.set_round_reward()
+                    group.calculate_player_rewards()
+
+                    for p in players:
+                        p.choice2_earnings = p.bet2 * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2 * 20
+                        p.choice2_sum_earnings = sum([prev_player.choice2_earnings for prev_player in p.in_previous_rounds()]) + p.choice2_earnings
+                        p.loss_or_gain = -1 if p.choice2_earnings < 0 else 1
+
+                    for p in players:
+                        other_players = p.get_others_in_group()
+                        p.loss_or_gain_player1 = 0 if other_players[0].choice2_earnings < 0 else 1
+                        p.loss_or_gain_player2 = 0 if other_players[1].choice2_earnings < 0 else 1
+                        p.loss_or_gain_player3 = 0 if other_players[2].choice2_earnings < 0 else 1
+                        p.loss_or_gain_player4 = 0 if other_players[3].choice2_earnings < 0 else 1
+
+                    group.generate_intertrial_interval()
+                    group.next_round_transition_time = time.time() * 1000 + group.intertrial_interval
+
+                    chosen_images_secondchoicepage = {
+                        p.id_in_group: f"main_task/{p.chosen_image_computer_two if p.computer_choice_two else p.chosen_image_two}" 
+                        for p in players
+                    }
+                    win_loss_images = {p.id_in_group: f'main_task/{"win" if p.trial_reward == 1 else "loss"}.png' for p in players}
+
+                    logger.debug(f"[{timestamp}] Preparing final response with results")
+                    for p in players:
+                        response[p.id_in_group] = {
+                            **response.get(p.id_in_group, {}),
+                            **dict(
+                                show_results=True,
+                                second_bet_reward=p.choice2_earnings,
+                                chosen_images=chosen_images_secondchoicepage,
+                                win_loss_images=win_loss_images,
+                                player_win_loss_image=win_loss_images[p.id_in_group],
+                                intertrial_interval=group.intertrial_interval,
+                                round_number=player.round_number,
+                                num_rounds=C.NUM_ROUNDS,
+                                selected_bet=p.bet2,
+                                second_choice=p.choice2
+                            )
+                        }
+
+                    return response
+
+            logger.debug(f"[{timestamp}] Sending response for Player {player.id_in_group}: {response}")
+            return {p.id_in_group: data for p in group.get_players()}
+
+        except Exception as e:
+            logger.error(f"[{timestamp}] ERROR for Player {player.id_in_group}: {str(e)}", exc_info=True)
+            raise
 
     @staticmethod
     def display_remaining_images(player, players):
