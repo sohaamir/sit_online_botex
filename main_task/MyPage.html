@@ -535,18 +535,23 @@
             startSecondChoicePhase();
         }
 
-        if ('second_choice_timer_ended' in data && data.second_choice_timer_ended) {
+        if ('second_choice_timer_ended' in data) {
             console.log('Second choice timer ended, applying computer choice');
             // Remove highlight from initial choice
             document.querySelectorAll('#options img').forEach(img => {
                 img.classList.remove('selected');
             });
-            // Add highlight for computer's second choice
+            
+            // Add highlight for computer's second choice AND show bet container simultaneously
             const computerChoice = data.computer_second_choice;
             if (computerChoice) {
                 const selectedOption = document.getElementById(`option_${computerChoice}`);
                 selectedOption.classList.add('selected-second-choice');
             }
+            
+            // Show bet container and title immediately
+            document.getElementById('bet-container').style.display = 'block';
+            document.getElementById('second-bet-title').style.display = 'block';
         }
 
         if ('highlight_selected_second_choice' in data) {
