@@ -266,26 +266,43 @@
     let secondBetPhaseEnded = false;
     let resultsShown = false;
 
+    let pageLoadSent = false;  // Add flag at the start
+
     document.addEventListener('DOMContentLoaded', function() {
-        individualPageLoadTime = performance.now();
-        liveSend({
-            my_page_load_time: performance.now(),
-            individual_page_load_time: individualPageLoadTime
-        });
-        
-        const pageStartTime = js_vars.page_start_time;
-        const timeoutDuration = 4200000; // 42 seconds in milliseconds
-
-        function checkTimeout() {
-            const currentTime = new Date().getTime();
-            if (currentTime - pageStartTime >= timeoutDuration) {
-                document.getElementById('form').submit();
+        try {
+            if (!pageLoadSent) {  // Only send once
+                pageLoadSent = true;
+                individualPageLoadTime = performance.now();
+                liveSend({
+                    my_page_load_time: performance.now(),
+                    individual_page_load_time: individualPageLoadTime,
+                    first_load: true  // Add flag to indicate first load
+                });
+                console.log("Initial page load time sent");
             } else {
-                setTimeout(checkTimeout, 2000); // Check every 2 seconds
+                console.log("Duplicate page load detected, not sending");
+                return;  // Exit early if duplicate
             }
-        }
+            
+            const pageStartTime = js_vars.page_start_time;
+            const timeoutDuration = 4200000; // 42 seconds in milliseconds
 
-        setTimeout(checkTimeout, 2500); // Start checking after 2.5 seconds
+            function checkTimeout() {
+                const currentTime = new Date().getTime();
+                if (currentTime - pageStartTime >= timeoutDuration) {
+                    pageLoadSent = false;  // Reset flag before submission
+                    document.getElementById('form').submit();
+                    console.log('Form submitted due to timeout, page load flag reset');
+                } else {
+                    setTimeout(checkTimeout, 2000); // Check every 2 seconds
+                }
+            }
+
+            setTimeout(checkTimeout, 2500); // Start checking after 2.5 seconds
+        } catch (error) {
+            logWebSocketError(error);
+            console.error("Error in DOMContentLoaded event:", error);
+        }
     });
 
     function handleKeyDown(event) {
@@ -660,8 +677,9 @@
                 if (!bet2Field.value) bet2Field.value = '1';
 
                 setTimeout(function() {
+                    pageLoadSent = false;  // Reset the flag before form submission
                     document.getElementById('form').submit();
-                    console.log('Form submitted');
+                    console.log('Form submitted, page load flag reset');
                 }, 100);
             }, data.intertrial_interval);
         }

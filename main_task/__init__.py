@@ -671,65 +671,99 @@ class MyPage(Page):
                 print(f"Error details: {data['websocket_error']}")
 
             if 'my_page_load_time' in data:
+                # Log initial receipt of page load message
                 logger.info(f"""
-                Page Load Details:
+                Page Load Message Received:
                 Player: {player.id_in_group}
                 Round: {player.round_number}
                 Time: {time.strftime('%Y-%m-%d %H:%M:%S')}
-                All players loaded check:
-                {[f"Player {p.id_in_group}: {p.field_maybe_none('my_page_load_time')}" for p in player.group.get_players()]}
-                Group page load time: {player.group.field_maybe_none('my_page_load_time')}
-                Reversal check: {player.group.field_maybe_none('reversal_happened')}
+                First Load: {data.get('first_load', False)}
+                Previous Value: {player.field_maybe_none('my_page_load_time')}
+                New Value: {data['my_page_load_time'] / 1000:.2f}s
                 """)
 
-                # Set individual player times
-                player.my_page_load_time = round(data['my_page_load_time'] / 1000, 2)
-                player.individual_page_load_time = round(data['individual_page_load_time'] / 1000, 2)
+                # Only process if this is the first load or if no previous value exists
+                if data.get('first_load', False) or player.field_maybe_none('my_page_load_time') is None:
+                    # Log detailed page load state
+                    logger.info(f"""
+                    Processing Page Load:
+                    Player: {player.id_in_group}
+                    Round: {player.round_number}
+                    Time: {time.strftime('%Y-%m-%d %H:%M:%S')}
+                    All players loaded check:
+                    {[f"Player {p.id_in_group}: {p.field_maybe_none('my_page_load_time')}" for p in player.group.get_players()]}
+                    Group page load time: {player.group.field_maybe_none('my_page_load_time')}
+                    Reversal check: {player.group.field_maybe_none('reversal_happened')}
+                    """)
 
-                # Check if all players have loaded
-                if all(p.field_maybe_none('my_page_load_time') for p in players):
-                    try:
-                        logger.info(f"""
-                        Starting Choice Phase:
-                        Group: {player.group.id}
-                        Round: {player.round_number}
-                        Time: {time.strftime('%Y-%m-%d %H:%M:%S')}
-                        Player IDs loaded: {[p.id_in_group for p in player.group.get_players()]}
-                        Individual load times: {[f"Player {p.id_in_group}: {p.my_page_load_time}s" for p in players]}
-                        Attempting to return start_choice_phase_timer
-                        """)
+                    # Set individual player times
+                    player.my_page_load_time = round(data['my_page_load_time'] / 1000, 2)
+                    player.individual_page_load_time = round(data['individual_page_load_time'] / 1000, 2)
 
-                        # Add a small delay to ensure synchronization
-                        time.sleep(0.5)
+                    # Check if all players have loaded
+                    if all(p.field_maybe_none('my_page_load_time') for p in players):
+                        try:
+                            # Reset critical group flags
+                            group.bet_container_displayed = False
+                            group.remaining_images_displayed = False
+                            group.second_bet_timer_ended_executed = False
 
-                        # Set group time to max of player times
-                        group.my_page_load_time = round(max(p.my_page_load_time for p in players), 2)
+                            logger.info(f"""
+                            Starting Choice Phase:
+                            Group: {player.group.id}
+                            Round: {player.round_number}
+                            Time: {time.strftime('%Y-%m-%d %H:%M:%S')}
+                            Player IDs loaded: {[p.id_in_group for p in player.group.get_players()]}
+                            Individual load times: {[f"Player {p.id_in_group}: {p.my_page_load_time}s" for p in players]}
+                            Group flags:
+                            - bet_container_displayed: {group.bet_container_displayed}
+                            - remaining_images_displayed: {group.remaining_images_displayed}
+                            - second_bet_timer_ended_executed: {group.second_bet_timer_ended_executed}
+                            Attempting to return start_choice_phase_timer
+                            """)
 
-                        # Initialize round
-                        group.set_round_reward()
-                        group.reversal_learning()
+                            # Add a small delay to ensure synchronization
+                            time.sleep(0.5)
 
-                        logger.info(f"""
-                        Choice Phase Started:
-                        Group: {player.group.id}
-                        Round: {player.round_number}
-                        Time: {time.strftime('%Y-%m-%d %H:%M:%S')}
-                        Group load time set to: {group.my_page_load_time}s
-                        Round reward set: A={group.round_reward_A}, B={group.round_reward_B}
-                        Reversal status: {group.reversal_happened}
-                        """)
+                            # Set group time to max of player times
+                            group.my_page_load_time = round(max(p.my_page_load_time for p in players), 2)
 
-                        return {p.id_in_group: dict(start_choice_phase_timer=True) for p in players}
+                            # Initialize round
+                            group.set_round_reward()
+                            group.reversal_learning()
 
-                    except Exception as e:
-                        logger.error(f"""
-                        Error Starting Choice Phase:
-                        Group: {player.group.id}
-                        Round: {player.round_number}
-                        Error: {str(e)}
-                        Traceback: {traceback.format_exc()}
-                        """)
-                        raise
+                            logger.info(f"""
+                            Choice Phase Started:
+                            Group: {player.group.id}
+                            Round: {player.round_number}
+                            Time: {time.strftime('%Y-%m-%d %H:%M:%S')}
+                            Group load time set to: {group.my_page_load_time}s
+                            Round reward set: A={group.round_reward_A}, B={group.round_reward_B}
+                            Reversal status: {group.reversal_happened}
+                            """)
+
+                            return {p.id_in_group: dict(start_choice_phase_timer=True) for p in players}
+
+                        except Exception as e:
+                            logger.error(f"""
+                            Error Starting Choice Phase:
+                            Group: {player.group.id}
+                            Round: {player.round_number}
+                            Error: {str(e)}
+                            Traceback: {traceback.format_exc()}
+                            Current state:
+                            - Player times: {[(p.id_in_group, p.my_page_load_time) for p in players]}
+                            - Group time: {group.my_page_load_time}
+                            """)
+                            raise
+                else:
+                    logger.warning(f"""
+                    Duplicate Page Load Ignored:
+                    Player: {player.id_in_group}
+                    Round: {player.round_number}
+                    Existing Time: {player.my_page_load_time}
+                    New Time: {data['my_page_load_time'] / 1000:.2f}
+                    """)
 
             if 'initial_choice_time' in data:
                 if data['initial_choice_time'] is not None:
