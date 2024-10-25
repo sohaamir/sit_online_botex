@@ -253,6 +253,33 @@
     let betPhaseEnded = false;
     let secondBetPhaseEnded = false;
     let resultsShown = false;
+    // In MyPage.html
+    let serverTimeOffset = 0;
+    let currentPhase = null;
+    // In MyPage.html
+    let wsReconnectAttempts = 0;
+
+    function handleDisconnect() {
+        if (wsReconnectAttempts < 5) {
+            wsReconnectAttempts++;
+            setTimeout(() => {
+                liveSend({request_state: true});
+            }, 1000 * wsReconnectAttempts);
+        }
+    }
+
+    window.addEventListener('offline', handleDisconnect);
+    window.addEventListener('online', () => {
+        liveSend({request_state: true});
+    });
+
+    function syncWithServer(serverTime) {
+        serverTimeOffset = serverTime - Date.now();
+    }
+
+    function getAdjustedTime() {
+        return Date.now() + serverTimeOffset;
+}
 
     document.addEventListener('DOMContentLoaded', function() {
         individualPageLoadTime = performance.now();
