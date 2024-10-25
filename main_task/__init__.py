@@ -7,17 +7,20 @@ from . import *
 import random
 import time
 import csv
-
 import logging
-import time
-from datetime import datetime
+import traceback
+
+# Set up logging configuration
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('websocket.log'),
+        logging.StreamHandler()
+    ]
+)
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    filename='task_debug.log',
-    level=logging.DEBUG,
-    format='%(asctime)s - %(message)s'
-)
 
 author = 'Aamir Sohail'
 
@@ -640,30 +643,32 @@ class MyPage(Page):
 # --- If players do not respond within the time limit, the computer randomly selects a choice or bet for them
 
     @staticmethod
-    @safe_websocket(max_retries=5, retry_delay=0.2)
+    @safe_websocket(max_retries=5, retry_delay=0.2) # Uncomment to enable safe websocket
     def live_method(player, data):
         try:
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-            logger.debug(f"[{timestamp}] Player {player.id_in_group}, Round {player.round_number}: Received data: {data}")
-            
+            # print(f"Received data: {data}") # Uncomment to print received data
             group = player.group
             players = group.get_players()
             response = {}
 
+            # Log incoming websocket data
+            logger.debug(f"Player {player.id_in_group} - Received websocket data: {data}")
+
+            if 'websocket_error' in data:
+                print(f"WebSocket Error from Player {player.id_in_group}:")
+                print(f"Error details: {data['websocket_error']}")
+
             if 'my_page_load_time' in data:
-                logger.debug(f"[{timestamp}] Page load phase - Player {player.id_in_group}")
                 player.my_page_load_time = round(data['my_page_load_time'] / 1000, 2)
                 player.individual_page_load_time = round(data['individual_page_load_time'] / 1000, 2)
 
                 if all(p.field_maybe_none('my_page_load_time') for p in players):
-                    logger.debug(f"[{timestamp}] All players loaded, starting choice phase")
                     group.my_page_load_time = round(max(p.my_page_load_time for p in players), 2)
                     group.set_round_reward()
                     group.reversal_learning()
                     return {p.id_in_group: dict(start_choice_phase_timer=True) for p in players}
 
             if 'initial_choice_time' in data:
-                logger.debug(f"[{timestamp}] Initial choice time received - Player {player.id_in_group}")
                 if data['initial_choice_time'] is not None:
                     actual_choice_time = round((data['initial_choice_time'] - player.individual_page_load_time) / 1000, 2)
                     player.initial_choice_time = min(actual_choice_time, 3.0)
@@ -671,20 +676,17 @@ class MyPage(Page):
                     player.initial_choice_time = 3.0
 
                 if 'choice' in data and not player.field_maybe_none('chosen_image_one'):
-                    logger.debug(f"[{timestamp}] Manual choice made - Player {player.id_in_group}: {data['choice']}")
                     player.choice1 = data['choice']
                     player.chosen_image_one = player.left_image if data['choice'] == 'left' else player.right_image
                     player.participant.vars['chosen_image_one'] = player.chosen_image_one
                     player.computer_choice_one = False
 
             if 'choice_phase_timer_ended' in data:
-                logger.debug(f"[{timestamp}] Choice phase ended")
                 for p in players:
                     if p.field_maybe_none('choice1') is None or p.choice1 == '':
-                        logger.debug(f"[{timestamp}] Assigning computer choice for Player {p.id_in_group}")
                         random_choice = random.choice(['left', 'right'])
                         p.choice1 = random_choice
-                        p.computer_choice1 = random_choice
+                        p.computer_choice1 = random_choice  # Store the computer-made choice
                         p.chosen_image_one = p.left_image if random_choice == 'left' else p.right_image
                         p.participant.vars['chosen_image_one'] = p.chosen_image_one
                         p.initial_choice_time = 3.0
@@ -715,9 +717,8 @@ class MyPage(Page):
                     p.player4_choice1_accuracy = other_players[3].choice1_accuracy
 
                 return {p.id_in_group: dict(show_bet_container=True, start_bet_timer=True, highlight_selected_choice=p.choice1) for p in players}
-        
+
             if 'show_bet_container' in data and data['show_bet_container']:
-                logger.debug(f"[{timestamp}] Showing bet container - Player {player.id_in_group}")
                 for p in players:
                     p.calculate_choice_comparisons()
 
@@ -726,19 +727,18 @@ class MyPage(Page):
                 return {player.id_in_group: dict(start_bet_timer=True)}
 
             if 'bet' in data:
-                logger.debug(f"[{timestamp}] Bet received - Player {player.id_in_group}: {data['bet']}")
-                if not player.computer_bet_one:
+                # Only process the manual bet if a computer bet hasn't been made yet
+                if not player.computer_bet_one:  # Add this condition
                     player.bet1 = int(data['bet'])
                     player.participant.vars['bet1'] = player.bet1
                     player.initial_bet_time = round(data['initial_bet_time'] / 1000, 2)
                     player.computer_bet_one = False
 
             if 'bet_timer_ended' in data:
-                logger.debug(f"[{timestamp}] Bet timer ended")
                 response = {}
                 for p in players:
-                    if not p.field_maybe_none('bet1') and not p.computer_bet_one:
-                        logger.debug(f"[{timestamp}] Assigning computer bet for Player {p.id_in_group}")
+                    # Only assign computer bet if no bet has been made yet
+                    if not p.field_maybe_none('bet1') and not p.computer_bet_one:  # Modified condition
                         random_bet = random.randint(1, 3)
                         p.bet1 = random_bet
                         p.participant.vars['bet1'] = p.bet1
@@ -747,7 +747,6 @@ class MyPage(Page):
                         response[p.id_in_group] = dict(highlight_computer_bet=p.bet1)
 
                 if not group.remaining_images_displayed:
-                    logger.debug(f"[{timestamp}] Displaying remaining images")
                     group.remaining_images_displayed = True
                     display_response = MyPage.display_remaining_images(player, players)
                     for p in players:
@@ -760,8 +759,8 @@ class MyPage(Page):
 
                 return response
 
+            # Second choice phase
             if 'second_choice' in data and data.get('manual_second_choice', False):
-                logger.debug(f"[{timestamp}] Manual second choice received - Player {player.id_in_group}")
                 print(f"Received manual second choice for player {player.id_in_group}")
                 
                 player.choice2 = data['second_choice']
@@ -771,7 +770,7 @@ class MyPage(Page):
                 player.manual_second_choice = True
                 player.second_choice_time = round(data['second_choice_time'] / 1000, 2)
                 player.chosen_image_two_binary = 1 if player.chosen_image_two == 'option1A.bmp' else 2
-                player.choice2_accuracy = player.chosen_image_two == group.seventy_percent_image
+                player.choice2_accuracy = player.chosen_image_two == player.group.seventy_percent_image
                 player.switch_vs_stay = 1 if player.field_maybe_none('chosen_image_one') != player.chosen_image_two else 0
                 player.chosen_image_computer_two = ''
                 player.computer_choice2 = ''
@@ -779,10 +778,8 @@ class MyPage(Page):
                 return {player.id_in_group: dict(highlight_selected_second_choice=player.choice2)}
 
             if 'second_choice_timer_ended' in data:
-                logger.debug(f"[{timestamp}] Second choice timer ended")
                 for p in players:
-                    if not p.field_maybe_none('choice2'):
-                        logger.debug(f"[{timestamp}] Assigning computer second choice for Player {p.id_in_group}")
+                    if not p.field_maybe_none('choice2'):  # If no manual choice was made
                         p.computer_choice2 = random.choice(['left', 'right'])
                         p.choice2 = p.computer_choice2
                         p.chosen_image_two = p.left_image if p.computer_choice2 == 'left' else p.right_image
@@ -792,12 +789,12 @@ class MyPage(Page):
                         else:
                             p.chosen_image_computer_two = 'option1B_tr.bmp'
                     
+                    # These calculations are done for both manual and computer choices
                     if p.field_maybe_none('chosen_image_two') is not None:
                         p.chosen_image_two_binary = 1 if p.chosen_image_two == 'option1A.bmp' else 2
                         p.choice2_accuracy = p.chosen_image_two == p.group.seventy_percent_image
                         p.switch_vs_stay = 1 if p.field_maybe_none('chosen_image_one') != p.chosen_image_two else 0
                     else:
-                        logger.warning(f"[{timestamp}] Warning: chosen_image_two is None for player {p.id_in_group}")
                         print(f"Warning: chosen_image_two is None for player {p.id_in_group}")
 
                 for p in players:
@@ -815,6 +812,7 @@ class MyPage(Page):
                     p.player3_choice2_accuracy = other_players[2].choice2_accuracy
                     p.player4_choice2_accuracy = other_players[3].choice2_accuracy
 
+                # Calculate comparisons for the second choice
                 for p in players:
                     p.calculate_choice_comparisons()
 
@@ -827,23 +825,21 @@ class MyPage(Page):
                         highlight_selected_image=p.chosen_image_two,
                         computer_second_choice=p.computer_choice2 if not p.field_maybe_none('choice2') else p.choice2
                     ) for p in players}
-            
+        
+            # Second bet phase
             if 'second_bet' in data:
-                logger.debug(f"[{timestamp}] Second bet received - Player {player.id_in_group}: {data['second_bet']}")
                 player.bet2 = int(data['second_bet'])
                 player.bet2 = player.bet2
                 player.computer_bet_two = False
                 player.second_bet_time = round(data['second_bet_time'] / 1000, 2)
 
             if 'second_bet_timer_ended' in data:
-                logger.debug(f"[{timestamp}] Second bet timer ended")
                 if not group.second_bet_timer_ended_executed:
                     group.second_bet_timer_ended_executed = True
                     response = {}
 
                     for p in players:
                         if p.bet2 == 0:
-                            logger.debug(f"[{timestamp}] Assigning computer second bet for Player {p.id_in_group}")
                             random_bet = random.randint(1, 3)
                             p.bet2 = random_bet
                             p.bet2 = p.bet2
@@ -851,6 +847,7 @@ class MyPage(Page):
                             p.second_bet_time = 3.0
                             response[p.id_in_group] = dict(highlight_computer_second_bet=p.bet2)
 
+                    # Calculate rewards and prepare results for all players
                     group.set_round_reward()
                     group.calculate_player_rewards()
 
@@ -875,7 +872,6 @@ class MyPage(Page):
                     }
                     win_loss_images = {p.id_in_group: f'main_task/{"win" if p.trial_reward == 1 else "loss"}.png' for p in players}
 
-                    logger.debug(f"[{timestamp}] Preparing final response with results")
                     for p in players:
                         response[p.id_in_group] = {
                             **response.get(p.id_in_group, {}),
@@ -895,12 +891,15 @@ class MyPage(Page):
 
                     return response
 
-            logger.debug(f"[{timestamp}] Sending response for Player {player.id_in_group}: {response}")
             return {p.id_in_group: data for p in group.get_players()}
-
         except Exception as e:
-            logger.error(f"[{timestamp}] ERROR for Player {player.id_in_group}: {str(e)}", exc_info=True)
-            raise
+            # Log any exceptions that occur
+            logger.error(f"Websocket error for player {player.id_in_group}:")
+            logger.error(f"Error type: {type(e).__name__}")
+            logger.error(f"Error message: {str(e)}")
+            logger.error(f"Traceback:\n{traceback.format_exc()}")
+            raise  # Re-raise the exception after logging it
+    
 
     @staticmethod
     def display_remaining_images(player, players):
