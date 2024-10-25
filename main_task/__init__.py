@@ -654,6 +654,8 @@ class MyPage(Page):
             Data Type: {list(data.keys()) if isinstance(data, dict) else 'Not dict'}
             Data: {data}
             Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}
+            All players loaded: {all(p.field_maybe_none('my_page_load_time') for p in player.group.get_players())}
+            Group page load time: {player.group.field_maybe_none('my_page_load_time')}
             """)
 
             # print(f"Received data: {data}") # Uncomment to print received data
@@ -669,6 +671,10 @@ class MyPage(Page):
                 print(f"Error details: {data['websocket_error']}")
 
             if 'my_page_load_time' in data:
+                logger.info(f"Starting choice phase check for player {player.id_in_group}")
+                if all(p.field_maybe_none('my_page_load_time') for p in player.group.get_players()):
+                    logger.info("All players loaded, attempting to start choice phase")
+                    
                 player.my_page_load_time = round(data['my_page_load_time'] / 1000, 2)
                 player.individual_page_load_time = round(data['individual_page_load_time'] / 1000, 2)
 
