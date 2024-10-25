@@ -9,18 +9,24 @@ import time
 import csv
 import logging
 import traceback
+from pathlib import Path
+
+# Create logs directory if it doesn't exist
+log_dir = Path("_logs")
+log_dir.mkdir(exist_ok=True)
 
 # Set up logging configuration
 logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
+    level=logging.DEBUG,  # Capture all log levels
+    format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
     handlers=[
-        logging.FileHandler('websocket.log'),
-        logging.StreamHandler()
+        logging.FileHandler(log_dir / 'websocket.log', mode='a', encoding='utf-8'),
+        logging.StreamHandler()  # This will also print to console
     ]
 )
 
 logger = logging.getLogger(__name__)
+logger.info("Logging started")  # Test message to verify logging is working
 
 author = 'Aamir Sohail'
 
@@ -645,6 +651,14 @@ class MyPage(Page):
     @staticmethod
     @safe_websocket(max_retries=5, retry_delay=0.2) # Uncomment to enable safe websocket
     def live_method(player, data):
+        logger.info(f"""
+        SERVER CHECKPOINT >>> ENTRY:
+        Event Type: {list(data.keys()) if isinstance(data, dict) else 'Not dict'}
+        Player: {player.id_in_group}
+        Round: {player.round_number}
+        Time: {time.strftime('%H:%M:%S')}
+        """)
+        
         try:
             logger.info(f"""
             WebSocket Event:

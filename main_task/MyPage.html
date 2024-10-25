@@ -495,13 +495,14 @@
     }
 
     function liveRecv(data) {
-        console.log('Received data:', data);
+        console.log('CHECKPOINT 1: Received data:', data);
 
         if ('my_page_load_time' in data) {
             window.myPageLoadTime = data.my_page_load_time;
         }
 
         if ('start_choice_phase_timer' in data && data.start_choice_phase_timer && !window.choicePhaseTimerStarted) {
+            console.log('CHECKPOINT 2: Starting choice phase timer');
             window.choicePhaseTimerStarted = true;
             document.getElementById('option-container').style.display = 'block';
             document.getElementById('choice-title').style.display = 'block';
@@ -513,6 +514,7 @@
         }
 
         if ('start_bet_timer' in data && data.start_bet_timer) {
+            console.log('CHECKPOINT 3: Starting bet timer');
             startBetTimer();
         }
 
@@ -565,7 +567,7 @@
         }
 
         if ('second_choice_timer_ended' in data) {
-            console.log('Second choice timer ended, applying computer choice');
+            console.log('CHECKPOINT 4: Second choice timer ended');
             // Remove highlight from initial choice
             document.querySelectorAll('#options img').forEach(img => {
                 img.classList.remove('selected');
@@ -606,6 +608,7 @@
         }
 
         if ('show_results' in data && data.show_results && !resultsShown) {
+            console.log('CHECKPOINT 5: Showing results');
             resultsShown = true;
             secondBetPhaseEnded = true;
 
