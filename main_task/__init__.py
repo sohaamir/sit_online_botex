@@ -646,6 +646,16 @@ class MyPage(Page):
     @safe_websocket(max_retries=5, retry_delay=0.2) # Uncomment to enable safe websocket
     def live_method(player, data):
         try:
+            logger.info(f"""
+            WebSocket Event:
+            Player: {player.id_in_group}
+            Session: {player.session.code}
+            Round: {player.round_number}
+            Data Type: {list(data.keys()) if isinstance(data, dict) else 'Not dict'}
+            Data: {data}
+            Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}
+            """)
+
             # print(f"Received data: {data}") # Uncomment to print received data
             group = player.group
             players = group.get_players()
@@ -893,12 +903,16 @@ class MyPage(Page):
 
             return {p.id_in_group: data for p in group.get_players()}
         except Exception as e:
-            # Log any exceptions that occur
-            logger.error(f"Websocket error for player {player.id_in_group}:")
-            logger.error(f"Error type: {type(e).__name__}")
-            logger.error(f"Error message: {str(e)}")
-            logger.error(f"Traceback:\n{traceback.format_exc()}")
-            raise  # Re-raise the exception after logging it
+            logger.error(f"""
+            WebSocket Error:
+            Player: {player.id_in_group}
+            Session: {player.session.code}
+            Round: {player.round_number}
+            Error: {str(e)}
+            Traceback: {traceback.format_exc()}
+            Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}
+            """)
+            raise
     
 
     @staticmethod
