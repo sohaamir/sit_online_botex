@@ -285,7 +285,7 @@
             }
         }, 1000);
 
-        // Start the choice phase timer after 800ms if it hasn't started yet
+        // Start the choice phase timer after 3000ms if it hasn't started yet
         setTimeout(() => {
             if (!window.choicePhaseTimerStarted) {
                 window.choicePhaseTimerStarted = true;
@@ -294,9 +294,9 @@
                     if (!choiceMade) {
                         liveSend({choice_phase_timer_ended: true});
                     }
-                }, 800);
+                }, 3000);
             }
-        }, 800);
+        }, 3000);
 
         const pageStartTime = js_vars.page_start_time;
         const timeoutDuration = 4200000; // 42 seconds in milliseconds
@@ -385,7 +385,7 @@
             }
             document.getElementById('bet1_field').value = bet;
             // Only send if within the time limit
-            if (performance.now() - betPhaseStartTime <= 800) {
+            if (performance.now() - betPhaseStartTime <= 3000) {
                 liveSend({ 
                     bet: bet, 
                     initial_bet_time: performance.now() - betPhaseStartTime, 
@@ -451,7 +451,7 @@
                 liveSend({bet_timer_ended: true});
                 document.removeEventListener('keydown', handleKeyDown);
                 betTimerStarted = false;
-            }, 800);
+            }, 3000);
         }
     }
 
@@ -475,7 +475,7 @@
                 });
             }
             startSecondBetTimer(); // Proceed to the next phase
-        }, 800);
+        }, 3000);
     }
 
     function startSecondBetTimer() {
@@ -492,7 +492,7 @@
                 liveSend({second_bet_timer_ended: true});
                 document.removeEventListener('keydown', handleKeyDown);
                 secondBetTimerStarted = false;
-            }, 800);
+            }, 3000);
         }
     }
 
@@ -522,7 +522,7 @@
             
             setTimeout(function() {
                 liveSend({choice_phase_timer_ended: true});
-            }, 800);
+            }, 3000);
         }
 
         if ('start_bet_timer' in data && data.start_bet_timer) {
