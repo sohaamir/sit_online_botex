@@ -257,19 +257,17 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         individualPageLoadTime = performance.now();
-        let loadTimeSent = false;
         let loadTimeRetries = 0;
         const MAX_RETRIES = 5;
         
         function sendLoadTime() {
-            if (loadTimeSent || loadTimeRetries >= MAX_RETRIES) return;
+            if (loadTimeRetries >= MAX_RETRIES) return;
             
             try {
                 liveSend({
                     my_page_load_time: performance.now(),
                     individual_page_load_time: individualPageLoadTime
                 });
-                loadTimeSent = true;
             } catch (error) {
                 loadTimeRetries++;
                 setTimeout(sendLoadTime, 1000);
@@ -280,12 +278,25 @@
         
         // Set up backup retry mechanism
         const retryInterval = setInterval(() => {
-            if (!loadTimeSent && loadTimeRetries < MAX_RETRIES) {
+            if (loadTimeRetries < MAX_RETRIES) {
                 sendLoadTime();
             } else {
                 clearInterval(retryInterval);
             }
         }, 1000);
+
+        // Start the choice phase timer after 800ms if it hasn't started yet
+        setTimeout(() => {
+            if (!window.choicePhaseTimerStarted) {
+                window.choicePhaseTimerStarted = true;
+                choicePhaseStartTime = performance.now();
+                setTimeout(() => {
+                    if (!choiceMade) {
+                        liveSend({choice_phase_timer_ended: true});
+                    }
+                }, 800);
+            }
+        }, 800);
 
         const pageStartTime = js_vars.page_start_time;
         const timeoutDuration = 4200000; // 42 seconds in milliseconds
@@ -295,13 +306,13 @@
             if (currentTime - pageStartTime >= timeoutDuration) {
                 document.getElementById('form').submit();
             } else {
-                setTimeout(checkTimeout, 1000); // Check every second
+                setTimeout(checkTimeout, 1000);
             }
         }
 
-        setTimeout(checkTimeout, 1000); // Start checking after 1 second
+        setTimeout(checkTimeout, 1000);
     });
-
+    
     function handleKeyDown(event) {
         if (currentStage === 'choice' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !choiceMade) {
             initialChoiceTime = performance.now() - choicePhaseStartTime;

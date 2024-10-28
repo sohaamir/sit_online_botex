@@ -647,15 +647,17 @@ class MyPage(Page):
             if not player.field_maybe_none('my_page_load_time'):
                 group.players_loaded_count += 1
             
+            # Ensure at least one response is sent back to the client
+            response = {player.id_in_group: dict(acknowledged=True)}
+            
             # Only proceed when all players have loaded
-            if group.players_loaded_count == C.PLAYERS_PER_GROUP and not group.all_players_loaded:
-                group.all_players_loaded = True
+            if group.players_loaded_count == C.PLAYERS_PER_GROUP:
                 group.my_page_load_time = round(max(p.my_page_load_time for p in players), 2)
                 group.set_round_reward()
                 group.reversal_learning()
                 return {p.id_in_group: dict(start_choice_phase_timer=True) for p in players}
-                
-            return {player.id_in_group: dict(acknowledged=True)}
+            
+            return response
 
         if 'initial_choice_time' in data:
             if data['initial_choice_time'] is not None:
