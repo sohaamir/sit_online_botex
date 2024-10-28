@@ -229,6 +229,8 @@ class Group(BaseGroup):
     remaining_images_displayed = models.BooleanField(initial=False)
     reversal_happened = models.BooleanField(initial=False)
     round_reward_set = models.BooleanField(initial=False)
+    all_players_loaded = models.BooleanField(initial=False)
+    players_loaded_count = models.IntegerField(initial=0)
 
 #### ---------------- Define the round reward ------------------------ ####
 # The round reward is randomly generated based on the reward probabilities for each image
@@ -637,14 +639,23 @@ class MyPage(Page):
         response = {}
 
         if 'my_page_load_time' in data:
+            # Record individual player's load time
             player.my_page_load_time = round(data['my_page_load_time'] / 1000, 2)
             player.individual_page_load_time = round(data['individual_page_load_time'] / 1000, 2)
-
-            if all(p.field_maybe_none('my_page_load_time') for p in players):
+            
+            # Increment the counter for loaded players if not already counted
+            if not player.field_maybe_none('my_page_load_time'):
+                group.players_loaded_count += 1
+            
+            # Only proceed when all players have loaded
+            if group.players_loaded_count == C.PLAYERS_PER_GROUP and not group.all_players_loaded:
+                group.all_players_loaded = True
                 group.my_page_load_time = round(max(p.my_page_load_time for p in players), 2)
                 group.set_round_reward()
                 group.reversal_learning()
                 return {p.id_in_group: dict(start_choice_phase_timer=True) for p in players}
+                
+            return {player.id_in_group: dict(acknowledged=True)}
 
         if 'initial_choice_time' in data:
             if data['initial_choice_time'] is not None:

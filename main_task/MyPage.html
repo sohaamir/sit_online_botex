@@ -253,14 +253,40 @@
     let betPhaseEnded = false;
     let secondBetPhaseEnded = false;
     let resultsShown = false;
+    let loadTimeSent = false;
 
     document.addEventListener('DOMContentLoaded', function() {
         individualPageLoadTime = performance.now();
-        liveSend({
-            my_page_load_time: performance.now(),
-            individual_page_load_time: individualPageLoadTime
-        });
+        let loadTimeSent = false;
+        let loadTimeRetries = 0;
+        const MAX_RETRIES = 5;
         
+        function sendLoadTime() {
+            if (loadTimeSent || loadTimeRetries >= MAX_RETRIES) return;
+            
+            try {
+                liveSend({
+                    my_page_load_time: performance.now(),
+                    individual_page_load_time: individualPageLoadTime
+                });
+                loadTimeSent = true;
+            } catch (error) {
+                loadTimeRetries++;
+                setTimeout(sendLoadTime, 1000);
+            }
+        }
+        
+        sendLoadTime();
+        
+        // Set up backup retry mechanism
+        const retryInterval = setInterval(() => {
+            if (!loadTimeSent && loadTimeRetries < MAX_RETRIES) {
+                sendLoadTime();
+            } else {
+                clearInterval(retryInterval);
+            }
+        }, 1000);
+
         const pageStartTime = js_vars.page_start_time;
         const timeoutDuration = 4200000; // 42 seconds in milliseconds
 
@@ -467,6 +493,11 @@
 
     function liveRecv(data) {
         console.log('Received data:', data);
+
+        if (data.acknowledged) {
+            loadTimeSent = true;
+            return;
+        }
 
         if ('my_page_load_time' in data) {
             window.myPageLoadTime = data.my_page_load_time;
