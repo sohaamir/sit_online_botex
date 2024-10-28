@@ -257,46 +257,35 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         individualPageLoadTime = performance.now();
-        let loadTimeRetries = 0;
-        const MAX_RETRIES = 5;
         
+        // Simplified load time sending - just try once
         function sendLoadTime() {
-            if (loadTimeRetries >= MAX_RETRIES) return;
-            
-            try {
-                liveSend({
-                    my_page_load_time: performance.now(),
-                    individual_page_load_time: individualPageLoadTime
-                });
-            } catch (error) {
-                loadTimeRetries++;
-                setTimeout(sendLoadTime, 1000);
+            if (!loadTimeSent) {
+                try {
+                    liveSend({
+                        my_page_load_time: performance.now(),
+                        individual_page_load_time: individualPageLoadTime
+                    });
+                    loadTimeSent = true;
+                } catch (error) {
+                    console.error('Error sending load time:', error);
+                }
             }
         }
         
         sendLoadTime();
-        
-        // Set up backup retry mechanism
-        const retryInterval = setInterval(() => {
-            if (loadTimeRetries < MAX_RETRIES) {
-                sendLoadTime();
-            } else {
-                clearInterval(retryInterval);
-            }
-        }, 1000);
 
-        // Start the choice phase timer after 3000ms if it hasn't started yet
+        // Start the choice phase timer immediately after sending load time
         setTimeout(() => {
-            if (!window.choicePhaseTimerStarted) {
-                window.choicePhaseTimerStarted = true;
-                choicePhaseStartTime = performance.now();
-                setTimeout(() => {
-                    if (!choiceMade) {
-                        liveSend({choice_phase_timer_ended: true});
-                    }
-                }, 3000);
-            }
-        }, 3000);
+            window.choicePhaseTimerStarted = true;
+            choicePhaseStartTime = performance.now();
+            
+            setTimeout(() => {
+                if (!choiceMade) {
+                    liveSend({choice_phase_timer_ended: true});
+                }
+            }, 3000);
+        }, 0);
 
         const pageStartTime = js_vars.page_start_time;
         const timeoutDuration = 4200000; // 42 seconds in milliseconds
