@@ -7,31 +7,40 @@
 {% block content %}
     <style>
         body {
-            margin: 0 12%;  /* Add margins to the sides of the page */
+            margin: 0 12%;
         }
 
         .container {
-            justify-content: center;
-            align-items: center;
-            max-width: 90%;
-            font-size: 1.2vw;
             text-align: center;
         }
+
         .image-container {
             display: flex;
             justify-content: center;
             margin-top: 20px;
         }
+
         p {
             font-size: 24px;
         }
-        .blue-highlight-box {
-            background-color: #e3f2fd;
-            border: 2px solid #2196f3;
+
+        /* Consolidated highlight boxes */
+        .blue-highlight-box, .green-highlight-box {
             padding: 10px;
             margin: 10px 0;
             border-radius: 5px;
         }
+
+        .blue-highlight-box {
+            background-color: #e3f2fd;
+            border: 2px solid #2196f3;
+        }
+
+        .green-highlight-box {
+            background-color: #d0ffc6;
+            border: 2px solid #07790b;
+        }
+
         .otree-btn-next {
             font-size: 28px;
             padding: 15px 40px;
@@ -40,19 +49,11 @@
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            transition: background-color 0.3s, transform 0.1s;
             margin-top: 30px;
         }
+
         .otree-btn-next:hover {
             background-color: #0056b3;
-            transform: scale(1.05);
-        }
-        .green-highlight-box {
-            background-color: #d0ffc6;
-            border: 2px solid #07790b;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 5px;
         }
     </style>
 

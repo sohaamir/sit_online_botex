@@ -7,14 +7,10 @@
 {% block content %}
     <style>
         body {
-            margin: 0 20%;  /* Add margins to the sides of the page */
+            margin: 0 20%;
         }
 
         .container {
-            justify-content: center;
-            align-items: center;
-            max-width: 90%;
-            font-size: 1.2vw;
             text-align: center;
         }
 
@@ -41,29 +37,32 @@
             font-size: 25px;
         }
 
+        .blue-box, .red-box, .green-box {
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
         .blue-box {
             background-color: #e6f3ff;
             border: 2px solid #007bff;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 5px;
         }
 
-        .red-box {
+        .red-box, .red-highlight-box {
             background-color: #ffebee;
             border: 2px solid #f44336;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 5px;
         }
 
         .red-highlight-box {
-            background-color: #ffebee;
-            border: 2px solid #f44336;
             padding: 10px;
             margin: 10px 0;
             border-radius: 5px;
             text-align: center;
+        }
+
+        .green-box {
+            background-color: #e6ffe6;
+            border: 2px solid #4CAF50;
         }
 
         .image-with-caption {
@@ -76,14 +75,6 @@
             margin-top: 10px;
             text-align: center;
             font-style: italic;
-        }
-
-        .green-box {
-            background-color: #e6ffe6;
-            border: 2px solid #4CAF50;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 5px;
         }
 
         .green-box-image-container {
@@ -100,6 +91,14 @@
             border-radius: 5px;
         }
 
+        button {
+            color: #fff;
+            background-color: #007bff;
+            border: 1px solid transparent;
+            font-size: 1.5rem;
+            padding: 10px 20px;
+            border-radius: 0.25rem;
+        }
     </style>
 
     <div class="container">
@@ -182,14 +181,14 @@
             </p>
         </div>
         <br>
-        <p>After you have made your choice and bet, the choices of the other players in the group are revealed.</p>
+        <p>After you have made your choice and bet, the choices of the other players in the group are revealed below their respective avatar.</p>
         <br>
         <div class="image-container">
             <img src="{% static 'instructions/TaskInstructionsPage1/third_display_phase.png' %}" alt="Third Display Phase" width="600" height="auto">
         </div>
         <br>
         <p><b>Where players do not make their first choice within the time-limit, and are therefore made by the computer, 
-            the image displayed below their avatar choice will be dimmer.</b></p>
+            the image displayed below their avatar will be dimmer.</b></p>
             <br>
         <p>In the example below, the choice for Player 1 and 2 was made by themselves, whilst it was made for Player 3 and 4 by the computer.</p>
         <div class="image-container">

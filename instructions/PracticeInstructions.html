@@ -7,24 +7,23 @@
 {% block content %}
     <style>
         body {
-            margin: 0 12%;  /* Add margins to the sides of the page */
+            margin: 0 12%;
         }
 
         .container {
-            justify-content: center;
-            align-items: center;
-            max-width: 90%;
-            font-size: 1.2vw;
             text-align: center;
         }
+
         .image-container {
             display: flex;
             justify-content: center;
             margin-top: 20px;
         }
+
         p {
             font-size: 28px;
         }
+
         .blue-highlight-box {
             background-color: #e3f2fd;
             border: 2px solid #2196f3;
@@ -32,6 +31,15 @@
             margin: 10px 0;
             border-radius: 5px;
         }
+
+        .red-highlight-box {
+            background-color: #ffebee;
+            border: 2px solid #f44336;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
         .otree-btn-next {
             font-size: 28px;
             padding: 15px 40px;
@@ -40,12 +48,11 @@
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            transition: background-color 0.3s, transform 0.1s;
             margin-top: 30px;
         }
+        
         .otree-btn-next:hover {
             background-color: #0056b3;
-            transform: scale(1.05);
         }
     </style>
 
@@ -67,12 +74,18 @@
         <br>
         <p><b>Please also change the size of your browser window during this practice session to match the page if needed.</b>
         <p>You should be able to see the white boundaries around the page as demonstrated below:</p>
+        <br>
             <div class="image-container">
                 <img src="{% static 'instructions/example_dimensions.png' %}" alt="Bet 2" width="800" height="auto" class="bordered-image">
             </div>
         <br>
         <p><b>Please ensure that these white boundaries are correctly proportioned to your screen, so you can see all of the images well.</b></p>
         <br>
+        <div class="red-highlight-box">
+            <p><b>To make your browser window larger/smaller:</b></p>
+            <p>Mac: Press [⌘ and +] to zoom in, or [⌘ and -] to zoom out</p>
+            <p>Windows: Press [Ctrl and +] to zoom in, or [Ctrl and -] to zoom out</p>
+        </div>
         <p>When you are ready, press the next button when you are ready to play the practice game. We will put you into a waiting room where you will be matched with four other players.</p> 
         <p><b>It should take no longer than a minute or two to be matched (which is factored into your payment).</b></p> 
         {% next_button %}

@@ -1,5 +1,5 @@
-{{ block title }}{{ endblock }}
-{{ block content }}
+{% block title %}{% endblock %}
+{% block content %}
 
 <style>
     body {
@@ -65,6 +65,21 @@
         border-radius: 5px;
         width: 60%;
     }
+
+    .otree-btn-next {
+        font-size: 28px;
+        padding: 15px 40px;
+        margin-top: 20px;
+        background-color: #161bc0;
+        color: white;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+    .otree-btn-next:hover {
+        background-color: #45a049;
+    }
 </style>
 
 <div id="content-container">
@@ -92,4 +107,4 @@
     });
 </script>
 
-{{ endblock }}
+{% endblock %}
