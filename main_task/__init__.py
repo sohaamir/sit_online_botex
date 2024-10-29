@@ -673,11 +673,14 @@ class MyPage(Page):
                 player.computer_choice_one = False
 
         if 'choice_phase_timer_ended' in data:
+            choices_to_process = False  # Flag to track if we need to process any choices
+            
             for p in players:
                 if p.field_maybe_none('choice1') is None or p.choice1 == '':
+                    choices_to_process = True
                     random_choice = random.choice(['left', 'right'])
                     p.choice1 = random_choice
-                    p.computer_choice1 = random_choice  # Store the computer-made choice
+                    p.computer_choice1 = random_choice
                     p.chosen_image_one = p.left_image if random_choice == 'left' else p.right_image
                     p.participant.vars['chosen_image_one'] = p.chosen_image_one
                     p.initial_choice_time = 3.0
@@ -692,6 +695,7 @@ class MyPage(Page):
                     p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
                     p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
 
+            # Process player comparisons regardless of whether choices were manual or computer-assigned
             for p in players:
                 other_players = p.get_others_in_group()
                 p.player_1_choice_one = other_players[0].chosen_image_one_binary
@@ -707,6 +711,7 @@ class MyPage(Page):
                 p.player3_choice1_accuracy = other_players[2].choice1_accuracy
                 p.player4_choice1_accuracy = other_players[3].choice1_accuracy
 
+            # Always transition to bet phase after choice phase ends
             return {p.id_in_group: dict(show_bet_container=True, start_bet_timer=True, highlight_selected_choice=p.choice1) for p in players}
 
         if 'show_bet_container' in data and data['show_bet_container']:
