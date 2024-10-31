@@ -20,7 +20,7 @@ class PlayerLeft(Page):
     @staticmethod              
     def js_vars(player):
         return dict(
-            playerleftlink=player.subsession.session.config['playerleftlink']
+            playerleftlink=player.subsession.session.config['playerleftlink'] # Re-direct the other players to Prolific if a participant leaves mid-task
         )
     pass
 
