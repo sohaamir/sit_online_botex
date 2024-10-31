@@ -1,0 +1,110 @@
+{% block title %}{% endblock %}
+{% block content %}
+
+<style>
+    body {
+        background-color: white;
+        color: black;
+        font-size: 24px;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 100vh;
+        margin: 0;
+        padding-top: 5vh;
+    }
+
+    #content-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        border: 5px solid black;
+        padding: 20px;
+        max-width: 1000px;
+        width: 95%;
+        margin-top: 5vh;
+    }
+
+    #results-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 20px;
+        width: 100%;
+    }
+
+    button {
+        font-size: 24px;
+        padding: 10px 20px;
+        margin-top: 20px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+    button:hover {
+        background-color: #45a049;
+    }
+
+    .result-item {
+        margin: 8px 0;
+    }
+
+    .image-container {
+        margin-bottom: 15px;
+    }
+
+    .green-highlight-box {
+        background-color: #e6ffe6;
+        border: 2px solid #4CAF50;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 5px;
+        width: 60%;
+    }
+
+    .otree-btn-next {
+        font-size: 28px;
+        padding: 15px 40px;
+        margin-top: 20px;
+        background-color: #161bc0;
+        color: white;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+    .otree-btn-next:hover {
+        background-color: #45a049;
+    }
+</style>
+
+<div id="content-container">
+    <div class="image-container">
+        <img src="{% static 'instructions/hogan_money.gif' %}" alt="Hogan Money" width="300" height="auto">
+    </div>
+    <br>
+    <h1>Thank you for completing the experiment!</h1>
+    <div id="results-container">
+        <div class="green-highlight-box">
+            <p class="result-item">You scored <b>{{ bonus_payment_score }}</b> points!</p>
+            <p class="result-item">You earned a bonus payment of <b>{{ bonus_payoff }}!</b></p>
+        </div>
+
+        <p>Click the button below to continue.</p>
+        {% next_button label="Continue" %}
+    </div>
+</div>
+
+<script>
+    // Disable back button
+    history.pushState(null, null, document.URL);
+    window.addEventListener('popstate', function () {
+        history.pushState(null, null, document.URL);
+    });
+</script>
+
+{% endblock %}
