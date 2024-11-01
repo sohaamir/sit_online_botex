@@ -7,6 +7,20 @@ from . import *
 import random
 import time
 import csv
+from otree.api import Submission
+import threading
+import asyncio
+import logging
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('game_log.txt'),
+        logging.StreamHandler()
+    ]
+)
 
 author = 'Aamir Sohail'
 
@@ -228,6 +242,13 @@ class Subsession(BaseSubsession):
         if self.round_number > 1:
             for group in self.get_groups():
                 group.round_reward_set = False
+                
+            # Check connection status of all players
+            for player in self.get_players():
+                if hasattr(player, 'last_connection_time'):
+                    time_since_connection = time.time() - player.last_connection_time
+                    if time_since_connection > 10:  # 10 seconds threshold
+                        player.increment_disconnect_streak()
 
     # Returns a list of all reversal rounds up to the current round
     # This helps track when probability switches have occurred
@@ -288,6 +309,53 @@ class Group(BaseGroup):
     # Page loading coordination
     all_players_loaded = models.BooleanField(initial=False)  # If all players have loaded the page
     players_loaded_count = models.IntegerField(initial=0)    # Number of players who have loaded
+    disconnected_players = models.StringField(initial="")
+    bot_players = models.StringField(initial="")
+    active_bots = models.StringField(initial="")
+    disconnection_streaks = models.StringField(initial="{}")  # Store as JSON dict of player_id: streak_count
+
+#### ---------------- Define the bot ------------------------ ####
+# This method activates a bot for a player who has disconnected from the game 
+# The bot will make choices and bets on behalf of the disconnected player(s) to ensure the game continues
+
+    def activate_bot(self, player):
+        """Activate a bot for a disconnected player"""
+        if player.is_bot:
+            logging.info(f"Bot already active for player {player.id_in_group}")
+            return
+
+        try:
+            logging.info(f"Activating bot for player {player.id_in_group}")
+            player.is_bot = True
+            
+            # Ensure bot has valid image fields
+            if player.field_maybe_none('left_image') is None:
+                player.left_image = C.IMAGES[0]
+            if player.field_maybe_none('right_image') is None:
+                player.right_image = C.IMAGES[1]
+            
+            # Initialize other necessary fields
+            player.participant.vars['is_bot'] = True
+            player.participant.vars['timed_out'] = True
+            
+            bot = PlayerBot(player)
+            def run_bot():
+                try:
+                    logging.info(f"Bot starting round for player {player.id_in_group}")
+                    for submission in bot.play_round():
+                        try:
+                            submission.submit()
+                        except Exception as e:
+                            logging.error(f"Bot submission error: {e}")
+                    logging.info(f"Bot completed round for player {player.id_in_group}")
+                except Exception as e:
+                    logging.error(f"Bot runtime error: {e}")
+                    
+            threading.Thread(target=run_bot).start()
+                
+        except Exception as e:
+            logging.error(f"Bot activation failed: {e}")
+            player.is_bot = False
 
 #### ---------------- Define the round reward ------------------------ ####
 # Sets up the rewards for each option in the current round based on the pre-generated sequence
@@ -503,9 +571,69 @@ class Player(BasePlayer):
     # Track if second choice was made manually
     manual_second_choice = models.BooleanField(initial=False)
 
+    # Connection tracking fields
+    disconnection_streak = models.IntegerField(initial=0)
+    is_bot = models.BooleanField(initial=False)
+    last_connection_time = models.FloatField(initial=0)  # Changed to initial=0
+
+    # Increment the disconnection streak for a player who has been inactive for too long (10 seconds)
+    # This is used to activate a bot for players who have disconnected from the game but is sensitive to page reloads
+    def increment_disconnect_streak(self):
+        current_time = time.time()
+        last_connect_time = self.participant.vars.get('last_connect_time', 0)
+        last_activity_time = self.participant.vars.get('last_activity_time', current_time)
+        time_since_connect = current_time - last_connect_time
+        time_since_activity = current_time - last_activity_time
+        
+        # Only count as disconnection if:
+        # 1. Been over 10 seconds since last connection AND
+        # 2. Been over 15 seconds since last activity
+        if time_since_connect > 10 and time_since_activity > 15:
+            current_streak = self.field_maybe_none('disconnection_streak') or 0
+            self.disconnection_streak = current_streak + 1
+            self.participant.vars['disconnection_streak'] = self.disconnection_streak
+            
+            # Only activate bot after 5 consecutive long disconnections
+            if self.disconnection_streak >= 5 and not self.is_bot:
+                logging.info(f"Activating bot for player {self.id_in_group} due to extended inactivity "
+                            f"(streak: {self.disconnection_streak})")
+                self.group.activate_bot(self)
+
+    # Method to record when a player reconnects to the game after a disconnection
+    # This is used to reset the disconnection streak and track reconnection times for page reloads
+    def reset_disconnect_streak(self):
+        current_time = time.time()
+        last_disconnect = self.participant.vars.get('last_disconnect_time', 0)
+        time_since_disconnect = current_time - last_disconnect
+        
+        # Only reset if connected and active for at least 20 seconds
+        if time_since_disconnect >= 20:
+            old_streak = self.field_maybe_none('disconnection_streak') or 0
+            if old_streak > 0:
+                logging.info(f"Player {self.id_in_group} streak reset from {old_streak} to 0 "
+                            f"(connected for {time_since_disconnect:.1f}s)")
+            self.disconnection_streak = 0
+            self.participant.vars['disconnection_streak'] = 0
+            self.participant.vars['last_connect_time'] = current_time
+            self.participant.vars['last_activity_time'] = current_time
+
+    # Method to record when a player disconnects from the game
+    def record_activity(self):
+        """Record that the player is actively participating"""
+        self.participant.vars['last_activity_time'] = time.time()
+    
+    # Field access method that safely handles null fields to prevent errors
+    def field_maybe_none(self, field_name):
+        """Safely access potentially null fields"""
+        try:
+            return super().field_maybe_none(field_name)
+        except TypeError:
+            logging.warning(f"Null field access for player {self.id_in_group}: {field_name}")
+            return None
+
     def reset_fields(self):
         """Reset all player variables to their initial states at the start of each round"""
-        # [existing reset_fields implementation remains unchanged]
+        # MIGHT NOT NEED THIS FUNCTION - CHECK LATER
         
     def calculate_choice_comparisons(self):
         """
@@ -568,7 +696,8 @@ class MyPage(Page):
     def js_vars(player: Player):
         # Pass the start time to JavaScript for timing calculations
         return dict(
-            page_start_time=int(time.time() * 1000)  # Current time in milliseconds
+            page_start_time=int(time.time() * 1000),  # Current time in milliseconds
+            connection_check_interval=10000  # 10 seconds
         )
     
     # Define the timeout for this page
@@ -581,6 +710,24 @@ class MyPage(Page):
     # It's used to process the player's choices and bets
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
+        # Add at the start of the method:
+        current_streak = player.field_maybe_none('disconnection_streak') or 0
+        if current_streak >= 5 and not player.is_bot:
+            logging.info(f"before_next_page: Activating bot for player {player.id_in_group} (streak: {current_streak})")
+            player.group.activate_bot(player)
+            player.participant.vars['timed_out'] = True
+
+        # Check for disconnected players
+        if not player.participant.vars.get('is_connected', True):
+            # Record disconnection time if not already set
+            if 'disconnection_time' not in player.participant.vars:
+                player.participant.vars['disconnection_time'] = time.time()
+            
+            # If disconnected for more than 10 seconds, activate bot
+            if time.time() - player.participant.vars['disconnection_time'] > 10:
+                logging.info(f"Player {player.id_in_group} disconnected for over 10 seconds at end of round {player.round_number}")
+                player.group.player_disconnected(player.id_in_group)
+
         # Handle what happens when the page times out
         if timeout_happened:
             player.participant.vars['timed_out'] = True
@@ -673,27 +820,49 @@ class MyPage(Page):
             for p in group.get_players():
                 p.reset_fields()
 
+        # At the start of each round, check all players' connection status
+        for p in group.get_players():
+            current_streak = p.field_maybe_none('disconnection_streak')
+            if current_streak is not None and current_streak > 0:
+                logging.info(f"Start of round {group.round_number}: Player {p.id_in_group} has streak of {current_streak}/5")
+                # If they're already at or past threshold, ensure bot is active
+                if current_streak >= 5 and not p.is_bot:
+                    p.increment_disconnect_streak()
+        
+        # Initialize connection tracking for new rounds
+        player.last_connection_time = time.time()
+
         # Randomly determine which image appears on left/right for each player for each round
-        images = C.IMAGES.copy()
-        random.shuffle(images)
-        left_image = images[0]
-        right_image = images[1]
-        player.left_image = left_image
-        player.right_image = right_image
+        try:
+            images = C.IMAGES.copy()
+            random.shuffle(images)
+            left_image = images[0]
+            right_image = images[1]
+            # Initialize both fields explicitly 
+            player.left_image = left_image
+            player.right_image = right_image
+
+        except Exception as e:
+            logging.error(f"Failed to set images for player {player.id_in_group}: {e}")
+            # Provide fallback values
+            left_image = 'option1A.bmp'
+            right_image = 'option1B.bmp'
+            player.left_image = left_image 
+            player.right_image = right_image
+
+        # Get other_players before using it
         other_players = player.get_others_in_group()
 
-        # Prepare all variables needed by the template
         return {
-            'left_image': f'main_task/{left_image}',              # Image to show on left
-            'right_image': f'main_task/{right_image}',            # Image to show on right
-            'player_id': player.id_in_group,                      # Current player's ID
-            'avatar_image': C.AVATAR_IMAGE,                       # Player avatar image
-            'other_player_ids': [p.id_in_group for p in other_players],  # List of other players' IDs
-            # Dictionary of images chosen by all players (or computer choices if applicable)
+            'left_image': f'main_task/{left_image}',
+            'right_image': f'main_task/{right_image}',
+            'player_id': player.id_in_group,
+            'avatar_image': C.AVATAR_IMAGE,
+            'other_player_ids': [p.id_in_group for p in other_players],
             'chosen_images': {p.id_in_group: f"main_task/{p.field_maybe_none('chosen_image_computer') or p.field_maybe_none('chosen_image_one') or 'default_image.png'}" for p in group.get_players()},
-            'previous_choice': player.participant.vars.get('chosen_image_one'),  # Player's choice from last round
-            'previous_bet': player.participant.vars.get('bet1'),                 # Player's bet from last round
-            'round_number': player.round_number,                                 # Current round number
+            'previous_choice': player.participant.vars.get('chosen_image_one'),
+            'previous_bet': player.participant.vars.get('bet1'),
+            'round_number': player.round_number,
         }
 
 # -------------------------------------------------------------------------------------------------------------------- #
@@ -710,14 +879,91 @@ class MyPage(Page):
 # --- If players do not respond within the time limit, the computer randomly selects a choice or bet for them
 
     @staticmethod
-    @safe_websocket(max_retries=5, retry_delay=0.2) # Uncomment to enable Websocket decorator for reliable connections
+    # @safe_websocket(max_retries=5, retry_delay=0.2) # Uncomment to enable Websocket decorator for reliable connections
     def live_method(player, data):
+        if player.field_maybe_none('is_bot'):
+            # Ensure bot has valid image fields
+            if player.field_maybe_none('left_image') is None:
+                player.left_image = C.IMAGES[0]
+            if player.field_maybe_none('right_image') is None:
+                player.right_image = C.IMAGES[1]
         # print(f"Received data: {data}") # Uncomment to print received data
 
         # Initialize response dictionary and get references to group and all players
         group = player.group
         players = group.get_players()
         response = {}
+
+        # Handle activity recording
+        if 'record_activity' in data:
+            try:
+                player.record_activity()
+                if random.random() < 0.05:  # Log activity occasionally (5% of checks)
+                    logging.info(f"Activity recorded for player {player.id_in_group}")
+            except Exception as e:
+                logging.error(f"Error recording activity for player {player.id_in_group}: {e}")
+            return
+
+        # Handle connection checks
+        if 'check_connection' in data:
+            try:
+                current_time = time.time()
+                last_disconnect = player.participant.vars.get('last_disconnect_time', 0)
+                last_activity = player.participant.vars.get('last_activity_time', current_time)
+                time_since_disconnect = current_time - last_disconnect
+                time_since_activity = data.get('time_since_activity', 0) / 1000  # Convert ms to seconds
+                
+                # Update connection time
+                player.last_connection_time = current_time
+                
+                # Process connection status
+                if time_since_activity > 15:  # If inactive for over 15 seconds
+                    if time_since_disconnect > 10:  # And disconnected for over 10 seconds
+                        player.increment_disconnect_streak()
+                else:
+                    # Only reset streak if properly connected for a while
+                    if time_since_disconnect >= 20:
+                        player.reset_disconnect_streak()
+                        
+                # Detailed logging (5% of checks)
+                if random.random() < 0.05:
+                    current_streak = player.field_maybe_none('disconnection_streak') or 0
+            except Exception as e:
+                logging.error(f"Error processing connection check for player {player.id_in_group}: {e}")
+            return
+
+        # Handle disconnection notifications
+        if 'connection_lost' in data:
+            try:
+                current_time = time.time()
+                last_connect = player.participant.vars.get('last_connect_time', current_time)
+                time_since_connect = current_time - last_connect
+                duration = data.get('duration', 0) / 1000  # Convert ms to seconds
+                consecutive_failures = data.get('consecutive_failures', 0)
+                
+                # Record disconnect time
+                player.participant.vars['last_disconnect_time'] = current_time
+                
+                # Only process as disconnection if:
+                # 1. Been connected long enough (>10s)
+                # 2. Multiple consecutive failures
+                # 3. Significant duration of inactivity
+                if (time_since_connect > 10 and 
+                    consecutive_failures >= 3 and 
+                    duration > 15):
+                    logging.info(f"Processing disconnect for player {player.id_in_group} "
+                            f"after {time_since_connect:.1f}s connected "
+                            f"(inactive: {duration:.1f}s, failures: {consecutive_failures})")
+                    player.increment_disconnect_streak()
+            except Exception as e:
+                logging.error(f"Error processing connection loss for player {player.id_in_group}: {e}")
+            return
+
+        # Handle connection restoration
+        if 'connection_restored' in data:
+            logging.info(f"Connection restored for player {player.id_in_group}")
+            player.reset_disconnect_streak()
+            return
 
         # ---- PAGE LOAD PHASE ----
         # Handle initial page loading and synchronization between players
@@ -767,52 +1013,142 @@ class MyPage(Page):
         if 'choice_phase_timer_ended' in data:
             choices_to_process = False
             
-            # Process choices for all players
-            for p in players:
-                # If player hasn't made a choice, computer makes one
-                if p.field_maybe_none('choice1') is None or p.choice1 == '':
-                    choices_to_process = True
-                    random_choice = random.choice(['left', 'right'])
-                    # Record computer's choice
-                    p.choice1 = random_choice
-                    p.computer_choice1 = random_choice
-                    p.chosen_image_one = p.left_image if random_choice == 'left' else p.right_image
-                    p.participant.vars['chosen_image_one'] = p.chosen_image_one
-                    p.initial_choice_time = 3.0
-                    p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
-                    p.computer_choice_one = True
-                    # Use transparent version of image for computer choices
-                    if p.chosen_image_one == 'option1A.bmp':
-                        p.chosen_image_computer = 'option1A_tr.bmp'
-                    elif p.chosen_image_one == 'option1B.bmp':
-                        p.chosen_image_computer = 'option1B_tr.bmp'
-                    p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
-                else:
-                    # Record binary coding and accuracy for manual choices
-                    p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
-                    p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
+            try:
+                # Process choices for all players
+                for p in players:
+                    try:
+                        # If player hasn't made a choice, computer makes one
+                        if p.field_maybe_none('choice1') is None or p.choice1 == '':
+                            choices_to_process = True
+                            
+                            # Ensure valid image fields exist
+                            left_img = p.field_maybe_none('left_image')
+                            right_img = p.field_maybe_none('right_image')
+                            
+                            if left_img is None:
+                                left_img = C.IMAGES[0]
+                                p.left_image = left_img
+                            if right_img is None:
+                                right_img = C.IMAGES[1]
+                                p.right_image = right_img
+                                
+                            random_choice = random.choice(['left', 'right'])
+                            
+                            # Record computer's choice
+                            p.choice1 = random_choice
+                            p.computer_choice1 = random_choice
+                            p.chosen_image_one = left_img if random_choice == 'left' else right_img
+                            p.participant.vars['chosen_image_one'] = p.chosen_image_one
+                            p.initial_choice_time = 3.0
+                            
+                            # Handle binary coding and image selection
+                            try:
+                                p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
+                                p.computer_choice_one = True
+                                
+                                # Use transparent version of image for computer choices
+                                if p.chosen_image_one == 'option1A.bmp':
+                                    p.chosen_image_computer = 'option1A_tr.bmp'
+                                elif p.chosen_image_one == 'option1B.bmp':
+                                    p.chosen_image_computer = 'option1B_tr.bmp'
+                                    
+                                # Check accuracy against group's high-probability image
+                                if group.field_maybe_none('seventy_percent_image'):
+                                    p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
+                                else:
+                                    logging.error(f"seventy_percent_image not set for group in round {group.round_number}")
+                                    p.choice1_accuracy = False
+                                    
+                            except Exception as e:
+                                logging.error(f"Error processing computer choice details for player {p.id_in_group}: {e}")
+                                # Set fallback values
+                                p.chosen_image_one_binary = 1
+                                p.computer_choice_one = True
+                                p.chosen_image_computer = 'option1A_tr.bmp'
+                                p.choice1_accuracy = False
+                                
+                        else:
+                            # Record binary coding and accuracy for manual choices
+                            try:
+                                p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
+                                if group.field_maybe_none('seventy_percent_image'):
+                                    p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
+                                else:
+                                    p.choice1_accuracy = False
+                            except Exception as e:
+                                logging.error(f"Error processing manual choice details for player {p.id_in_group}: {e}")
+                                p.chosen_image_one_binary = 1
+                                p.choice1_accuracy = False
+                                
+                    except Exception as e:
+                        logging.error(f"Error processing choice for player {p.id_in_group}: {e}")
+                        # Set safe fallback values
+                        p.choice1 = 'left'
+                        p.computer_choice1 = 'left'
+                        p.chosen_image_one = C.IMAGES[0]
+                        p.chosen_image_one_binary = 1
+                        p.computer_choice_one = True
+                        p.choice1_accuracy = False
 
-            # Record information about other players' choices
-            for p in players:
-                other_players = p.get_others_in_group()
-                # Store choice information for each other player
-                p.player_1_choice_one = other_players[0].chosen_image_one_binary
-                p.player_2_choice_one = other_players[1].chosen_image_one_binary
-                p.player_3_choice_one = other_players[2].chosen_image_one_binary
-                p.player_4_choice_one = other_players[3].chosen_image_one_binary
-                # Record whether choices were made by computer
-                p.player_1_computer_choice_one = other_players[0].computer_choice_one
-                p.player_2_computer_choice_one = other_players[1].computer_choice_one
-                p.player_3_computer_choice_one = other_players[2].computer_choice_one
-                p.player_4_computer_choice_one = other_players[3].computer_choice_one
-                # Record accuracy of other players' choices
-                p.player1_choice1_accuracy = other_players[0].choice1_accuracy
-                p.player2_choice1_accuracy = other_players[1].choice1_accuracy
-                p.player3_choice1_accuracy = other_players[2].choice1_accuracy
-                p.player4_choice1_accuracy = other_players[3].choice1_accuracy
+                # Record information about other players' choices
+                for p in players:
+                    try:
+                        other_players = p.get_others_in_group()
+                        
+                        # Initialize default values
+                        choice_defaults = [1] * 4  # Default binary choices
+                        computer_defaults = [True] * 4  # Default computer choice flags
+                        accuracy_defaults = [False] * 4  # Default accuracy values
+                        
+                        # Try to get actual values, fall back to defaults if needed
+                        for i, other_p in enumerate(other_players):
+                            try:
+                                # Store choice information
+                                choice_defaults[i] = other_p.field_maybe_none('chosen_image_one_binary') or 1
+                                computer_defaults[i] = other_p.field_maybe_none('computer_choice_one') or True
+                                accuracy_defaults[i] = other_p.field_maybe_none('choice1_accuracy') or False
+                            except Exception as e:
+                                logging.error(f"Error getting other player {i+1} data for player {p.id_in_group}: {e}")
+                        
+                        # Assign values with fallbacks
+                        p.player_1_choice_one = choice_defaults[0]
+                        p.player_2_choice_one = choice_defaults[1]
+                        p.player_3_choice_one = choice_defaults[2]
+                        p.player_4_choice_one = choice_defaults[3]
+                        
+                        p.player_1_computer_choice_one = computer_defaults[0]
+                        p.player_2_computer_choice_one = computer_defaults[1]
+                        p.player_3_computer_choice_one = computer_defaults[2]
+                        p.player_4_computer_choice_one = computer_defaults[3]
+                        
+                        p.player1_choice1_accuracy = accuracy_defaults[0]
+                        p.player2_choice1_accuracy = accuracy_defaults[1]
+                        p.player3_choice1_accuracy = accuracy_defaults[2]
+                        p.player4_choice1_accuracy = accuracy_defaults[3]
+                        
+                    except Exception as e:
+                        logging.error(f"Error recording other players' info for player {p.id_in_group}: {e}")
+                        # Set safe fallback values for all other player fields
+                        for i in range(1, 5):
+                            setattr(p, f'player_{i}_choice_one', 1)
+                            setattr(p, f'player_{i}_computer_choice_one', True)
+                            setattr(p, f'player{i}_choice1_accuracy', False)
 
-            # Move to betting phase
-            return {p.id_in_group: dict(show_bet_container=True, start_bet_timer=True, highlight_selected_choice=p.choice1) for p in players}
+                # Move to betting phase
+                return {p.id_in_group: dict(
+                    show_bet_container=True, 
+                    start_bet_timer=True, 
+                    highlight_selected_choice=p.field_maybe_none('choice1') or 'left'
+                ) for p in players}
+                
+            except Exception as e:
+                logging.error(f"Critical error in choice phase timer end: {e}")
+                # Provide safe fallback response to keep game running
+                return {p.id_in_group: dict(
+                    show_bet_container=True,
+                    start_bet_timer=True,
+                    highlight_selected_choice='left'
+                ) for p in players}
 
         # ---- FIRST BET PHASE ----
         # Handle display of betting interface
@@ -1129,6 +1465,8 @@ class FinalResults(Page):
 # Define the sequence of pages that players will see
 # Players first see the main task page (MyPage) for each round,
 # then see the final results page (FinalResults) after all rounds are complete
+
+from .tests import PlayerBot
 
 page_sequence = [MyPage, FinalResults]  
 

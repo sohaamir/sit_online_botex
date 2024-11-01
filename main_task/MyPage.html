@@ -261,8 +261,14 @@
     let resultsShown = false;    // Whether the results have been displayed
     let loadTimeSent = false;    // Whether the page load time has been sent to the server
 
+    let lastConnectionCheck = Date.now();
+    let connectionCheckInterval = null;
+
     // Main event listener that runs when the page is fully loaded
     document.addEventListener('DOMContentLoaded', function() {
+
+        startConnectionChecking();
+
         // Record when the page loads for this player
         individualPageLoadTime = performance.now();
         
@@ -311,6 +317,98 @@
         }
 
         setTimeout(checkTimeout, 1000);
+    });
+
+    // Function to send real-time data to the server
+    function startConnectionChecking() {
+        const CHECK_INTERVAL = 10000; // Check every 10 seconds
+        const ACTIVITY_TIMEOUT = 15000; // 15 seconds without activity
+        const DISCONNECT_THRESHOLD = 3; // Need 3 consecutive failed checks
+        
+        let lastActivityTime = Date.now();
+        let consecutiveFailures = 0;
+        
+        // Record all types of activity
+        function recordActivity() {
+            lastActivityTime = Date.now();
+            try {
+                liveSend({record_activity: true});
+            } catch (error) {
+                console.error("Failed to record activity:", error);
+            }
+        }
+        
+        // Monitor user activity
+        ['mousemove', 'keydown', 'click', 'touchstart'].forEach(eventType => {
+            document.addEventListener(eventType, recordActivity);
+        });
+
+        setInterval(() => {
+            const timeSinceActivity = Date.now() - lastActivityTime;
+            
+            try {
+                liveSend({
+                    check_connection: true,
+                    time_since_activity: timeSinceActivity
+                });
+                consecutiveFailures = 0;
+            } catch (error) {
+                consecutiveFailures++;
+                console.log(`Connection check failed (${consecutiveFailures}/${DISCONNECT_THRESHOLD})`);
+                
+                // Only report disconnection if we've had multiple failures AND no recent activity
+                if (consecutiveFailures >= DISCONNECT_THRESHOLD && timeSinceActivity > ACTIVITY_TIMEOUT) {
+                    console.log("Extended inactivity detected");
+                    try {
+                        liveSend({
+                            connection_lost: true,
+                            duration: timeSinceActivity,
+                            consecutive_failures: consecutiveFailures
+                        });
+                    } catch (e) {
+                        console.error("Failed to send disconnect notification:", e);
+                    }
+                }
+            }
+        }, CHECK_INTERVAL);
+    }
+
+    // Add visibility change handler
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            liveSend({connection_lost: true});
+        }
+    });
+
+    // Update visibility change handler
+    let hiddenTime = null;
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            console.log("Page hidden - starting timer");
+            hiddenTime = Date.now();
+        } else if (document.visibilityState === 'visible' && hiddenTime) {
+            const hiddenDuration = Date.now() - hiddenTime;
+            console.log(`Page visible again after ${Math.round(hiddenDuration/1000)} seconds`);
+            if (hiddenDuration > 10000) {
+                console.log("Page was hidden for extended period - notifying server");
+                liveSend({connection_lost: true});
+            }
+            hiddenTime = null;
+        }
+    });
+
+    // Add beforeunload handler
+    window.addEventListener('beforeunload', () => {
+        liveSend({connection_lost: true});
+    });
+
+    // Add connection event listeners
+    window.addEventListener('online', () => {
+        liveSend({check_connection: true});
+    });
+
+    window.addEventListener('offline', () => {
+        liveSend({connection_lost: true});
     });
 
     // Function to handle all keyboard inputs during the experiment
@@ -541,6 +639,8 @@
     // Main function to handle real-time data received from the server
     function liveRecv(data) {
         console.log('Received data:', data);
+
+        lastConnectionCheck = Date.now();
 
         // Handle acknowledgment of load time being received
         if (data.acknowledged) {
