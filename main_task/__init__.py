@@ -574,7 +574,7 @@ class Player(BasePlayer):
     # Connection tracking fields
     disconnection_streak = models.IntegerField(initial=0)
     is_bot = models.BooleanField(initial=False)
-    last_connection_time = models.FloatField(initial=0)  # Changed to initial=0
+    last_connection_time = models.FloatField(initial=0)
 
     # Increment the disconnection streak for a player who has been inactive for too long (10 seconds)
     # This is used to activate a bot for players who have disconnected from the game but is sensitive to page reloads
@@ -800,7 +800,7 @@ class MyPage(Page):
         player.calculate_choice_comparisons()  # How many others made same choices
         player.choice1_accuracy = player.chosen_image_one == player.group.seventy_percent_image  # Was first choice optimal?
         player.choice2_accuracy = player.chosen_image_two == player.group.seventy_percent_image  # Was second choice optimal?
-        player.switch_vs_stay = 1 if player.chosen_image_one != player.chosen_image_two else 0  # Did player change their mind?
+        player.switch_vs_stay = 1 if player.chosen_image_one != player.chosen_image_two else 0  # Did the player change their mind?
 
     # app_after_this_page method is used to redirect players who have timed out to a different page
     @staticmethod

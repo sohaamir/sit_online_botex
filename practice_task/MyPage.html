@@ -5,18 +5,13 @@
 {{ block content }}
 
 <style>
-
     html, body {
         height: 100%;
         margin: 0;
         padding: 0;
         overflow: hidden;
     }
-    #content {
-        height: 100vh;
-        overflow-y: auto;
-    }
-
+    
     body {
         background-color: black;
         color: white;
@@ -77,12 +72,12 @@
         white-space: pre-line;
     }
 
-    #preference-title {
-        top: -90px;
+    .selected {
+        border: 5px solid yellow;
     }
 
-    .selected {
-        border: 4.5px solid yellow;
+    .selected-second-choice {
+        border: 5px solid red;
     }
 
     .bet-options {
@@ -99,6 +94,10 @@
 
     .bet-options div.selected {
         border: 3px solid yellow;
+    }
+
+    .bet-options div.selected-second-bet {
+        border: 3px solid red;
     }
 
     #avatar-container {
@@ -125,6 +124,7 @@
         font-weight: bold;
         color: black;
         z-index: 1;
+        pointer-events: none;
     }
 
     .avatar {
@@ -144,157 +144,546 @@
         width: 45px;
         height: 45px;
         position: absolute;
-        top: 82.5px;
-        left: 15px;
+        top: 97.5px;
+        left: 30px;
     }
 
-    .remaining-image {
-        width: 45px;
-        height: 45px;
+    .win-loss-image {
+        width: 37.5px;
+        height: 37.5px;
         position: absolute;
-        top: 82.5px;
-        left: 15px;
-    }
-
-    .avatar-selected {
-        border: 4.5px solid rgb(249, 0, 0);
-    }
-
-    .avatar-selected-second-choice {
-        border: 4.5px solid rgb(255, 166, 0);
+        top: 157.5px;
+        left: 30px;
     }
 
     .otree-timer {
         display: none;
     }
+
+    #trial-reward {
+        color: rgb(30, 236, 30);
+        font-size: 36px;
+        margin-top: 370px;
+        font-weight: bold;
+        text-align: center;
+        width: 100%;
+    }
+
+    #player-win-loss-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: -20px;
+        margin-bottom: -520px;
+        width: 100%;
+    }
+
+    #player-win-loss-image {
+        width: 75px;
+        height: 75px;
+        margin-left: 380px;
+        margin-top: -350px;
+    }
+
 </style>
 
-<div id="avatar-container">
-    {% for player_id in other_player_ids %}
-        <div class="avatar-wrapper" data-player-id="{{ player_id }}">
-            <img src="{% static avatar_image %}" alt="Player {{ player_id }} Avatar" class="avatar">
-            <div class="avatar-number">{{ forloop.counter }}</div>
-            <img src="" alt="Player {{ player_id }} Chosen Image" class="chosen-image" style="display: none;">
+<form id="form">
+    <div id="avatar-container">
+        {% for player_id in other_player_ids %}
+            <div class="avatar-wrapper" data-player-id="{{ player_id }}">
+                <img src="{% static avatar_image %}" alt="Player {{ player_id }} Avatar" class="avatar">
+                <div class="avatar-number">{{ forloop.counter }}</div>
+                <img src="" alt="Player {{ player_id }} Chosen Image" class="chosen-image" style="display: none;">
+                <img src="" alt="Player {{ player_id }} Second Chosen Image" class="second-chosen-image" style="display: none;">
+                <img src="" alt="Player {{ player_id }} Win/Loss Image" class="win-loss-image" style="display: none;">
+            </div>
+        {% endfor %}
+    </div>
+
+    <div id="option-container">
+        <div id="options">
+            <img src="{% static left_image %}" id="option_left" data-option="left">
+            <img src="{% static right_image %}" id="option_right" data-option="right">
+            <div id="title-container">
+                <div class="title" id="choice-title">Your choice?</div>
+                <div class="title" id="bet-title" style="display: none;">Your bet?</div>
+                <div class="title" id="second-choice-title" style="display: none;">Second choice?</div>
+                <div class="title" id="second-bet-title" style="display: none;">Second bet?</div>
+            </div>
         </div>
-    {% endfor %}
-</div>
+        <div id="bet-container" style="display: none;">
+            <div class="bet-options">
+                <div data-bet="1">1</div>
+                <div data-bet="2">2</div>
+                <div data-bet="3">3</div>
+            </div>
+        </div>
+        <div id="player-win-loss-container" style="display: none;">
+            <img src="" alt="Player Win/Loss Image" id="player-win-loss-image">
+        </div>
+        <div id="trial-reward" style="display: none;"></div>
+    </div>
+
+    <input type="hidden" name="choice1" id="choice1_field">
+    <input type="hidden" name="bet1" id="bet1_field">
+    <input type="hidden" name="choice2" id="choice2_field">
+    <input type="hidden" name="bet2" id="bet2_field">
+</form>
 
 <script>
-    window.otherPlayerIds = {{ other_player_ids|json }};
-</script>
+    // Initialize variables passed from the server-side oTree code
+    window.otherPlayerIds = {{ other_player_ids|json }}; // Array of IDs for other players in the group
+    window.chosenImages = {{ chosen_images|json }}; // Dictionary mapping player IDs to their chosen images
 
-<div id="option-container">
-    <div id="options">
-        <img src="{% static left_image %}" id="option_left" data-option="left">
-        <img src="{% static right_image %}" id="option_right" data-option="right">
-        <div class="title" id="choice-title">Your choice?</div>
-        <div class="title" id="bet-title" style="display: none;">Your bet?</div>
-    </div>
-    <div id="bet-container" style="display: none;">
-        <div class="bet-options">
-            <div data-bet="1">1</div>
-            <div data-bet="2">2</div>
-            <div data-bet="3">3</div>
-        </div>
-    </div>
-</div>
+    // Initialize timing variables for tracking different phases of the experiment
+    let choicePhaseStartTime;     // When the first choice phase begins
+    let betPhaseStartTime;        // When the first betting phase begins
+    let secondChoiceStartTime;    // When the second choice phase begins
+    let secondBetStartTime;       // When the second betting phase begins
+    let initialChoiceTime;        // How long the player took to make their first choice
+    let initialBetTime;          // How long the player took to make their first bet
+    let secondChoiceTime;        // How long the player took to make their second choice
+    let secondBetTime;           // How long the player took to make their second bet
 
-<script>
-    window.js_vars = {
-        player_id: {{ player_id }},
-    };
+    // State tracking variables to manage the flow of the experiment
+    let currentStage = 'choice';  // Current phase of the experiment (choice/bet/second_choice/second_bet)
+    let choiceMade = false;      // Whether player has made their first choice
+    let betMade = false;         // Whether player has made their first bet
+    let secondChoiceMade = false; // Whether player has made their second choice
+    let secondBetMade = false;   // Whether player has made their second bet
 
+    // Additional tracking variables for timing and phase management
+    let individualPageLoadTime;   // When this specific player's page loaded
+    let betTimerStarted = false; // Whether the betting timer has started
+    let secondBetTimerStarted = false; // Whether the second betting timer has started
+    let betPhaseEnded = false;   // Whether the first betting phase has ended
+    let secondBetPhaseEnded = false; // Whether the second betting phase has ended
+    let resultsShown = false;    // Whether the results have been displayed
+    let loadTimeSent = false;    // Whether the page load time has been sent to the server
+
+    let lastConnectionCheck = Date.now();
+    let connectionCheckInterval = null;
+
+    // Main event listener that runs when the page is fully loaded
     document.addEventListener('DOMContentLoaded', function() {
-        liveSend({my_page_load_time: performance.now()});
-        initialChoiceTimerId = setTimeout(function() {
-            if (currentStage === 'choice') {
-                liveSend({initial_choice_time: 6000});
-            }
-        }, 6000);
 
-        window.choicePhaseStartTime = performance.now();
+        startConnectionChecking();
+
+        // Record when the page loads for this player
+        individualPageLoadTime = performance.now();
+        
+        // Function to send the load time to the server
+        // Simplified load time sending - just try once
+        function sendLoadTime() {
+            if (!loadTimeSent) {
+                try {
+                    liveSend({
+                        my_page_load_time: performance.now(),
+                        individual_page_load_time: individualPageLoadTime
+                    });
+                    loadTimeSent = true;
+                } catch (error) {
+                    console.error('Error sending load time:', error);
+                }
+            }
+        }
+        
+        sendLoadTime();
+
+        // Initiate the first choice phase timer
+        // Start the choice phase timer immediately after sending load time
+        setTimeout(() => {
+            window.choicePhaseTimerStarted = true;
+            choicePhaseStartTime = performance.now();
+            
+            setTimeout(() => {
+                // Remove the condition - always send timer ended event at 6000ms
+                liveSend({choice_phase_timer_ended: true});
+            }, 6000);  // First choice phase lasts 3 seconds
+        }, 0);
+
+        // Set up page timeout handling
+        const pageStartTime = js_vars.page_start_time;
+        const timeoutDuration = 4200000; // 42 seconds in milliseconds - total time allowed for the page
+
+        // Function to check if the page has timed out
+        function checkTimeout() {
+            const currentTime = new Date().getTime();
+            if (currentTime - pageStartTime >= timeoutDuration) {
+                document.getElementById('form').submit(); // Submit the form if time is up
+            } else {
+                setTimeout(checkTimeout, 1000); // Check again in 1 second
+            }
+        }
+
+        setTimeout(checkTimeout, 1000);
     });
 
-    window.betPhaseStartTime = null;
+    // Function to send real-time data to the server
+    function startConnectionChecking() {
+        const CHECK_INTERVAL = 10000; // Check every 10 seconds
+        const ACTIVITY_TIMEOUT = 15000; // 15 seconds without activity
+        const DISCONNECT_THRESHOLD = 3; // Need 3 consecutive failed checks
+        
+        let lastActivityTime = Date.now();
+        let consecutiveFailures = 0;
+        
+        // Record all types of activity
+        function recordActivity() {
+            lastActivityTime = Date.now();
+            try {
+                liveSend({record_activity: true});
+            } catch (error) {
+                console.error("Failed to record activity:", error);
+            }
+        }
+        
+        // Monitor user activity
+        ['mousemove', 'keydown', 'click', 'touchstart'].forEach(eventType => {
+            document.addEventListener(eventType, recordActivity);
+        });
 
-    let initialChoiceTime;
-    let initialBetTime;
-    let currentStage = 'choice';
-    let initialChoiceTimerId;
-    let choiceMade = false;
-    let betMade = false;
+        setInterval(() => {
+            const timeSinceActivity = Date.now() - lastActivityTime;
+            
+            try {
+                liveSend({
+                    check_connection: true,
+                    time_since_activity: timeSinceActivity
+                });
+                consecutiveFailures = 0;
+            } catch (error) {
+                consecutiveFailures++;
+                console.log(`Connection check failed (${consecutiveFailures}/${DISCONNECT_THRESHOLD})`);
+                
+                // Only report disconnection if we've had multiple failures AND no recent activity
+                if (consecutiveFailures >= DISCONNECT_THRESHOLD && timeSinceActivity > ACTIVITY_TIMEOUT) {
+                    console.log("Extended inactivity detected");
+                    try {
+                        liveSend({
+                            connection_lost: true,
+                            duration: timeSinceActivity,
+                            consecutive_failures: consecutiveFailures
+                        });
+                    } catch (e) {
+                        console.error("Failed to send disconnect notification:", e);
+                    }
+                }
+            }
+        }, CHECK_INTERVAL);
+    }
 
+    // Add visibility change handler
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            liveSend({connection_lost: true});
+        }
+    });
+
+    // Update visibility change handler
+    let hiddenTime = null;
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            console.log("Page hidden - starting timer");
+            hiddenTime = Date.now();
+        } else if (document.visibilityState === 'visible' && hiddenTime) {
+            const hiddenDuration = Date.now() - hiddenTime;
+            console.log(`Page visible again after ${Math.round(hiddenDuration/1000)} seconds`);
+            if (hiddenDuration > 10000) {
+                console.log("Page was hidden for extended period - notifying server");
+                liveSend({connection_lost: true});
+            }
+            hiddenTime = null;
+        }
+    });
+
+    // Add beforeunload handler
+    window.addEventListener('beforeunload', () => {
+        liveSend({connection_lost: true});
+    });
+
+    // Add connection event listeners
+    window.addEventListener('online', () => {
+        liveSend({check_connection: true});
+    });
+
+    window.addEventListener('offline', () => {
+        liveSend({connection_lost: true});
+    });
+
+    // Function to handle all keyboard inputs during the experiment
     function handleKeyDown(event) {
-        console.log('Key pressed:', event.key);
-        console.log('Current stage:', currentStage);
-
+        // Handle first choice phase - left/right arrow keys
         if (currentStage === 'choice' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !choiceMade) {
-            initialChoiceTime = performance.now() - window.choicePhaseStartTime;
-            liveSend({initial_choice_time: initialChoiceTime, choice: event.key === 'ArrowLeft' ? 'left' : 'right'});
+            initialChoiceTime = performance.now() - choicePhaseStartTime;
             choose(event.key === 'ArrowLeft' ? 'left' : 'right');
+            liveSend({
+                initial_choice_time: initialChoiceTime, 
+                actual_choice_time: performance.now() - choicePhaseStartTime,
+                choice: event.key === 'ArrowLeft' ? 'left' : 'right'
+            });
             choiceMade = true;
-            clearTimeout(initialChoiceTimerId);
-        } else if (currentStage === 'bet' && (event.key >= '1' && event.key <= '3') && !betMade) {
+        }
+        // Handle first betting phase - number keys 1-3
+        else if (currentStage === 'bet' && (event.key >= '1' && event.key <= '3') && !betMade) {
             const bet = parseInt(event.key);
-            const initialBetTime = performance.now() - window.betPhaseStartTime;
-            liveSend({initial_bet_time: initialBetTime, bet: bet, id: js_vars.player_id});
+            const initialBetTime = performance.now() - betPhaseStartTime;
+            liveSend({
+                initial_bet_time: initialBetTime, 
+                bet: bet, 
+                id: js_vars.player_id
+            });
             selectBet(bet);
             betMade = true;
         }
+        // Handle second choice phase - left/right arrow keys
+        else if (currentStage === 'second_choice' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !secondChoiceMade) {
+            console.log('Manual second choice made');
+            secondChoiceTime = performance.now() - secondChoiceStartTime;
+            const choice = event.key === 'ArrowLeft' ? 'left' : 'right';
+            console.log(`Choice: ${choice}, Time: ${secondChoiceTime}`);
+            chooseSecond(choice);  // Call this first to update the UI immediately
+            liveSend({
+                second_choice: choice,
+                second_choice_time: secondChoiceTime,
+                manual_second_choice: true
+            });
+            secondChoiceMade = true;
+        }
+        // Handle second betting phase - number keys 1-3
+        else if (currentStage === 'second_bet' && (event.key >= '1' && event.key <= '3') && !secondBetMade) {
+            const bet = parseInt(event.key);
+            const secondBetTime = performance.now() - secondBetStartTime;
+            liveSend({
+                second_bet_time: secondBetTime,
+                second_bet: bet
+            });
+            selectSecondBet(bet);
+            secondBetMade = true;
+        }
     }
 
+    // Add global event listener for keyboard input
     document.addEventListener('keydown', handleKeyDown);
 
+    // Function to handle the first choice selection
     function choose(option) {
         if (currentStage === 'choice' && !choiceMade) {
+            // Get references to the selected and non-selected options
             const selectedOption = document.getElementById(`option_${option}`);
             const otherOption = document.getElementById(`option_${option === 'left' ? 'right' : 'left'}`);
+            // Highlight selected option and remove highlight from other option
             selectedOption.classList.add('selected');
             otherOption.classList.remove('selected');
+            // Store the choice in a hidden form field
+            document.getElementById('choice1_field').value = option;
             choiceMade = true;
         }
     }
 
+    // Function to handle the first bet selection
     function selectBet(bet) {
         if (currentStage === 'bet' && !betMade) {
+            // Remove highlights from all bet options
             const betElements = document.querySelectorAll('.bet-options div');
             betElements.forEach(element => {
                 element.classList.remove('selected');
             });
-            document.querySelector(`.bet-options div[data-bet="${bet}"]`).classList.add('selected');
-            liveSend({ bet: bet });
-            betMade = true;
-            document.removeEventListener('keydown', handleKeyDown);
+            // Highlight the selected bet amount
+            const selectedBetElement = document.querySelector(`.bet-options div[data-bet="${bet}"]`);
+            if (selectedBetElement) {
+                selectedBetElement.classList.add('selected');
+            }
+            // Store the bet in a hidden form field
+            document.getElementById('bet1_field').value = bet;
+            // Only process the bet if it's made within the time limit (3 seconds)
+            if (performance.now() - betPhaseStartTime <= 6000) {
+                liveSend({ 
+                    bet: bet, 
+                    initial_bet_time: performance.now() - betPhaseStartTime, 
+                    id: js_vars.player_id 
+                });
+                betMade = true;
+            }
         }
     }
 
+    // Function to handle the second choice selection
+    function chooseSecond(option) {
+        if (currentStage === 'second_choice' && !secondChoiceMade) {
+            const selectedOption = document.getElementById(`option_${option}`);
+            const otherOption = document.getElementById(`option_${option === 'left' ? 'right' : 'left'}`);
+            
+            // Clear all previous highlights from both options
+            document.getElementById('option_left').classList.remove('selected', 'selected-second-choice');
+            document.getElementById('option_right').classList.remove('selected', 'selected-second-choice');
+            
+            // Add new highlight style for second choice
+            selectedOption.classList.add('selected-second-choice');
+            
+            // Store the second choice in a hidden form field
+            document.getElementById('choice2_field').value = option;
+            secondChoiceMade = true;
+            
+            console.log(`Second choice made: ${option}`);  // Add this for debugging
+        }
+    }
+
+    // Add debugging event listener to log all keyboard inputs
+    document.addEventListener('keydown', function(event) {
+        console.log('Key pressed:', event.key, 'Current stage:', currentStage);
+        handleKeyDown(event);
+    });
+
+    // Function to handle the second bet selection
+    function selectSecondBet(bet) {
+        if (currentStage === 'second_bet' && !secondBetMade) {
+            // Remove all previous highlights
+            const betElements = document.querySelectorAll('.bet-options div');
+            betElements.forEach(element => {
+                element.classList.remove('selected'); // Remove yellow highlight from initial bet
+                element.classList.remove('selected-second-bet');
+            });
+            // Add highlight to the selected second bet
+            const selectedBetElement = document.querySelector(`.bet-options div[data-bet="${bet}"]`);
+            if (selectedBetElement) {
+                selectedBetElement.classList.add('selected-second-bet');
+            }
+            // Store the second bet in a hidden form field
+            document.getElementById('bet2_field').value = bet;
+            secondBetMade = true;
+        }
+    }
+
+    // Function to initiate the first betting phase
+    function startBetTimer() {
+        if (!betTimerStarted) {
+            betTimerStarted = true;
+            // Show betting interface and update display
+            document.getElementById('bet-container').style.display = 'block';
+            document.getElementById('choice-title').style.display = 'none';
+            document.getElementById('bet-title').style.display = 'block';
+            currentStage = 'bet';
+            betMade = false;
+            // Add keyboard listener and start timing
+            document.addEventListener('keydown', handleKeyDown);
+            betPhaseStartTime = performance.now();
+
+            // End betting phase after 3 seconds
+            setTimeout(function() {
+                liveSend({bet_timer_ended: true});
+                document.removeEventListener('keydown', handleKeyDown);
+                betTimerStarted = false;
+            }, 6000);
+        }
+    }
+
+    // Function to initiate the second choice phase
+    function startSecondChoicePhase() {
+        currentStage = 'second_choice';
+        // Update display to show second choice interface
+        showTitle('second-choice-title');
+        document.getElementById('choice-title').textContent = 'Second choice?';
+        document.getElementById('choice-title').style.display = 'block';
+        document.getElementById('bet-title').style.display = 'none';
+        
+        // Start timing for second choice
+        secondChoiceStartTime = performance.now();
+        secondChoiceMade = false;
+
+        console.log('Starting second choice phase');
+
+        // End second choice phase after 3 seconds
+        setTimeout(function() {
+            if (!secondChoiceMade) {
+                console.log('Second choice timer ended, no manual choice made');
+                liveSend({
+                    second_choice_timer_ended: true
+                });
+            }
+            startSecondBetTimer(); // Proceed to the next phase
+        }, 6000);
+    }
+
+    // Function to initiate the second betting phase
+    function startSecondBetTimer() {
+        if (!secondBetTimerStarted) {
+            secondBetTimerStarted = true;
+            // Show second betting interface
+            document.getElementById('bet-container').style.display = 'block';
+            showTitle('second-bet-title');
+            currentStage = 'second_bet';
+            secondBetMade = false;
+            // Add keyboard listener and start timing
+            document.addEventListener('keydown', handleKeyDown);
+            secondBetStartTime = performance.now();
+
+            // End second betting phase after 3 seconds
+            setTimeout(function() {
+                liveSend({second_bet_timer_ended: true});
+                document.removeEventListener('keydown', handleKeyDown);
+                secondBetTimerStarted = false;
+            }, 6000);
+        }
+    }
+
+    // Utility function to update the displayed title/prompt
+    function showTitle(titleId) {
+        // Show the title container and hide all existing titles
+        document.getElementById('title-container').style.display = 'block';
+        document.querySelectorAll('.title').forEach(el => el.style.display = 'none');
+        // Show the specified title
+        document.getElementById(titleId).style.display = 'block';
+    }
+
+    // Main function to handle real-time data received from the server
     function liveRecv(data) {
         console.log('Received data:', data);
-        console.log('Current stage:', currentStage);
 
+        lastConnectionCheck = Date.now();
+
+        // Handle acknowledgment of load time being received
+        if (data.acknowledged) {
+            loadTimeSent = true;
+            return;
+        }
+
+        // Store page load time if received from server
         if ('my_page_load_time' in data) {
             window.myPageLoadTime = data.my_page_load_time;
         }
 
+        // Initialize first choice phase
         if ('start_choice_phase_timer' in data && data.start_choice_phase_timer && !window.choicePhaseTimerStarted) {
             window.choicePhaseTimerStarted = true;
+            // Show the choice interface
+            document.getElementById('option-container').style.display = 'block';
+            document.getElementById('choice-title').style.display = 'block';
+            choicePhaseStartTime = performance.now();
+            
+            // End the choice phase after 3 seconds
             setTimeout(function() {
                 liveSend({choice_phase_timer_ended: true});
             }, 6000);
         }
 
-        if ('choice_phase_timer_ended' in data) {
-            console.log("Choice phase timer ended for all players in the group");
-            liveSend({show_bet_container: true});
+        // Handle completion of all choices
+        if ('all_choices_made' in data) {
+            // Calculate remaining time until 6000ms from phase start
+            const remainingTime = Math.max(0, 6000 - (performance.now() - choicePhaseStartTime));
+            
+            // Set a timeout to end the choice phase at exactly 6000ms
+            setTimeout(() => {
+                liveSend({choice_phase_timer_ended: true});
+            }, remainingTime);
         }
 
-        if ('computer_choice' in data) {
-            const selectedOption = document.getElementById(`option_${data.computer_choice}`);
-            const otherOption = document.getElementById(`option_${data.computer_choice === 'left' ? 'right' : 'left'}`);
-            selectedOption.classList.add('selected');
-            otherOption.classList.remove('selected');
+        // Start the betting timer when signaled
+        if ('start_bet_timer' in data && data.start_bet_timer) {
+            startBetTimer();
         }
 
+        // Highlight the selected choice on the interface
         if ('highlight_selected_choice' in data) {
             const selectedOption = document.getElementById(`option_${data.highlight_selected_choice}`);
             const otherOption = document.getElementById(`option_${data.highlight_selected_choice === 'left' ? 'right' : 'left'}`);
@@ -302,123 +691,189 @@
             otherOption.classList.remove('selected');
         }
 
-        if ('highlight_selected_image' in data) {
-            const selectedOption = document.querySelector(`#option_${data.highlight_selected_image.includes('option1A') ? 'left' : 'right'}`);
-            const otherOption = document.querySelector(`#option_${data.highlight_selected_image.includes('option1A') ? 'right' : 'left'}`);
-            selectedOption.classList.add('selected');
-            otherOption.classList.remove('selected');
+        // Handle computer-made bets
+        if ('highlight_computer_bet' in data) {
+            selectBet(data.highlight_computer_bet);
         }
 
-        if ('start_bet_timer' in data && data.start_bet_timer && !window.betTimerStarted) {
-            window.betTimerStarted = true;
-            setTimeout(function() {
-                if (!betMade) {
-                    liveSend({bet_timer_ended: true});
-                }
-            }, 6000);
-        }
-
-        if ('show_bet_container' in data && data.show_bet_container) {
-            document.getElementById('bet-container').style.display = 'block';
-            document.getElementById('choice-title').style.display = 'none';
-            document.getElementById('bet-title').style.display = 'block';
-            currentStage = 'bet';
-            betMade = false;
-            document.addEventListener('keydown', handleKeyDown);
-            window.betPhaseStartTime = performance.now();
-            window.betContainerLoadTime = performance.now();
-
-            setTimeout(function() {
-                if (!betMade) {
-                    liveSend({bet_timer_ended: true});
-                } else {
-                    liveSend({bet_timer_ended: true});
-                }
-                document.removeEventListener('keydown', handleKeyDown);
-            }, 6000);
-        }
-
-        if ('highlight_selected_bet' in data) {
-            const betElements = document.querySelectorAll('.bet-options div');
-            betElements.forEach(element => {
-                element.classList.remove('selected');
-            });
-            document.querySelector(`.bet-options div[data-bet="${data.highlight_selected_bet}"]`).classList.add('selected');
-        }
-
-        if (data.hasOwnProperty('computer_assigned_bet')) {
-            console.log('Received computer_assigned_bet:', data.computer_assigned_bet);
-            $('.bet-options > div').removeClass('selected');
-            $(`.bet-options > div[data-bet="${data.computer_assigned_bet}"]`).addClass('selected');
-            betMade = true;
-        }
-
-        if (data.hasOwnProperty('show_bet_container') && data.show_bet_container) {
-            $('#bet-container').show();
-            $('#bet-title').show();
-            $('#choice-title').hide();
-            currentStage = 'bet';
-            betMade = false;
-            document.addEventListener('keydown', handleKeyDown);
-            window.betPhaseStartTime = performance.now();
-        }
-
+        // Display all players' chosen images
         if ('display_all_images' in data && data.display_all_images) {
-            console.log('Displaying all images for all players');
             const allImages = data.all_images;
-            Object.keys(allImages).forEach(playerId => {
+            console.log('Displaying all images:', allImages);
+            
+            // Update each player's avatar with their chosen image
+            Object.entries(allImages).forEach(([playerId, imagePath]) => {
                 const avatarWrapper = document.querySelector(`.avatar-wrapper[data-player-id="${playerId}"]`);
                 if (avatarWrapper) {
                     const chosenImageElement = avatarWrapper.querySelector('.chosen-image');
-                    chosenImageElement.src = `/static/${allImages[playerId]}`;
+                    chosenImageElement.src = `/static/${imagePath}`;
                     chosenImageElement.style.display = 'block';
+                    console.log(`Displayed image for player ${playerId}: ${imagePath}`);
+                } else {
+                    console.error(`No avatar wrapper found for player ${playerId}`);
                 }
             });
-
-            setTimeout(() => {
-                liveSend({all_images_displayed: true});
-            }, 100);
         }
 
-        if ('redirect_to_second_choice' in data && data.redirect_to_second_choice) {
-            console.log('Redirecting to SecondChoicePage');
+        // Handle display timer for showing all choices
+        if ('start_display_timer' in data && data.start_display_timer) {
+            console.log('Starting 4-second display timer');
+            // Clear any existing timers
+            clearTimeout(window.displayTimerTimeout);
+            clearTimeout(window.failsafeTimeout);
+
+            // Set main timer for 4 seconds
+            window.displayTimerTimeout = setTimeout(() => {
+                console.log('Display phase ended, starting second choice phase');
+                startSecondChoicePhase();
+            }, 4000);
+
+            // Set backup timer in case main timer fails
+            window.failsafeTimeout = setTimeout(() => {
+                console.log('Failsafe: Ensuring transition to second choice phase');
+                startSecondChoicePhase();
+            }, 4500);
+        }
+
+        // Start second choice phase when signaled
+        if ('start_second_choice_timer' in data && data.start_second_choice_timer) {
+            startSecondChoicePhase();
+        }
+
+        // Handle end of second choice timer
+        if ('second_choice_timer_ended' in data) {
+            console.log('Second choice timer ended, applying computer choice');
+            // Clear initial choice highlights
+            document.querySelectorAll('#options img').forEach(img => {
+                img.classList.remove('selected');
+            });
+            
+            // Apply computer's choice if made
+            const computerChoice = data.computer_second_choice;
+            if (computerChoice) {
+                const selectedOption = document.getElementById(`option_${computerChoice}`);
+                selectedOption.classList.add('selected-second-choice');
+            }
+            
+            // Show betting interface
+            document.getElementById('bet-container').style.display = 'block';
+            document.getElementById('second-bet-title').style.display = 'block';
+        }
+
+        // Highlight manually selected second choice
+        if ('highlight_selected_second_choice' in data) {
+            const selectedOption = document.getElementById(`option_${data.highlight_selected_second_choice}`);
+            const otherOption = document.getElementById(`option_${data.highlight_selected_second_choice === 'left' ? 'right' : 'left'}`);
+            
+            // Clear all previous highlights
+            selectedOption.classList.remove('selected');
+            otherOption.classList.remove('selected');
+            selectedOption.classList.remove('selected-second-choice');
+            otherOption.classList.remove('selected-second-choice');
+            
+            // Apply new highlight
+            selectedOption.classList.add('selected-second-choice');
+        }
+
+        // Start second betting phase when signaled
+        if ('start_second_bet_timer' in data && data.start_second_bet_timer) {
+            startSecondBetTimer();
+        }
+
+        // Handle computer-made second bets
+        if ('highlight_computer_second_bet' in data) {
+            selectSecondBet(data.highlight_computer_second_bet);
+        }
+
+        // Display final results for the round
+        if ('show_results' in data && data.show_results && !resultsShown) {
+            resultsShown = true;
+            secondBetPhaseEnded = true;
+
+            // Hide instruction titles
+            document.getElementById('title-container').style.display = 'none';
+
+            // Update display with all players' final choices and outcomes
+            const chosenImagesSecondChoicePage = data.chosen_images;
+            const winLossImages = data.win_loss_images;
+            const avatarWrappers = document.querySelectorAll('.avatar-wrapper');
+            avatarWrappers.forEach((wrapper, index) => {
+                const playerId = window.otherPlayerIds[index];
+                // Display second choices
+                const secondChosenImageElement = wrapper.querySelector('.second-chosen-image');
+                secondChosenImageElement.src = `/static/${chosenImagesSecondChoicePage[playerId]}`;
+                secondChosenImageElement.style.display = 'block';
+
+                // Display win/loss indicators
+                const winLossImage = wrapper.querySelector('.win-loss-image');
+                winLossImage.src = `/static/${winLossImages[playerId]}`;
+                winLossImage.style.display = 'block';
+            });
+
+            // Display current player's win/loss status
+            const playerWinLossImage = data.player_win_loss_image;
+            document.getElementById('player-win-loss-image').src = `/static/${playerWinLossImage}`;
+            document.getElementById('player-win-loss-container').style.display = 'block';
+
+            // Disable betting interface
+            const betContainer = document.getElementById('bet-container');
+            betContainer.style.pointerEvents = 'none';
+            betContainer.style.opacity = '1.0';
+
+            // Update final bet display if needed
+            if (data.selected_bet) {
+                selectSecondBet(data.selected_bet);
+            }
+
+            // Ensure second choice remains visible
+            if (data.second_choice) {
+                const selectedOption = document.getElementById(`option_${data.second_choice}`);
+                const otherOption = document.getElementById(`option_${data.second_choice === 'left' ? 'right' : 'left'}`);
+                
+                selectedOption.classList.add('selected-second-choice');
+                otherOption.classList.remove('selected-second-choice');
+            }
+
+            // Hide betting title and show rewards
+            document.getElementById('second-bet-title').style.display = 'none';
+            const secondBetReward = data.second_bet_reward;
+            document.getElementById('trial-reward').textContent = `${secondBetReward} points`;
+            document.getElementById('trial-reward').style.display = 'block';
+
+            // Set up transition to next round after delay
             setTimeout(() => {
-                document.getElementById('form').submit();
-            }, 500);
+                console.log(`Intertrial interval of ${data.intertrial_interval}ms has finished.`);
+                console.log(`Round ${data.round_number} finished. Transitioning to the next round.`);
+
+                // Get form fields
+                const choice1Field = document.getElementById('choice1_field');
+                const bet1Field = document.getElementById('bet1_field');
+                const choice2Field = document.getElementById('choice2_field');
+                const bet2Field = document.getElementById('bet2_field');
+
+                // Ensure all fields have values before submission
+                // For choice1
+                if (!choice1Field.value) {
+                    choice1Field.value = '{{ player.computer_choice1 }}' || 'left';
+                }
+
+                // For choice2
+                if (!choice2Field.value) {
+                    choice2Field.value = '{{ player.computer_choice2 }}' || 'left';
+                }
+
+                // For bets
+                if (!bet1Field.value) bet1Field.value = '1';
+                if (!bet2Field.value) bet2Field.value = '1';
+
+                // Submit form to move to next round
+                setTimeout(function() {
+                    document.getElementById('form').submit();
+                    console.log('Form submitted');
+                }, 100);
+            }, data.intertrial_interval);
         }
     }
-
-    $('.bet-options > div').click(function() {
-        if (!betMade) {
-            betMade = true;
-            $('.bet-options > div').removeClass('selected');
-            $(this).addClass('selected');
-            var bet = $(this).attr('data-bet');
-            var betTime = performance.now() - window.betPhaseStartTime;
-            liveSend({
-                'bet': bet,
-                'initial_bet_time': betTime,
-                'id': js_vars.player_id
-            });
-        }
-    });
-
-    // Time players out after 80 seconds spent on MyPage
-    document.addEventListener('DOMContentLoaded', function() {
-        const pageStartTime = js_vars.page_start_time;
-        const timeoutDuration = 60000; // 80 seconds in milliseconds
-
-        function checkTimeout() {
-            const currentTime = new Date().getTime();
-            if (currentTime - pageStartTime >= timeoutDuration) {
-                document.getElementById('form').submit();
-            } else {
-                setTimeout(checkTimeout, 1000); // Check every second
-            }
-        }
-
-        setTimeout(checkTimeout, 1000); // Start checking after 1 second
-    });
 
 </script>
 
