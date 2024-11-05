@@ -304,9 +304,9 @@
             choicePhaseStartTime = performance.now();
             
             setTimeout(() => {
-                // Remove the condition - always send timer ended event at 3000ms
+                // Remove the condition - always send timer ended event at 800ms
                 liveSend({choice_phase_timer_ended: true});
-            }, 3000);  // First choice phase lasts 3 seconds
+            }, 800);  // First choice phase lasts 3 seconds
         }, 0);
 
         // Set up page timeout handling
@@ -504,7 +504,7 @@
             // Store the bet in a hidden form field
             document.getElementById('bet1_field').value = bet;
             // Only process the bet if it's made within the time limit (3 seconds)
-            if (performance.now() - betPhaseStartTime <= 3000) {
+            if (performance.now() - betPhaseStartTime <= 800) {
                 liveSend({ 
                     bet: bet, 
                     initial_bet_time: performance.now() - betPhaseStartTime, 
@@ -581,7 +581,7 @@
                 liveSend({bet_timer_ended: true});
                 document.removeEventListener('keydown', handleKeyDown);
                 betTimerStarted = false;
-            }, 3000);
+            }, 800);
         }
     }
 
@@ -609,7 +609,7 @@
                 });
             }
             startSecondBetTimer(); // Proceed to the next phase
-        }, 3000);
+        }, 800);
     }
 
     // Function to initiate the second betting phase
@@ -630,7 +630,7 @@
                 liveSend({second_bet_timer_ended: true});
                 document.removeEventListener('keydown', handleKeyDown);
                 secondBetTimerStarted = false;
-            }, 3000);
+            }, 800);
         }
     }
 
@@ -674,15 +674,15 @@
             // End the choice phase after 3 seconds
             setTimeout(function() {
                 liveSend({choice_phase_timer_ended: true});
-            }, 3000);
+            }, 800);
         }
 
         // Handle completion of all choices
         if ('all_choices_made' in data) {
-            // Calculate remaining time until 3000ms from phase start
-            const remainingTime = Math.max(0, 3000 - (performance.now() - choicePhaseStartTime));
+            // Calculate remaining time until 800ms from phase start
+            const remainingTime = Math.max(0, 800 - (performance.now() - choicePhaseStartTime));
             
-            // Set a timeout to end the choice phase at exactly 3000ms
+            // Set a timeout to end the choice phase at exactly 800ms
             setTimeout(() => {
                 liveSend({choice_phase_timer_ended: true});
             }, remainingTime);
