@@ -5,6 +5,10 @@
 {{ block content }}
 
 <style>
+    #main-content {
+        display: none;  /* Hide all content initially */
+    }
+
     html, body {
         height: 100%;
         margin: 0;
@@ -188,46 +192,48 @@
 </style>
 
 <form id="form">
-    <div id="avatar-container">
-        {% for player_id in other_player_ids %}
-            <div class="avatar-wrapper" data-player-id="{{ player_id }}">
-                <img src="{% static avatar_image %}" alt="Player {{ player_id }} Avatar" class="avatar">
-                <div class="avatar-number">{{ forloop.counter }}</div>
-                <img src="" alt="Player {{ player_id }} Chosen Image" class="chosen-image" style="display: none;">
-                <img src="" alt="Player {{ player_id }} Second Chosen Image" class="second-chosen-image" style="display: none;">
-                <img src="" alt="Player {{ player_id }} Win/Loss Image" class="win-loss-image" style="display: none;">
-            </div>
-        {% endfor %}
-    </div>
+    <div id="main-content" style="display: none;">  <!-- Add this wrapper div -->
+        <div id="avatar-container">
+            {% for player_id in other_player_ids %}
+                <div class="avatar-wrapper" data-player-id="{{ player_id }}">
+                    <img src="{% static avatar_image %}" alt="Player {{ player_id }} Avatar" class="avatar">
+                    <div class="avatar-number">{{ forloop.counter }}</div>
+                    <img src="" alt="Player {{ player_id }} Chosen Image" class="chosen-image" style="display: none;">
+                    <img src="" alt="Player {{ player_id }} Second Chosen Image" class="second-chosen-image" style="display: none;">
+                    <img src="" alt="Player {{ player_id }} Win/Loss Image" class="win-loss-image" style="display: none;">
+                </div>
+            {% endfor %}
+        </div>
 
-    <div id="option-container">
-        <div id="options">
-            <img src="{% static left_image %}" id="option_left" data-option="left">
-            <img src="{% static right_image %}" id="option_right" data-option="right">
-            <div id="title-container">
-                <div class="title" id="choice-title">Your choice?</div>
-                <div class="title" id="bet-title" style="display: none;">Your bet?</div>
-                <div class="title" id="second-choice-title" style="display: none;">Second choice?</div>
-                <div class="title" id="second-bet-title" style="display: none;">Second bet?</div>
+        <div id="option-container">
+            <div id="options">
+                <img src="{% static left_image %}" id="option_left" data-option="left">
+                <img src="{% static right_image %}" id="option_right" data-option="right">
+                <div id="title-container">
+                    <div class="title" id="choice-title">Your choice?</div>
+                    <div class="title" id="bet-title" style="display: none;">Your bet?</div>
+                    <div class="title" id="second-choice-title" style="display: none;">Second choice?</div>
+                    <div class="title" id="second-bet-title" style="display: none;">Second bet?</div>
+                </div>
             </div>
-        </div>
-        <div id="bet-container" style="display: none;">
-            <div class="bet-options">
-                <div data-bet="1">1</div>
-                <div data-bet="2">2</div>
-                <div data-bet="3">3</div>
+            <div id="bet-container" style="display: none;">
+                <div class="bet-options">
+                    <div data-bet="1">1</div>
+                    <div data-bet="2">2</div>
+                    <div data-bet="3">3</div>
+                </div>
             </div>
+            <div id="player-win-loss-container" style="display: none;">
+                <img src="" alt="Player Win/Loss Image" id="player-win-loss-image">
+            </div>
+            <div id="trial-reward" style="display: none;"></div>
         </div>
-        <div id="player-win-loss-container" style="display: none;">
-            <img src="" alt="Player Win/Loss Image" id="player-win-loss-image">
-        </div>
-        <div id="trial-reward" style="display: none;"></div>
-    </div>
 
-    <input type="hidden" name="choice1" id="choice1_field">
-    <input type="hidden" name="bet1" id="bet1_field">
-    <input type="hidden" name="choice2" id="choice2_field">
-    <input type="hidden" name="bet2" id="bet2_field">
+        <input type="hidden" name="choice1" id="choice1_field">
+        <input type="hidden" name="bet1" id="bet1_field">
+        <input type="hidden" name="choice2" id="choice2_field">
+        <input type="hidden" name="bet2" id="bet2_field">
+    </div>
 </form>
 
 <script>
@@ -279,7 +285,8 @@
                 try {
                     liveSend({
                         my_page_load_time: performance.now(),
-                        individual_page_load_time: individualPageLoadTime
+                        individual_page_load_time: individualPageLoadTime,
+                        player_ready: true  // Add this flag
                     });
                     loadTimeSent = true;
                 } catch (error) {
@@ -297,9 +304,9 @@
             choicePhaseStartTime = performance.now();
             
             setTimeout(() => {
-                // Remove the condition - always send timer ended event at 800ms
+                // Remove the condition - always send timer ended event at 3000ms
                 liveSend({choice_phase_timer_ended: true});
-            }, 800);  // First choice phase lasts 3 seconds
+            }, 3000);  // First choice phase lasts 3 seconds
         }, 0);
 
         // Set up page timeout handling
@@ -497,7 +504,7 @@
             // Store the bet in a hidden form field
             document.getElementById('bet1_field').value = bet;
             // Only process the bet if it's made within the time limit (3 seconds)
-            if (performance.now() - betPhaseStartTime <= 800) {
+            if (performance.now() - betPhaseStartTime <= 3000) {
                 liveSend({ 
                     bet: bet, 
                     initial_bet_time: performance.now() - betPhaseStartTime, 
@@ -574,7 +581,7 @@
                 liveSend({bet_timer_ended: true});
                 document.removeEventListener('keydown', handleKeyDown);
                 betTimerStarted = false;
-            }, 800);
+            }, 3000);
         }
     }
 
@@ -602,7 +609,7 @@
                 });
             }
             startSecondBetTimer(); // Proceed to the next phase
-        }, 800);
+        }, 3000);
     }
 
     // Function to initiate the second betting phase
@@ -623,7 +630,7 @@
                 liveSend({second_bet_timer_ended: true});
                 document.removeEventListener('keydown', handleKeyDown);
                 secondBetTimerStarted = false;
-            }, 800);
+            }, 3000);
         }
     }
 
@@ -653,10 +660,13 @@
             window.myPageLoadTime = data.my_page_load_time;
         }
 
-        // Initialize first choice phase
-        if ('start_choice_phase_timer' in data && data.start_choice_phase_timer && !window.choicePhaseTimerStarted) {
+        // Initialize first choice phase - now checks for explicit start signal
+        if ('start_choice_phase_timer' in data && data.start_choice_phase_timer) {
+            // Show the content first
+            document.getElementById('main-content').style.display = 'block';
+            
+            // Then start the choice phase
             window.choicePhaseTimerStarted = true;
-            // Show the choice interface
             document.getElementById('option-container').style.display = 'block';
             document.getElementById('choice-title').style.display = 'block';
             choicePhaseStartTime = performance.now();
@@ -664,15 +674,15 @@
             // End the choice phase after 3 seconds
             setTimeout(function() {
                 liveSend({choice_phase_timer_ended: true});
-            }, 800);
+            }, 3000);
         }
 
         // Handle completion of all choices
         if ('all_choices_made' in data) {
-            // Calculate remaining time until 800ms from phase start
-            const remainingTime = Math.max(0, 800 - (performance.now() - choicePhaseStartTime));
+            // Calculate remaining time until 3000ms from phase start
+            const remainingTime = Math.max(0, 3000 - (performance.now() - choicePhaseStartTime));
             
-            // Set a timeout to end the choice phase at exactly 800ms
+            // Set a timeout to end the choice phase at exactly 3000ms
             setTimeout(() => {
                 liveSend({choice_phase_timer_ended: true});
             }, remainingTime);

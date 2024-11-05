@@ -386,19 +386,6 @@ class Group(BaseGroup):
         print(f"Round {self.round_number}: 90% image is {self.seventy_percent_image}, 10% image is {self.thirty_percent_image}")
         print(f"Current probabilities: option1A.bmp - {self.reward_probability_A}, option1B.bmp - {self.reward_probability_B}")
 
-#### ------------- Define the reset fields method ------------------- ####
-# Resets all group-level variables to their initial states at the start of each round
-
-    def reset_fields(self):
-        self.current_round = 1
-        self.my_page_load_time = None
-        self.round_reward_A = 0
-        self.round_reward_B = 0
-        self.intertrial_interval = 0
-        self.second_bet_timer_ended_executed = False
-        self.next_round_transition_time = None
-        self.reversal_happened = False
-
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- PLAYER-LEVEL VARIABLES: USED TO TRACK CHOICES, BETS, EARNINGS AND A WHOLE LOT ELSE ------ #
 # -------------------------------------------------------------------------------------------------------------------- #
@@ -741,12 +728,7 @@ class MyPage(Page):
     # This is used to display information to the player in the interface
     @staticmethod
     def vars_for_template(player: Player):
-        # Reset all fields if this isn't the first round
         group = player.group
-        if group.round_number > 1:
-            group.reset_fields()
-            for p in group.get_players():
-                p.reset_fields()
 
         # At the start of each round, check all players' connection status
         for p in group.get_players():

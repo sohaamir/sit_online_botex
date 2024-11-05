@@ -1,16 +1,15 @@
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from websocket_utils import safe_websocket # Uncomment to enable safe websocket
+# -------------------------------------------------------------------------------------------------------------------- #
+# --------------- IMPORTS: IMPORT ALL NECESSARY MODULES AND LIBRARIES REQUIRED FOR THE GAME ----------------- #
+# -------------------------------------------------------------------------------------------------------------------- #
+
 from otree.api import *
+import threading
 from . import *
+import logging
 import random
 import time
 import csv
-from otree.api import Submission
-import threading
-import asyncio
-import logging
+import os
 
 # Set up logging
 logging.basicConfig(
@@ -21,6 +20,10 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
+
+# -------------------------------------------------------------------------------------------------------------------- #
+# --------------- AUTHORSHIP INFORMATION: DEFINE THE AUTHOR AND DOCUMENTATION FOR THE GAME ----------------- #
+# -------------------------------------------------------------------------------------------------------------------- #
 
 author = 'Aamir Sohail'
 
@@ -54,7 +57,7 @@ def generate_trial_sequence():
     while current_round <= NUM_ROUNDS:
         reversal_rounds.append(current_round)
         current_round += random.randint(8, 12)
-
+    
     # Generate the full sequence of trials
     # At each reversal round, the high-probability image switches
     for round_number in range(1, NUM_ROUNDS + 1):
@@ -66,8 +69,9 @@ def generate_trial_sequence():
     file_path = os.path.join(os.getcwd(), 'reversal_sequence.csv')
     with open(file_path, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(['round', 'seventy_percent_image'])
-        writer.writerows(sequence)
+        writer.writerow(['round', 'seventy_percent_image', 'is_reversal'])
+        for round_num, image in sequence:
+            writer.writerows([(round_num, image, round_num in reversal_rounds)])
 
     print(f"Reversal rounds: {reversal_rounds}")
     return sequence, reversal_rounds
@@ -79,6 +83,7 @@ def generate_trial_sequence():
 NUM_ROUNDS = 60  # Total number of rounds in the experiment
 REWARD_PROBABILITY_A = 0.7  # 70% chance of reward for option A when it's the high-probability option
 REWARD_PROBABILITY_B = 0.3  # 30% chance of reward for option A when it's the low-probability option
+DECISION_TIME = 3.0 # Time limit for making choices and bets (3 seconds)
 
 # This function generates the actual sequence of rewards that players will receive
 # It ensures a balanced distribution of rewards while maintaining the intended probabilities
@@ -309,10 +314,10 @@ class Group(BaseGroup):
     # Page loading coordination
     all_players_loaded = models.BooleanField(initial=False)  # If all players have loaded the page
     players_loaded_count = models.IntegerField(initial=0)    # Number of players who have loaded
-    disconnected_players = models.StringField(initial="")
-    bot_players = models.StringField(initial="")
-    active_bots = models.StringField(initial="")
-    disconnection_streaks = models.StringField(initial="{}")  # Store as JSON dict of player_id: streak_count
+    disconnected_players = models.StringField(initial="")   # Track players who have disconnected
+    bot_players = models.StringField(initial="")           # Track players who have bots activated
+    active_bots = models.StringField(initial="")       # Track bots that are currently active
+    disconnection_streaks = models.StringField(initial="{}")  # Track disconnection streaks for all players
 
 #### ---------------- Define the bot ------------------------ ####
 # This method activates a bot for a player who has disconnected from the game 
@@ -421,44 +426,54 @@ class Group(BaseGroup):
 # Manages the switching of reward probabilities between the two options
 
     def reversal_learning(self):
-        # Find data for current round in the pre-generated sequence
-        current_round_data = next((item for item in TRIAL_SEQUENCE if item[0] == self.round_number), None)
+        """Handle reversal learning trials where probability mappings between images change"""
         
-        if current_round_data:
-            # Set which image has high probability for this round
-            self.seventy_percent_image = current_round_data[1]
-            self.thirty_percent_image = 'option1B.bmp' if self.seventy_percent_image == 'option1A.bmp' else 'option1A.bmp'
-            previous_round = self.in_round(self.round_number - 1) if self.round_number > 1 else None
-
-            # Mark if this is a reversal round
-            if self.round_number in REVERSAL_ROUNDS:
-                self.reversal_happened = True
-            else:
-                self.reversal_happened = False
-
-            # Set probabilities based on which image has high probability
-            if self.seventy_percent_image == 'option1A.bmp':
-                self.reward_probability_A = 0.7
-                self.reward_probability_B = 0.3
-            else:
-                self.reward_probability_A = 0.3
-                self.reward_probability_B = 0.7
-
-        print(f"Round {self.round_number}: 70% image is {self.seventy_percent_image}, 30% image is {self.thirty_percent_image}")
-        print(f"Current probabilities: option1A.bmp - {self.reward_probability_A}, option1B.bmp - {self.reward_probability_B}")
+        try:
+            # Check if this is a reversal round
+            is_reversal = self.round_number in REVERSAL_ROUNDS
+            
+            # Find current round data
+            current_round_data = next((item for item in TRIAL_SEQUENCE if item[0] == self.round_number), None)
+            print(f"Current round data: {current_round_data}")
+            
+            # If data is found, update the probabilities and images for the current round based on the sequence
+            if current_round_data:
+                self.reversal_happened = is_reversal
+                new_seventy_percent_image = current_round_data[1]
+                new_thirty_percent_image = 'option1B.bmp' if new_seventy_percent_image == 'option1A.bmp' else 'option1A.bmp'
+                
+                # Update values
+                self.seventy_percent_image = new_seventy_percent_image
+                self.thirty_percent_image = new_thirty_percent_image
+                
+                if self.seventy_percent_image == 'option1A.bmp':
+                    self.reward_probability_A = 0.7
+                    self.reward_probability_B = 0.3
+                else:
+                    self.reward_probability_A = 0.3
+                    self.reward_probability_B = 0.7
+                
+        except Exception as e:
+            print(f"ERROR in reversal_learning: {e}")
+            import traceback
+            traceback.print_exc()
 
 #### ------------- Define the reset fields method ------------------- ####
 # Resets all group-level variables to their initial states at the start of each round
 
     def reset_fields(self):
-        self.current_round = 1
+        """Reset only control flags and temporary variables, not probability settings"""
+
+        # Reset control flags and temporary variables only
         self.my_page_load_time = None
         self.round_reward_A = 0
         self.round_reward_B = 0
         self.intertrial_interval = 0
         self.second_bet_timer_ended_executed = False
         self.next_round_transition_time = None
-        self.reversal_happened = False
+        self.bet_container_displayed = False
+        self.remaining_images_displayed = False
+        self.round_reward_set = False
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- PLAYER-LEVEL VARIABLES: USED TO TRACK CHOICES, BETS, EARNINGS AND A WHOLE LOT ELSE ------ #
@@ -609,9 +624,6 @@ class Player(BasePlayer):
         # Only reset if connected and active for at least 20 seconds
         if time_since_disconnect >= 20:
             old_streak = self.field_maybe_none('disconnection_streak') or 0
-            if old_streak > 0:
-                logging.info(f"Player {self.id_in_group} streak reset from {old_streak} to 0 "
-                            f"(connected for {time_since_disconnect:.1f}s)")
             self.disconnection_streak = 0
             self.participant.vars['disconnection_streak'] = 0
             self.participant.vars['last_connect_time'] = current_time
@@ -633,7 +645,7 @@ class Player(BasePlayer):
 
     def reset_fields(self):
         """Reset all player variables to their initial states at the start of each round"""
-        # MIGHT NOT NEED THIS FUNCTION - CHECK LATER
+        pass
         
     def calculate_choice_comparisons(self):
         """
@@ -703,8 +715,8 @@ class MyPage(Page):
     # Define the timeout for this page
     @staticmethod
     def get_timeout_seconds(player: Player):
-        # Set page timeout to 42 seconds (4200 milliseconds)
-        return 4200
+        # Set page timeout to 100 seconds (10000 milliseconds)
+        return 10000
 
     # before_next_page method is called before moving to the next page 
     # It's used to process the player's choices and bets
@@ -813,9 +825,14 @@ class MyPage(Page):
     # This is used to display information to the player in the interface
     @staticmethod
     def vars_for_template(player: Player):
-        # Reset all fields if this isn't the first round
         group = player.group
-        if group.round_number > 1:
+
+        # Only process at the start of each round and only once
+        if player.id_in_group == 1:  # Only do this once per round
+            # First do reversal learning
+            group.reversal_learning()
+            
+            # Then reset control flags
             group.reset_fields()
             for p in group.get_players():
                 p.reset_fields()
@@ -838,12 +855,14 @@ class MyPage(Page):
             random.shuffle(images)
             left_image = images[0]
             right_image = images[1]
+
             # Initialize both fields explicitly 
             player.left_image = left_image
             player.right_image = right_image
 
         except Exception as e:
             logging.error(f"Failed to set images for player {player.id_in_group}: {e}")
+
             # Provide fallback values
             left_image = 'option1A.bmp'
             right_image = 'option1B.bmp'
@@ -879,7 +898,6 @@ class MyPage(Page):
 # --- If players do not respond within the time limit, the computer randomly selects a choice or bet for them
 
     @staticmethod
-    # @safe_websocket(max_retries=5, retry_delay=0.2) # Uncomment to enable Websocket decorator for reliable connections
     def live_method(player, data):
         if player.field_maybe_none('is_bot'):
             # Ensure bot has valid image fields
@@ -898,8 +916,6 @@ class MyPage(Page):
         if 'record_activity' in data:
             try:
                 player.record_activity()
-                if random.random() < 0.05:  # Log activity occasionally (5% of checks)
-                    logging.info(f"Activity recorded for player {player.id_in_group}")
             except Exception as e:
                 logging.error(f"Error recording activity for player {player.id_in_group}: {e}")
             return
@@ -968,6 +984,7 @@ class MyPage(Page):
         # ---- PAGE LOAD PHASE ----
         # Handle initial page loading and synchronization between players
 
+        # In the live_method, modify the page load section:
         if 'my_page_load_time' in data:
             # Convert and record load times for individual player
             player.my_page_load_time = round(data['my_page_load_time'] / 1000, 2)
@@ -977,17 +994,28 @@ class MyPage(Page):
             if not player.field_maybe_none('my_page_load_time'):
                 group.players_loaded_count += 1
             
-            # Send acknowledgment to client
-            response = {player.id_in_group: dict(acknowledged=True)}
+            # Check if all connected players have loaded
+            connected_players = [p for p in players if p.field_maybe_none('last_connection_time') > 0]
+            all_connected_loaded = all(
+                p.field_maybe_none('my_page_load_time') is not None 
+                for p in connected_players
+            )
             
-            # When all players are ready, start the game
-            if group.players_loaded_count == C.PLAYERS_PER_GROUP:
-                group.my_page_load_time = round(max(p.my_page_load_time for p in players), 2)
-                group.set_round_reward()  # Set up rewards for this round
-                group.reversal_learning()  # Handle probability reversals
+            # When all connected players are loaded and have page load times
+            if all_connected_loaded and len(connected_players) > 0:
+                # Calculate and record group page load time
+                group.my_page_load_time = round(max(p.my_page_load_time for p in connected_players), 2)
+                
+                # Handle reversals FIRST
+                group.reversal_learning()
+                
+                # Then set rewards
+                group.set_round_reward()
+                
+                # Signal all players to show content and start timer
                 return {p.id_in_group: dict(start_choice_phase_timer=True) for p in players}
             
-            return response
+            return {player.id_in_group: dict(acknowledged=True)}
 
         # ---- FIRST CHOICE PHASE ----
         # Handle player's first choice and timing
@@ -996,9 +1024,9 @@ class MyPage(Page):
             # Calculate and record how long the player took to make their choice
             if data['initial_choice_time'] is not None:
                 actual_choice_time = round((data['initial_choice_time'] - player.individual_page_load_time) / 1000, 2)
-                player.initial_choice_time = min(actual_choice_time, 3.0)  # Cap at 3 seconds
+                player.initial_choice_time = min(actual_choice_time, DECISION_TIME)  # Cap at 3 seconds
             else:
-                player.initial_choice_time = 3.0
+                player.initial_choice_time = DECISION_TIME
 
             # Record player's manual choice if made
             if 'choice' in data and not player.field_maybe_none('chosen_image_one'):
@@ -1039,7 +1067,7 @@ class MyPage(Page):
                             p.computer_choice1 = random_choice
                             p.chosen_image_one = left_img if random_choice == 'left' else right_img
                             p.participant.vars['chosen_image_one'] = p.chosen_image_one
-                            p.initial_choice_time = 3.0
+                            p.initial_choice_time = DECISION_TIME
                             
                             # Handle binary coding and image selection
                             try:
@@ -1178,7 +1206,7 @@ class MyPage(Page):
                     random_bet = random.randint(1, 3)
                     p.bet1 = random_bet
                     p.participant.vars['bet1'] = p.bet1
-                    p.initial_bet_time = 3.0
+                    p.initial_bet_time = DECISION_TIME
                     p.computer_bet_one = True
                     response[p.id_in_group] = dict(highlight_computer_bet=p.bet1)
 
@@ -1200,7 +1228,6 @@ class MyPage(Page):
         # Handle manual second choices
 
         if 'second_choice' in data and data.get('manual_second_choice', False):
-            print(f"Received manual second choice for player {player.id_in_group}")
             
             # Record player's second choice
             player.choice2 = data['second_choice']
@@ -1222,6 +1249,10 @@ class MyPage(Page):
             # Process computer choices for players who didn't respond
             for p in players:
                 if not p.field_maybe_none('choice2'):
+
+                    # Set time to 3 seconds if a manual choice was not made
+                    p.second_choice_time = DECISION_TIME
+
                     p.computer_choice2 = random.choice(['left', 'right'])
                     p.choice2 = p.computer_choice2
                     p.chosen_image_two = p.left_image if p.computer_choice2 == 'left' else p.right_image
@@ -1293,7 +1324,7 @@ class MyPage(Page):
                         p.bet2 = random_bet
                         p.bet2 = p.bet2
                         p.computer_bet_two = True
-                        p.second_bet_time = 3.0
+                        p.second_bet_time = DECISION_TIME
                         response[p.id_in_group] = dict(highlight_computer_second_bet=p.bet2)
 
                 # Calculate final results for the round
@@ -1466,7 +1497,7 @@ class FinalResults(Page):
 # Players first see the main task page (MyPage) for each round,
 # then see the final results page (FinalResults) after all rounds are complete
 
-from .tests import PlayerBot
+from .tests import PlayerBot # Import the PlayerBot class from the tests.py file
 
 page_sequence = [MyPage, FinalResults]  
 
