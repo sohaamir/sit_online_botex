@@ -248,6 +248,7 @@
     // State tracking variables to manage the flow of the experiment
     let currentStage = 'choice';  // Current phase of the experiment (choice/bet/second_choice/second_bet)
     let choiceMade = false;      // Whether player has made their first choice
+    let inDisplayPhase = false; // Whether the display phase is currently active
     let betMade = false;         // Whether player has made their first bet
     let secondChoiceMade = false; // Whether player has made their second choice
     let secondBetMade = false;   // Whether player has made their second bet
@@ -413,6 +414,12 @@
 
     // Function to handle all keyboard inputs during the experiment
     function handleKeyDown(event) {
+
+        // If we're in display phase, ignore all key inputs
+        if (inDisplayPhase) {
+            return;
+        }
+
         // Handle first choice phase - left/right arrow keys
         if (currentStage === 'choice' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !choiceMade) {
             initialChoiceTime = performance.now() - choicePhaseStartTime;
@@ -483,6 +490,12 @@
 
     // Function to handle the first bet selection
     function selectBet(bet) {
+
+        // Ignore all inputs during display phase
+        if (inDisplayPhase) {
+            return;
+        }
+
         if (currentStage === 'bet' && !betMade) {
             // Remove highlights from all bet options
             const betElements = document.querySelectorAll('.bet-options div');
@@ -537,6 +550,12 @@
 
     // Function to handle the second bet selection
     function selectSecondBet(bet) {
+
+        // Ignore all inputs during display phase
+        if (inDisplayPhase) {
+            return;
+        }
+
         if (currentStage === 'second_bet' && !secondBetMade) {
             // Remove all previous highlights
             const betElements = document.querySelectorAll('.bet-options div');
@@ -718,6 +737,15 @@
         // Handle display timer for showing all choices
         if ('start_display_timer' in data && data.start_display_timer) {
             console.log('Starting 4-second display timer');
+            // Set display phase flag
+            inDisplayPhase = true;
+            
+            // Disable bet container during display phase
+            const betContainer = document.getElementById('bet-container');
+            if (betContainer) {
+                betContainer.style.pointerEvents = 'none';
+            }
+            
             // Clear any existing timers
             clearTimeout(window.displayTimerTimeout);
             clearTimeout(window.failsafeTimeout);
@@ -725,12 +753,28 @@
             // Set main timer for 4 seconds
             window.displayTimerTimeout = setTimeout(() => {
                 console.log('Display phase ended, starting second choice phase');
+                // Reset display phase flag
+                inDisplayPhase = false;
+                
+                // Re-enable bet container
+                if (betContainer) {
+                    betContainer.style.pointerEvents = 'auto';
+                }
+                
                 startSecondChoicePhase();
             }, 4000);
 
             // Set backup timer in case main timer fails
             window.failsafeTimeout = setTimeout(() => {
                 console.log('Failsafe: Ensuring transition to second choice phase');
+                // Reset display phase flag even in failsafe
+                inDisplayPhase = false;
+                
+                // Re-enable bet container
+                if (betContainer) {
+                    betContainer.style.pointerEvents = 'auto';
+                }
+                
                 startSecondChoicePhase();
             }, 4500);
         }

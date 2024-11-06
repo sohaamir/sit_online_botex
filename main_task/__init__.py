@@ -984,7 +984,7 @@ class MyPage(Page):
         # ---- PAGE LOAD PHASE ----
         # Handle initial page loading and synchronization between players
 
-        # In the live_method, modify the page load section:
+        # Check if player has loaded the page
         if 'my_page_load_time' in data:
             # Convert and record load times for individual player
             player.my_page_load_time = round(data['my_page_load_time'] / 1000, 2)
@@ -1125,7 +1125,7 @@ class MyPage(Page):
                         
                         # Initialize default values
                         choice_defaults = [1] * 4  # Default binary choices
-                        computer_defaults = [True] * 4  # Default computer choice flags
+                        computer_defaults = [0] * 4  # Default to 0 (manual choice) instead of True
                         accuracy_defaults = [False] * 4  # Default accuracy values
                         
                         # Try to get actual values, fall back to defaults if needed
@@ -1133,7 +1133,8 @@ class MyPage(Page):
                             try:
                                 # Store choice information
                                 choice_defaults[i] = other_p.field_maybe_none('chosen_image_one_binary') or 1
-                                computer_defaults[i] = other_p.field_maybe_none('computer_choice_one') or True
+                                # Set to 1 if computer made choice, 0 if manual
+                                computer_defaults[i] = 1 if other_p.field_maybe_none('computer_choice_one') else 0
                                 accuracy_defaults[i] = other_p.field_maybe_none('choice1_accuracy') or False
                             except Exception as e:
                                 logging.error(f"Error getting other player {i+1} data for player {p.id_in_group}: {e}")
@@ -1143,12 +1144,14 @@ class MyPage(Page):
                         p.player_2_choice_one = choice_defaults[1]
                         p.player_3_choice_one = choice_defaults[2]
                         p.player_4_choice_one = choice_defaults[3]
-                        
+
+                        # Assign computer choice flags
                         p.player_1_computer_choice_one = computer_defaults[0]
                         p.player_2_computer_choice_one = computer_defaults[1]
                         p.player_3_computer_choice_one = computer_defaults[2]
                         p.player_4_computer_choice_one = computer_defaults[3]
                         
+                        # Assign accuracy values
                         p.player1_choice1_accuracy = accuracy_defaults[0]
                         p.player2_choice1_accuracy = accuracy_defaults[1]
                         p.player3_choice1_accuracy = accuracy_defaults[2]
@@ -1159,7 +1162,7 @@ class MyPage(Page):
                         # Set safe fallback values for all other player fields
                         for i in range(1, 5):
                             setattr(p, f'player_{i}_choice_one', 1)
-                            setattr(p, f'player_{i}_computer_choice_one', True)
+                            setattr(p, f'player_{i}_computer_choice_one', 0)  # Default to 0 for manual choice
                             setattr(p, f'player{i}_choice1_accuracy', False)
 
                 # Move to betting phase
@@ -1228,21 +1231,38 @@ class MyPage(Page):
         # Handle manual second choices
 
         if 'second_choice' in data and data.get('manual_second_choice', False):
-            
             # Record player's second choice
             player.choice2 = data['second_choice']
-            player.chosen_image_two = player.left_image if data['second_choice'] == 'left' else player.right_image
+            player.chosen_image_two = (player.left_image 
+                if data['second_choice'] == 'left' 
+                else player.right_image)
             player.participant.vars['chosen_image_two'] = player.chosen_image_two
             player.computer_choice_two = False
             player.manual_second_choice = True
-            player.second_choice_time = round(data['second_choice_time'] / 1000, 2)
+            
+            # Record timing using the same pattern as first choice
+            if data['second_choice_time'] is not None:
+                actual_choice_time = round(data['second_choice_time'] / 1000, 2)
+                player.second_choice_time = min(actual_choice_time, DECISION_TIME)  # Cap at 3 seconds
+            else:
+                player.second_choice_time = DECISION_TIME
+                
+            # Calculate accuracy and choice metrics
             player.chosen_image_two_binary = 1 if player.chosen_image_two == 'option1A.bmp' else 2
             player.choice2_accuracy = player.chosen_image_two == player.group.seventy_percent_image
-            player.switch_vs_stay = 1 if player.field_maybe_none('chosen_image_one') != player.chosen_image_two else 0
+            player.switch_vs_stay = (1 
+                if player.field_maybe_none('chosen_image_one') != player.chosen_image_two 
+                else 0)
+            
+            # Clear computer choice fields since this was a manual choice
             player.chosen_image_computer_two = ''
             player.computer_choice2 = ''
             
-            return {player.id_in_group: dict(highlight_selected_second_choice=player.choice2)}
+            return {
+                player.id_in_group: dict(
+                    highlight_selected_second_choice=player.choice2
+                )
+            }
 
         # Handle second choice timer expiration
         if 'second_choice_timer_ended' in data:
@@ -1273,15 +1293,21 @@ class MyPage(Page):
 
             # Record information about other players' second choices
             for p in players:
+
+                # Initialize default values
                 other_players = p.get_others_in_group()
                 p.player_1_choice_two = other_players[0].chosen_image_two_binary
                 p.player_2_choice_two = other_players[1].chosen_image_two_binary
                 p.player_3_choice_two = other_players[2].chosen_image_two_binary
                 p.player_4_choice_two = other_players[3].chosen_image_two_binary
+
+                # Set computer choices for other players
                 p.player_1_computer_choice_two = other_players[0].computer_choice_two
                 p.player_2_computer_choice_two = other_players[1].computer_choice_two
                 p.player_3_computer_choice_two = other_players[2].computer_choice_two
                 p.player_4_computer_choice_two = other_players[3].computer_choice_two
+
+                # Set accuracy values for other players
                 p.player1_choice2_accuracy = other_players[0].choice2_accuracy
                 p.player2_choice2_accuracy = other_players[1].choice2_accuracy
                 p.player3_choice2_accuracy = other_players[2].choice2_accuracy

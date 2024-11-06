@@ -255,6 +255,7 @@
     let currentStage = 'choice';  // Current phase of the experiment (choice/bet/second_choice/second_bet)
     let choiceMade = false;      // Whether player has made their first choice
     let betMade = false;         // Whether player has made their first bet
+    let inDisplayPhase = false; // Whether the display phase is currently active
     let secondChoiceMade = false; // Whether player has made their second choice
     let secondBetMade = false;   // Whether player has made their second bet
 
@@ -267,6 +268,7 @@
     let resultsShown = false;    // Whether the results have been displayed
     let loadTimeSent = false;    // Whether the page load time has been sent to the server
 
+    // Connection checking variables
     let lastConnectionCheck = Date.now();
     let connectionCheckInterval = null;
 
@@ -291,23 +293,14 @@
                     loadTimeSent = true;
                 } catch (error) {
                     console.error('Error sending load time:', error);
+                    }
                 }
             }
-        }
         
         sendLoadTime();
 
-        // Initiate the first choice phase timer
-        // Start the choice phase timer immediately after sending load time
-        setTimeout(() => {
-            window.choicePhaseTimerStarted = true;
-            choicePhaseStartTime = performance.now();
-            
-            setTimeout(() => {
-                // Remove the condition - always send timer ended event at 800ms
-                liveSend({choice_phase_timer_ended: true});
-            }, 800);  // First choice phase lasts 3 seconds
-        }, 0);
+        // Remove the immediate timer start - this will now be triggered by server signal
+        // The timer will only start when all players have loaded and content is shown
 
         // Set up page timeout handling
         const pageStartTime = js_vars.page_start_time;
@@ -431,6 +424,7 @@
             });
             choiceMade = true;
         }
+
         // Handle first betting phase - number keys 1-3
         else if (currentStage === 'bet' && (event.key >= '1' && event.key <= '3') && !betMade) {
             const bet = parseInt(event.key);
@@ -443,20 +437,27 @@
             selectBet(bet);
             betMade = true;
         }
+
+        // If we're in display phase, ignore all key inputs
+        if (inDisplayPhase) {
+            return;
+        }
+
         // Handle second choice phase - left/right arrow keys
         else if (currentStage === 'second_choice' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !secondChoiceMade) {
-            console.log('Manual second choice made');
             secondChoiceTime = performance.now() - secondChoiceStartTime;
             const choice = event.key === 'ArrowLeft' ? 'left' : 'right';
-            console.log(`Choice: ${choice}, Time: ${secondChoiceTime}`);
-            chooseSecond(choice);  // Call this first to update the UI immediately
+            // Send data first
             liveSend({
                 second_choice: choice,
                 second_choice_time: secondChoiceTime,
                 manual_second_choice: true
             });
+            // Then update display
+            chooseSecond(choice);
             secondChoiceMade = true;
         }
+
         // Handle second betting phase - number keys 1-3
         else if (currentStage === 'second_bet' && (event.key >= '1' && event.key <= '3') && !secondBetMade) {
             const bet = parseInt(event.key);
@@ -490,6 +491,12 @@
 
     // Function to handle the first bet selection
     function selectBet(bet) {
+
+        // Add check for display phase
+        if (inDisplayPhase) {
+            return;
+        }
+
         if (currentStage === 'bet' && !betMade) {
             // Remove highlights from all bet options
             const betElements = document.querySelectorAll('.bet-options div');
@@ -504,7 +511,7 @@
             // Store the bet in a hidden form field
             document.getElementById('bet1_field').value = bet;
             // Only process the bet if it's made within the time limit (3 seconds)
-            if (performance.now() - betPhaseStartTime <= 800) {
+            if (performance.now() - betPhaseStartTime <= 3000) {
                 liveSend({ 
                     bet: bet, 
                     initial_bet_time: performance.now() - betPhaseStartTime, 
@@ -544,6 +551,12 @@
 
     // Function to handle the second bet selection
     function selectSecondBet(bet) {
+
+        // Add check for display phase
+        if (inDisplayPhase) {
+            return;
+        }
+
         if (currentStage === 'second_bet' && !secondBetMade) {
             // Remove all previous highlights
             const betElements = document.querySelectorAll('.bet-options div');
@@ -581,35 +594,30 @@
                 liveSend({bet_timer_ended: true});
                 document.removeEventListener('keydown', handleKeyDown);
                 betTimerStarted = false;
-            }, 800);
+            }, 3000);
         }
     }
 
-    // Function to initiate the second choice phase
+    // Modify the section that starts the second choice phase
     function startSecondChoicePhase() {
         currentStage = 'second_choice';
-        // Update display to show second choice interface
         showTitle('second-choice-title');
         document.getElementById('choice-title').textContent = 'Second choice?';
         document.getElementById('choice-title').style.display = 'block';
         document.getElementById('bet-title').style.display = 'none';
         
-        // Start timing for second choice
+        // Start timing using performance.now()
         secondChoiceStartTime = performance.now();
         secondChoiceMade = false;
 
-        console.log('Starting second choice phase');
-
-        // End second choice phase after 3 seconds
+        // Set timer for exactly 3000ms
         setTimeout(function() {
             if (!secondChoiceMade) {
                 console.log('Second choice timer ended, no manual choice made');
-                liveSend({
-                    second_choice_timer_ended: true
-                });
+                liveSend({second_choice_timer_ended: true});
             }
-            startSecondBetTimer(); // Proceed to the next phase
-        }, 800);
+            startSecondBetTimer();
+        }, 3000);
     }
 
     // Function to initiate the second betting phase
@@ -630,7 +638,7 @@
                 liveSend({second_bet_timer_ended: true});
                 document.removeEventListener('keydown', handleKeyDown);
                 secondBetTimerStarted = false;
-            }, 800);
+            }, 3000);
         }
     }
 
@@ -671,18 +679,18 @@
             document.getElementById('choice-title').style.display = 'block';
             choicePhaseStartTime = performance.now();
             
-            // End the choice phase after 3 seconds
+            // End the choice phase after exactly 3 seconds
             setTimeout(function() {
                 liveSend({choice_phase_timer_ended: true});
-            }, 800);
+            }, 3000);
         }
 
         // Handle completion of all choices
         if ('all_choices_made' in data) {
-            // Calculate remaining time until 800ms from phase start
-            const remainingTime = Math.max(0, 800 - (performance.now() - choicePhaseStartTime));
+            // Calculate remaining time until 3000ms from phase start
+            const remainingTime = Math.max(0, 3000 - (performance.now() - choicePhaseStartTime));
             
-            // Set a timeout to end the choice phase at exactly 800ms
+            // Set a timeout to end the choice phase at exactly 3000ms
             setTimeout(() => {
                 liveSend({choice_phase_timer_ended: true});
             }, remainingTime);
@@ -727,21 +735,45 @@
 
         // Handle display timer for showing all choices
         if ('start_display_timer' in data && data.start_display_timer) {
-            console.log('Starting 4-second display timer');
+            // Set the flag to block key inputs
+            inDisplayPhase = true;
+            
             // Clear any existing timers
             clearTimeout(window.displayTimerTimeout);
             clearTimeout(window.failsafeTimeout);
-
+            
+            // Record the display phase start time
+            const displayPhaseStartTime = performance.now();
+            
             // Set main timer for 4 seconds
             window.displayTimerTimeout = setTimeout(() => {
-                console.log('Display phase ended, starting second choice phase');
+                const actualDisplayTime = performance.now() - displayPhaseStartTime;
+                console.log(`Display phase ended after ${actualDisplayTime}ms, starting second choice phase`);
+                
+                // Reset all choice-related variables before starting new phase
+                currentStage = 'second_choice';
+                secondChoiceMade = false;
+                
+                // Reset the display phase flag to allow key inputs again
+                inDisplayPhase = false;
+                
+                // Start second choice phase
                 startSecondChoicePhase();
             }, 4000);
-
-            // Set backup timer in case main timer fails
+            
+            // Set backup timer with a small delay after main timer
             window.failsafeTimeout = setTimeout(() => {
-                console.log('Failsafe: Ensuring transition to second choice phase');
-                startSecondChoicePhase();
+                const failsafeTime = performance.now() - displayPhaseStartTime;
+                console.log(`Failsafe activated after ${failsafeTime}ms: Ensuring transition to second choice phase`);
+                
+                // Only trigger if we haven't already transitioned
+                if (currentStage !== 'second_choice') {
+                    currentStage = 'second_choice';
+                    secondChoiceMade = false;
+                    // Make sure to reset the display phase flag even in failsafe
+                    inDisplayPhase = false;
+                    startSecondChoicePhase();
+                }
             }, 4500);
         }
 
