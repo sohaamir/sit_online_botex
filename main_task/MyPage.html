@@ -417,6 +417,8 @@
         if (currentStage === 'choice' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !choiceMade) {
             initialChoiceTime = performance.now() - choicePhaseStartTime;
             choose(event.key === 'ArrowLeft' ? 'left' : 'right');
+            // Hide 'Your choice?' text when manual choice is made
+            document.getElementById('choice-title').style.display = 'none';
             liveSend({
                 initial_choice_time: initialChoiceTime, 
                 actual_choice_time: performance.now() - choicePhaseStartTime,
@@ -429,6 +431,8 @@
         else if (currentStage === 'bet' && (event.key >= '1' && event.key <= '3') && !betMade) {
             const bet = parseInt(event.key);
             const initialBetTime = performance.now() - betPhaseStartTime;
+            // Hide 'Your bet?' text when manual bet is made
+            document.getElementById('bet-title').style.display = 'none';
             liveSend({
                 initial_bet_time: initialBetTime, 
                 bet: bet, 
@@ -438,8 +442,9 @@
             betMade = true;
         }
 
-        // If we're in display phase, ignore all key inputs
+        // If we're in display phase, hide bet title
         if (inDisplayPhase) {
+            document.getElementById('bet-title').style.display = 'none';
             return;
         }
 
@@ -447,6 +452,8 @@
         else if (currentStage === 'second_choice' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !secondChoiceMade) {
             secondChoiceTime = performance.now() - secondChoiceStartTime;
             const choice = event.key === 'ArrowLeft' ? 'left' : 'right';
+            // Hide the second choice title when manual choice is made
+            document.getElementById('choice-title').style.display = 'none';
             // Send data first
             liveSend({
                 second_choice: choice,
@@ -462,6 +469,8 @@
         else if (currentStage === 'second_bet' && (event.key >= '1' && event.key <= '3') && !secondBetMade) {
             const bet = parseInt(event.key);
             const secondBetTime = performance.now() - secondBetStartTime;
+            // Hide 'Second bet?' text when manual bet is made
+            document.getElementById('second-bet-title').style.display = 'none';
             liveSend({
                 second_bet_time: secondBetTime,
                 second_bet: bet
@@ -601,9 +610,12 @@
     // Modify the section that starts the second choice phase
     function startSecondChoicePhase() {
         currentStage = 'second_choice';
-        showTitle('second-choice-title');
+        // Change how we handle the title display
         document.getElementById('choice-title').textContent = 'Second choice?';
-        document.getElementById('choice-title').style.display = 'block';
+        // Only show the title if a manual choice hasn't been made yet
+        if (!secondChoiceMade) {
+            document.getElementById('choice-title').style.display = 'block';
+        }
         document.getElementById('bet-title').style.display = 'none';
         
         // Start timing using performance.now()
@@ -741,6 +753,9 @@
             // Clear any existing timers
             clearTimeout(window.displayTimerTimeout);
             clearTimeout(window.failsafeTimeout);
+
+            // Hide bet title during display phase
+            document.getElementById('bet-title').style.display = 'none';
             
             // Record the display phase start time
             const displayPhaseStartTime = performance.now();

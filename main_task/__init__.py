@@ -1231,7 +1231,7 @@ class MyPage(Page):
         # Handle manual second choices
 
         if 'second_choice' in data and data.get('manual_second_choice', False):
-            # Record player's second choice
+            # Record player's second choice (existing code)
             player.choice2 = data['second_choice']
             player.chosen_image_two = (player.left_image 
                 if data['second_choice'] == 'left' 
@@ -1240,23 +1240,46 @@ class MyPage(Page):
             player.computer_choice_two = False
             player.manual_second_choice = True
             
-            # Record timing using the same pattern as first choice
+            # Record timing (existing code)
             if data['second_choice_time'] is not None:
                 actual_choice_time = round(data['second_choice_time'] / 1000, 2)
-                player.second_choice_time = min(actual_choice_time, DECISION_TIME)  # Cap at 3 seconds
+                player.second_choice_time = min(actual_choice_time, DECISION_TIME)
             else:
                 player.second_choice_time = DECISION_TIME
-                
-            # Calculate accuracy and choice metrics
+            
+            # Calculate metrics for this player
             player.chosen_image_two_binary = 1 if player.chosen_image_two == 'option1A.bmp' else 2
             player.choice2_accuracy = player.chosen_image_two == player.group.seventy_percent_image
             player.switch_vs_stay = (1 
                 if player.field_maybe_none('chosen_image_one') != player.chosen_image_two 
                 else 0)
             
-            # Clear computer choice fields since this was a manual choice
+            # Clear computer choice fields
             player.chosen_image_computer_two = ''
             player.computer_choice2 = ''
+            
+            # NEW CODE: Check if all players have made their second choices
+            group = player.group
+            all_choices_made = all(p.field_maybe_none('chosen_image_two') is not None for p in group.get_players())
+            
+            if all_choices_made:
+                # Calculate metrics for all players
+                for p in group.get_players():
+                    other_players = p.get_others_in_group()
+                    
+                    # Record other players' choices
+                    for i, other_p in enumerate(other_players):
+                        # Binary choice (1 for option1A, 2 for option1B)
+                        setattr(p, f'player_{i+1}_choice_two', 
+                            1 if other_p.chosen_image_two == 'option1A.bmp' else 2)
+                        
+                        # Computer choice flag (0 for manual, 1 for computer)
+                        setattr(p, f'player_{i+1}_computer_choice_two',
+                            1 if other_p.computer_choice_two else 0)
+                        
+                        # Choice accuracy
+                        setattr(p, f'player{i+1}_choice2_accuracy',
+                            other_p.chosen_image_two == group.seventy_percent_image)
             
             return {
                 player.id_in_group: dict(

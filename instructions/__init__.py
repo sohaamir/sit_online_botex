@@ -57,8 +57,14 @@ class Leaving(Page):
 class Comprehension(Page):
    pass  # Display comprehension check questions
 
+class AdjustDimensions(Page):
+   pass  # Display instructions for adjusting display dimensions
+
 class PracticeInstructions(Page):
    pass  # Display instructions for practice round
+
+class FixDimensions(Page):
+    pass  # Simple page to let players adjust their display dimensions
 
 class WaitPage1(WaitPage):
    template_name = 'instructions/WaitPage1.html'  # Custom wait page template
@@ -90,4 +96,5 @@ class TransitionToPracticeTask(Page):
        }
 
 # Define sequence of pages shown to participants
-page_sequence = [Welcome, Consent, TaskOverview, TaskInstructionsPage1, TaskInstructionsPage2, RewardStructure, Leaving, Comprehension, PracticeInstructions, WaitPage1, TransitionToPracticeTask]
+page_sequence = [Welcome, Consent, TaskOverview, TaskInstructionsPage1, TaskInstructionsPage2, RewardStructure, Leaving, 
+                 Comprehension, AdjustDimensions, FixDimensions, PracticeInstructions, WaitPage1, TransitionToPracticeTask]
