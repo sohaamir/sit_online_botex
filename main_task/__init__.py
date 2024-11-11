@@ -243,6 +243,10 @@ EARNINGS_SEQUENCE = generate_earnings_sequence(NUM_ROUNDS)
 class Subsession(BaseSubsession):
     # This method is called when creating a new session or round
     def creating_session(self):
+
+        # Initialize trial number at start of each round
+        self.trial_number = self.round_number
+        
         # For all rounds after the first, ensure reward settings are reset
         if self.round_number > 1:
             for group in self.get_groups():
@@ -286,7 +290,8 @@ class Subsession(BaseSubsession):
 
 class Group(BaseGroup):
     # Core tracking variables for the group
-    current_round = models.IntegerField(initial=1)      # Tracks the current round number
+    current_round = models.IntegerField(initial=1)     # Sets the current round
+    trial_number = models.IntegerField(initial=1)      # Track the current trial number
     my_page_load_time = models.FloatField()            # Records when the page loads for the group
     round_reward_A = models.IntegerField()             # Reward for option A in current round
     round_reward_B = models.IntegerField()             # Reward for option B in current round
@@ -1365,6 +1370,9 @@ class MyPage(Page):
             if not group.second_bet_timer_ended_executed:
                 group.second_bet_timer_ended_executed = True
                 response = {}
+
+                # Update trial number
+                group.trial_number = player.round_number  # track trial numbers
 
                 # Assign computer bets if needed
                 for p in players:
