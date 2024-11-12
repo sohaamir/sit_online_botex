@@ -16,6 +16,11 @@ from dotenv import load_dotenv
 # This allows us to keep sensitive information out of the codebase
 load_dotenv()
 
+# APPLICATION CONFIGURATION (oTree)
+# ----------------------------------------------------------------
+WEBDRIVER_URL = 'https://social-influence-task.herokuapp.com'
+BOT_SERVER_URL = 'https://social-influence-task.herokuapp.com'
+
 # SECURITY SETTINGS
 # ----------------------------------------------------------------
 # Secret key for cryptographic signing. This is critical for security.
@@ -80,6 +85,7 @@ SESSION_CONFIGS = [
             check_complete=True,
             timeout_seconds=120,  # Increase if needed
             wait_between_submissions=1,  # Delay between bot actions
+            url='https://social-influence-task.herokuapp.com',  # URL for the browser bots server
         ),
 
          # Prolific completion links for different scenarios
