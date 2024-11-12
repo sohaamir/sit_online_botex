@@ -558,19 +558,27 @@ class Player(BasePlayer):
             return None
         
     def calculate_choice_comparisons(self):
-        """
-        Calculate how many other players made the same choices as this player
-        Used to measure social influence - whether players tend to follow or go against the group
-        """
+        """Calculate how many other players made the same choices"""
         other_players = self.get_others_in_group()
+        my_image_one = self.field_maybe_none('chosen_image_one')
+        my_image_two = self.field_maybe_none('chosen_image_two')
         
-        # Count players who made same first choice
-        self.choice1_with = sum(1 for p in other_players if p.chosen_image_one == self.chosen_image_one)
-        self.choice1_against = len(other_players) - self.choice1_with
-        
-        # Count players who made same second choice
-        self.choice2_with = sum(1 for p in other_players if p.chosen_image_two == self.chosen_image_two)
-        self.choice2_against = len(other_players) - self.choice2_with
+        # Only calculate if we have valid choices
+        if my_image_one is not None:
+            self.choice1_with = sum(1 for p in other_players 
+                                if p.field_maybe_none('chosen_image_one') == my_image_one)
+            self.choice1_against = len(other_players) - self.choice1_with
+        else:
+            self.choice1_with = 0
+            self.choice1_against = 0
+            
+        if my_image_two is not None:
+            self.choice2_with = sum(1 for p in other_players 
+                                if p.field_maybe_none('chosen_image_two') == my_image_two)
+            self.choice2_against = len(other_players) - self.choice2_with
+        else:
+            self.choice2_with = 0
+            self.choice2_against = 0
 
     def calculate_payoffs(self):
         """
@@ -589,20 +597,26 @@ class Player(BasePlayer):
         self.total_payoff = self.base_payoff + self.bonus_payoff
 
     def calculate_choice1_earnings(self):
-        """
-        Calculate earnings from first choice
-        Points = bet amount * 20 * reward (1 or 0)
-        If no reward, points are negative
-        """
-        if self.chosen_image_one == 'option1A.bmp':
-            choice1_reward = self.group.round_reward_A
-        elif self.chosen_image_one == 'option1B.bmp':
-            choice1_reward = self.group.round_reward_B
-        else:
-            pass
+        """Calculate earnings from first choice"""
+        chosen_image = self.field_maybe_none('chosen_image_one')
+        if chosen_image is None:
+            self.choice1_earnings = 0
             return
+            
+        reward_a = self.group.field_maybe_none('round_reward_A')
+        reward_b = self.group.field_maybe_none('round_reward_B')
+        
+        if None in (reward_a, reward_b):
+            self.choice1_earnings = 0
+            return
+            
+        if chosen_image == 'option1A.bmp':
+            choice1_reward = reward_a
+        else:
+            choice1_reward = reward_b
 
-        self.choice1_earnings = self.bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * self.bet1 * 20
+        bet1 = self.field_maybe_none('bet1') or 1
+        self.choice1_earnings = bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * bet1 * 20
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- MYPAGE: WHERE PLAYERS MAKE THEIR FIRST CHOICE, FIRST BET AND PREFERENCE CHOICES ------ #

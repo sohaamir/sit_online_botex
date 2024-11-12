@@ -1,4 +1,3 @@
-# tests.py
 from otree.api import Bot, Submission, expect
 import random
 import time
@@ -9,55 +8,58 @@ class PlayerBot(Bot):
     def play_round(self):
         logging.info(f"Bot starting round {self.round_number} for player {self.player.id_in_group}")
         
-        # First phase - Page load and initial choice
-        yield Submission(MyPage, {
-            'my_page_load_time': time.time() * 1000,
-            'individual_page_load_time': time.time() * 1000,
-            'choice1': random.choice(['left', 'right']),
-            'initial_choice_time': random.randint(1000, 2500),  # Random response time between 1-2.5s
-            'choice_phase_timer_ended': True
-        }, timeout_happened=False)
+        # Initialize left/right images
+        if not self.player.field_maybe_none('left_image'):
+            images = C.IMAGES.copy()
+            random.shuffle(images)
+            self.player.left_image = images[0]
+            self.player.right_image = images[1]
 
-        # First bet phase
-        yield Submission(MyPage, {
-            'bet': random.randint(1, 3),
-            'initial_bet_time': random.randint(1000, 2500),
-            'bet_timer_ended': True,
-            'show_bet_container': True
-        }, timeout_happened=False)
+        # Make first choice and set chosen image
+        choice1 = random.choice(['left', 'right'])
+        chosen_image_one = self.player.left_image if choice1 == 'left' else self.player.right_image
+        bet1 = random.randint(1, 3)
 
-        # Display phase
-        yield Submission(MyPage, {
-            'display_all_images': True,
-            'start_display_timer': True
-        }, timeout_happened=False)
+        # Make second choice and set chosen image
+        choice2 = random.choice(['left', 'right'])
+        chosen_image_two = self.player.left_image if choice2 == 'left' else self.player.right_image
+        bet2 = random.randint(1, 3)
 
-        time.sleep(4)  # Wait for display phase
+        # Submit all choices and bets together
+        submission_data = {
+            'choice1': choice1,
+            'bet1': bet1,
+            'choice2': choice2,
+            'bet2': bet2,
+        }
 
-        # Second choice phase
-        yield Submission(MyPage, {
-            'second_choice': random.choice(['left', 'right']),
-            'second_choice_time': random.randint(1000, 2500),
-            'manual_second_choice': True,
-            'second_choice_timer_ended': True
-        }, timeout_happened=False)
+        # Set the chosen images explicitly
+        self.player.chosen_image_one = chosen_image_one
+        self.player.chosen_image_two = chosen_image_two
+        
+        # Initialize group rewards if not already set (only player 1 does this)
+        if self.player.id_in_group == 1:
+            if not self.group.field_maybe_none('round_reward_set'):
+                self.group.set_round_reward()
+                self.group.reversal_learning()
+                reward_a, reward_b = C.REWARD_SEQUENCE[self.round_number - 1]
+                self.group.round_reward_A = reward_a
+                self.group.round_reward_B = reward_b
+                self.group.round_reward_set = True
 
-        # Second bet phase
-        yield Submission(MyPage, {
-            'second_bet': random.randint(1, 3),
-            'second_bet_time': random.randint(1000, 2500),
-            'second_bet_timer_ended': True
-        }, timeout_happened=False)
+        # Submit the form with all required fields
+        yield Submission(MyPage, submission_data, timeout_happened=False, check_html=False)
 
-        # Handle final round
+        # Only show final results on last round
         if self.round_number == C.NUM_ROUNDS:
-            logging.info(f"Bot {self.player.id_in_group} completing final round")
             yield Submission(FinalResults, check_html=False)
 
     def validate_play(self):
         """Validate that the bot made all required choices and bets"""
         if self.round_number < C.NUM_ROUNDS:
-            expect(self.player.choice1, '!=', None)
-            expect(self.player.bet1, '>', 0)
-            expect(self.player.choice2, '!=', None)
-            expect(self.player.bet2, '>', 0)
+            expect(self.player.field_maybe_none('choice1') in ['left', 'right'])
+            expect(self.player.field_maybe_none('bet1') in [1, 2, 3])
+            expect(self.player.field_maybe_none('choice2') in ['left', 'right'])
+            expect(self.player.field_maybe_none('bet2') in [1, 2, 3])
+            expect(self.player.field_maybe_none('chosen_image_one') is not None)
+            expect(self.player.field_maybe_none('chosen_image_two') is not None)

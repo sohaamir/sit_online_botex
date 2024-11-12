@@ -154,7 +154,7 @@ SESSION_CONFIGS = [
 
 heroku config:set OTREE_PRODUCTION=0 -a social-influence-task
 heroku config:set OTREE_AUTH_LEVEL="DEMO" -a social-influence-task
-
+heroku config:set OTREE_BROWSER_BOTS_URL=https://social-influence-task.herokuapp.com -a social-influence-task
 
 ## 3. Running the Tests
 

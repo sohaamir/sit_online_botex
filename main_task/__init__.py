@@ -246,6 +246,24 @@ class Subsession(BaseSubsession):
 
         # Initialize trial number at start of each round
         self.trial_number = self.round_number
+
+         # Initialize fields for all groups and players
+        for group in self.get_groups():
+            group.round_reward_set = False
+            group.round_reward_A = None
+            group.round_reward_B = None
+            
+            # Initialize fields for all players
+            for player in group.get_players():
+                # Initialize required fields
+                images = C.IMAGES.copy()
+                random.shuffle(images)
+                player.left_image = images[0]
+                player.right_image = images[1]
+                player.chosen_image_one = None
+                player.chosen_image_two = None
+                player.bet1 = 0
+                player.bet2 = 0
         
         # For all rounds after the first, ensure reward settings are reset
         if self.round_number > 1:
@@ -502,10 +520,10 @@ class Player(BasePlayer):
     trial_reward = models.IntegerField(initial=0)        # Reward received in current trial
     
     # Detailed choice tracking
-    chosen_image_one = models.StringField()              # Actual image chosen in first choice
-    chosen_image_one_binary = models.IntegerField()      # First choice coded as 1 or 2
+    chosen_image_one = models.StringField(initial=None)              # Actual image chosen in first choice
+    chosen_image_one_binary = models.IntegerField(initial=1)      # First choice coded as 1 or 2
     chosen_image_two = models.StringField(initial=None)  # Actual image chosen in second choice
-    chosen_image_two_binary = models.IntegerField()      # Second choice coded as 1 or 2
+    chosen_image_two_binary = models.IntegerField(initial=1)      # Second choice coded as 1 or 2
     
     # Social influence tracking
     choice1_with = models.IntegerField(initial=0)        # Number of others who made same first choice
@@ -653,19 +671,30 @@ class Player(BasePlayer):
         pass
         
     def calculate_choice_comparisons(self):
-        """
-        Calculate how many other players made the same choices as this player
-        Used to measure social influence - whether players tend to follow or go against the group
-        """
+        """Calculate how many others made same choices"""
         other_players = self.get_others_in_group()
         
-        # Count players who made same first choice
-        self.choice1_with = sum(1 for p in other_players if p.chosen_image_one == self.chosen_image_one)
-        self.choice1_against = len(other_players) - self.choice1_with
+        # Get current player's choices using field_maybe_none
+        my_choice_one = self.field_maybe_none('chosen_image_one')
+        my_choice_two = self.field_maybe_none('chosen_image_two')
         
-        # Count players who made same second choice
-        self.choice2_with = sum(1 for p in other_players if p.chosen_image_two == self.chosen_image_two)
-        self.choice2_against = len(other_players) - self.choice2_with
+        # Calculate first choice comparisons
+        if my_choice_one is not None:
+            self.choice1_with = sum(1 for p in other_players 
+                                if p.field_maybe_none('chosen_image_one') == my_choice_one)
+            self.choice1_against = len(other_players) - self.choice1_with
+        else:
+            self.choice1_with = 0
+            self.choice1_against = 0
+        
+        # Calculate second choice comparisons
+        if my_choice_two is not None:
+            self.choice2_with = sum(1 for p in other_players 
+                                if p.field_maybe_none('chosen_image_two') == my_choice_two)
+            self.choice2_against = len(other_players) - self.choice2_with
+        else:
+            self.choice2_with = 0
+            self.choice2_against = 0
 
     def calculate_payoffs(self):
         """
@@ -824,7 +853,7 @@ class MyPage(Page):
     def app_after_this_page(player: Player, upcoming_apps):
         # If player timed out, redirect them to the timeout page
         if player.participant.vars.get('timed_out', False):
-            return 'player_left'
+            return 'submission'
 
     # vars_for_template method is used to pass variables to the template
     # This is used to display information to the player in the interface
