@@ -4,14 +4,27 @@
 {% block title %}{% endblock %}
 
 {% block content %}
-<div style="text-align: center;">
-    <p style="font-size: 30px;">You have been matched into a group of five players. The main task will begin when the countdown expires.</p>
-            <p>Please have your hands over the numbers and arrows on your keyboard and be ready to make your initial choice by pressing the left or right arrow key.</p>
-            <br>
-        <img src="{% static 'instructions/hands.png' %}" alt="Hands" width="800px">
+    <style>
+
+        p {
+            font-size: 25px;
+        }
+
+        #timer {
+            font-size: 48px;
+            margin: 20px 0;
+        }
+
+    </style>
+
+    <div style="text-align: center;">
+        <div id="timer"></div>
+        <p style="font-size: 30px;">You have been matched into a group of five players. The main task will begin when the countdown expires.</p>
+        <p>Please have your hands over the numbers and arrows on your keyboard and be ready to make your initial choice by pressing the left or right arrow key.</p>
         <br>
-    <div id="timer" style="font-size: 36px; margin-top: 20px;"></div>
-</div>
+        <img src="{% static 'instructions/hands.png' %}" alt="Hands" width="600px">
+        <br>
+    </div>
 
     <div style="display: none;">
         {% next_button %}

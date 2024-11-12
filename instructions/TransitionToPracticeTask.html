@@ -10,18 +10,22 @@
             text-align: center;
         }
         p {
-            font-size: 20px;
+            font-size: 25px;
+        }
+        #timer {
+            font-size: 48px;
+            margin: 20px 0;
         }
     </style>
 
     <div style="text-align: center;">
+        <div id="timer"></div>  
         <p style="font-size: 30px;">You have been matched into a group of five players.</p>
-            <p>The practice task will begin when the countdown expires.</p>
-            <p>Please have your hands over the numbers and arrows on your keyboard and be ready to make your initial choice by pressing the left or right arrow key.</p>
-            <br>
-            <img src="{% static 'instructions/hands.png' %}" alt="Hands" width="800px">
-            <br>
-        <div id="timer" style="font-size: 36px; margin-top: 20px;"></div>
+        <p>The practice task will begin when the countdown expires.</p>
+        <p>Please have your hands over the numbers and arrows on your keyboard and be ready to make your initial choice by pressing the left or right arrow key.</p>
+        <br>
+        <img src="{% static 'instructions/hands.png' %}" alt="Hands" width="600px">
+        <br>
     </div>
 
     <div style="display: none;">
