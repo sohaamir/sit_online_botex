@@ -58,6 +58,12 @@ BOTS_CHECK_COMPLETE = True  # Enable completion checking for bots
 USE_BROWSER_BOTS = True  # Enable browser bots globally
 BROWSER_BOTS_SERVER_URL = 'https://social-influence-task.herokuapp.com' # URL for the browser bots server
 
+# DATABASE CONFIGURATION (PostgreSQL) - Heroku
+# Force the use of HTTPS
+SECURE_SSL_REDIRECT = True
+# Additional security settings
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # SESSION CONFIGURATION
 # ----------------------------------------------------------------
 # Define the experimental session(s) for your oTree project.
