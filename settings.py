@@ -56,6 +56,7 @@ USE_POINTS = False
 BOTS_CHECK_HTML = True  # Enable HTML checking for bots
 BOTS_CHECK_COMPLETE = True  # Enable completion checking for bots
 USE_BROWSER_BOTS = True  # Enable browser bots globally
+BROWSER_BOTS_SERVER_URL = 'https://social-influence-task.herokuapp.com' # URL for the browser bots server
 
 # SESSION CONFIGURATION
 # ----------------------------------------------------------------
