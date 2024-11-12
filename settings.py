@@ -24,7 +24,8 @@ SECRET_KEY = os.environ.get('OTREE_SECRET_KEY')
 
 # Debug mode. This should be False in production to avoid exposing sensitive information.
 # We set it to True if OTREE_PRODUCTION is not set to '1' in the environment.
-DEBUG = os.environ.get('OTREE_PRODUCTION') != '1'
+DEBUG = True if os.environ.get('OTREE_PRODUCTION') != '1' else False # For bots 
+# DEBUG = os.environ.get('OTREE_PRODUCTION') != '1'
 
 # Allowed hosts for the application. This is a security measure to prevent HTTP Host header attacks.
 # In development, we allow localhost and 127.0.0.1. In production, add your domain name.
@@ -50,10 +51,11 @@ USE_POINTS = False
 # Custom name for points, displayed to participants.
 # POINTS_CUSTOM_NAME = 'tokens'
 
-# Browser bot configuration for automated testing.
-# These bots can run through your experiment to check for errors.
-BOTS_CHECK_HTML = False
-BOTS_CHECK_COMPLETE = False
+# Browser bot configuration for automated testing. These bots can run through your experiment to check for errors.
+# Make false for production, only make True for testing.
+BOTS_CHECK_HTML = True  # Enable HTML checking for bots
+BOTS_CHECK_COMPLETE = True  # Enable completion checking for bots
+USE_BROWSER_BOTS = True  # Enable browser bots globally
 
 # SESSION CONFIGURATION
 # ----------------------------------------------------------------
@@ -62,9 +64,17 @@ BOTS_CHECK_COMPLETE = False
 SESSION_CONFIGS = [
      dict(
          name='social_influence_task',  # Unique identifier for this session configuration
-         app_sequence=['waiting_room', 'main_task', 'player_left', 'submission'],  # Order of apps in the experiment
+         app_sequence=['instructions', 'practice_task', 'main_task_instructions', 'waiting_room', 'main_task', 'player_left', 'submission'],  # Order of apps in the experiment
          num_demo_participants=5,  # Number of demo participants, useful for testing
-         # use_browser_bots=True,  # Uncomment to use bots for testing
+         use_browser_bots=True,  # Uncomment to use bots for testing
+
+         browser_bot_config=dict(  # Add this configuration
+            check_html=True,
+            check_complete=True,
+            timeout_seconds=120,  # Increase if needed
+            wait_between_submissions=1,  # Delay between bot actions
+        ),
+
          # Prolific completion links for different scenarios
          completionlink='https://bhampsychology.eu.qualtrics.com/jfe/form/SV_78qlaEMwYhSyUui', # Send to Qualtrics survey if participant completes the task
          noconsentlink='https://app.prolific.com/submissions/complete?cc=CDVJRJBR', # Send to Prolific if participant does not consent
@@ -130,4 +140,4 @@ DEMO_PAGE_INTRO_HTML = """ """
 EXTENSION_APPS = ['websocket_utils']
 
 # Set the timeout for the WebSocket connection to 70 seconds to prevent timeouts
-WEBSOCKET_TIMEOUT = 150  # Increase this value if you experience WebSocket timeouts
+WEBSOCKET_TIMEOUT = 300  # Increase this value if you experience WebSocket timeouts
