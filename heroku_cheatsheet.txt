@@ -114,3 +114,95 @@ As far as I am aware, version 143 works, so...
 heroku rollback v143
 
 Ran using professional dynos - web (Standard-1X): otree prodserver1of2 (1)
+
+
+#############################################################################################################################
+#############################################################################################################################
+#############################################################################################################################
+
+Running browser bots on your Heroku app
+
+## 1. Pre-Test Configuration Changes
+
+### Settings.py Changes
+Add/modify these settings in your `settings.py`:
+```python
+# Enable Debug mode for bots
+DEBUG = True if os.environ.get('OTREE_PRODUCTION') != '1' else False
+
+# Enable bot settings
+BOTS_CHECK_HTML = True  
+BOTS_CHECK_COMPLETE = True  
+USE_BROWSER_BOTS = True  
+
+# In SESSION_CONFIGS, modify social_influence_task:
+SESSION_CONFIGS = [
+    dict(
+        name='social_influence_task',
+        # ... existing config ...
+        use_browser_bots=True,
+        browser_bot_config=dict(
+            check_html=True,
+            check_complete=True,
+            timeout_seconds=120,
+            wait_between_submissions=1,
+        ),
+    ),
+]
+
+## 2. Set required environment variables:
+
+heroku config:set OTREE_PRODUCTION=0 -a social-influence-task
+heroku config:set OTREE_AUTH_LEVEL="DEMO" -a social-influence-task
+
+
+## 3. Running the Tests
+
+Preparation
+
+- Close all Chrome windows and tabs
+- Clear browser cache (optional but recommended)
+- Have two terminal windows ready for commands and monitoring
+
+Run the Tests
+
+Start with a small number of bots:
+heroku run -a social-influence-task otree browser_bots social_influence_task 5
+
+Monitor the logs in a separate terminal:
+heroku logs --tail -a social-influence-task
+
+Increase number of bots for stress testing:
+heroku run -a social-influence-task otree browser_bots social_influence_task 50
+
+## 4. Reverting Changes for Production
+
+Settings.py Changes
+
+Revert these settings in your settings.py:
+
+# Disable Debug mode
+DEBUG = os.environ.get('OTREE_PRODUCTION') != '1'
+
+# Disable bot settings
+BOTS_CHECK_HTML = False
+BOTS_CHECK_COMPLETE = False
+USE_BROWSER_BOTS = False
+
+# Remove bot config from SESSION_CONFIGS
+SESSION_CONFIGS = [
+    dict(
+        name='social_influence_task',
+        # ... existing config ...
+        # Remove use_browser_bots and browser_bot_config
+    ),
+]
+
+# Set production back to True
+OTREE_PRODUCTION = True
+
+Heroku Configuration Commands
+
+Reset environment variables:
+heroku config:set OTREE_PRODUCTION=1 -a social-influence-task
+heroku config:set OTREE_AUTH_LEVEL="STUDY" -a social-influence-task
