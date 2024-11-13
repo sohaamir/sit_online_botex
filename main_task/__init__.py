@@ -244,10 +244,29 @@ class Subsession(BaseSubsession):
     # This method is called when creating a new session or round
     def creating_session(self):
 
+        # Only need to set groups in round 1
+        if self.round_number == 1:
+            # Get group matrices from waiting room app
+            waiting_room_groups = self.session.vars.get('waiting_room_groups')
+            if not waiting_room_groups:
+                # If waiting room groups not found in session vars, get them directly
+                waiting_room = self.session.get_subsession('waiting_room', 1)
+                if waiting_room:
+                    waiting_room_groups = waiting_room.get_group_matrix()
+                    # Store for future rounds
+                    self.session.vars['waiting_room_groups'] = waiting_room_groups
+            
+            if waiting_room_groups:
+                # Set the same group structure for main task
+                self.set_group_matrix(waiting_room_groups)
+        else:
+            # In subsequent rounds, maintain the same groups as round 1
+            self.group_like_round(1)
+
         # Initialize trial number at start of each round
         self.trial_number = self.round_number
 
-         # Initialize fields for all groups and players
+        # Initialize fields for all groups and players
         for group in self.get_groups():
             group.round_reward_set = False
             group.round_reward_A = None
