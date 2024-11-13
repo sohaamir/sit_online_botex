@@ -8,8 +8,14 @@ class C(BaseConstants):
    TRANSITION_TIME = 15          # Seconds to wait before practice task
 
 # Model classes
+
+# Subsession class for grouping players on the wait page
 class Subsession(BaseSubsession):
-   pass  # No subsession-level data needed
+    def group_by_arrival_time_method(self, waiting_players):
+        # Form groups of 5 players when available
+        if len(waiting_players) >= 5:
+            return waiting_players[:5]
+        return None
 
 class Group(BaseGroup):
    pass  # No group-level data needed 
@@ -68,12 +74,11 @@ class FixDimensions(Page):
 
 class WaitPage1(WaitPage):
    template_name = 'instructions/WaitPage1.html'  # Custom wait page template
-
    group_by_arrival_time = True  # Form groups as players arrive
 
    @staticmethod
    def is_displayed(player: Player):
-       return player.round_number == 1  # Only show in first round
+       return True  # Show for all players
    
    @staticmethod
    def vars_for_template(player):
@@ -89,6 +94,13 @@ class WaitPage1(WaitPage):
            waitpagelink=player.subsession.session.config['waitpagelink']
        )
    pass
+
+   # Add after_all_players_arrive to handle newly formed groups
+   @staticmethod
+   def after_all_players_arrive(group: Group):
+        # This runs after a group is formed
+        # You can add any group initialization code here if needed
+        pass
    
 class TransitionToPracticeTask(Page):
    def vars_for_template(self):
