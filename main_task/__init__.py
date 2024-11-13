@@ -428,14 +428,17 @@ class Group(BaseGroup):
             
             # Calculate earnings for first choice similarly
             choice1_reward = 0
-            if p.chosen_image_one == 'option1A.bmp':
+            chosen_image_one = p.field_maybe_none('chosen_image_one')
+            
+            # Determine reward based on which image was chosen and which has high probability
+            if chosen_image_one == 'option1A.bmp':
                 choice1_reward = self.round_reward_A
-            elif p.chosen_image_one == 'option1B.bmp':
+            elif chosen_image_one == 'option1B.bmp':
                 choice1_reward = self.round_reward_B
             
             p.choice1_earnings = p.bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * p.bet1 * 20
 
-    print("-----------------------------\n")
+        print("-----------------------------\n")
 
 #### --------------- Define the intertrial interval ------------------------ ####
 # Creates a random pause between trials to prevent rhythmic responding

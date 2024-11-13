@@ -53,9 +53,9 @@ USE_POINTS = False
 
 # Browser bot configuration for automated testing. These bots can run through your experiment to check for errors.
 # Make false for production, only make True for testing.
-BOTS_CHECK_HTML = True  # Enable HTML checking for bots
-BOTS_CHECK_COMPLETE = True  # Enable completion checking for bots
-USE_BROWSER_BOTS = True  # Enable browser bots globally
+# BOTS_CHECK_HTML = True  # Enable HTML checking for bots
+# BOTS_CHECK_COMPLETE = True  # Enable completion checking for bots
+# USE_BROWSER_BOTS = True  # Enable browser bots globally
 
 # DATABASE CONFIGURATION (PostgreSQL) - Heroku
 # ----------------------------------------------------------------
@@ -73,14 +73,7 @@ SESSION_CONFIGS = [
          name='social_influence_task',  # Unique identifier for this session configuration
          app_sequence=['instructions', 'practice_task', 'main_task_instructions', 'waiting_room', 'main_task', 'submission'],  # Order of apps in the experiment
          num_demo_participants=5,  # Number of demo participants, useful for testing
-         use_browser_bots=True,  # Uncomment to use bots for testing
-
-         browser_bot_config=dict(  # Add this configuration
-            check_html=True,
-            check_complete=True,
-            timeout_seconds=120,  # Increase if needed
-            wait_between_submissions=1,  # Delay between bot actions
-        ),
+         # use_browser_bots=True,  # Uncomment to use bots for testing
 
          # Prolific completion links for different scenarios
          completionlink='https://bhampsychology.eu.qualtrics.com/jfe/form/SV_78qlaEMwYhSyUui', # Send to Qualtrics survey if participant completes the task

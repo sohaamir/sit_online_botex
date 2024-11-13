@@ -160,23 +160,16 @@ OTREE_REST_KEY=xxxxxxx
 
 b) Settings the configs in your settings.py
 
-In your settings.py, set the browser bots configs accordingly. In the example below, only use_browser_bots is required for testing locally.
+In your settings.py, set use_browser_bots to True (either comment out or set to False otherwise).
 
 e.g.,
 
 SESSION_CONFIGS = [
     dict(
+        ...
         # Required settings
         use_browser_bots=True,  # Must be True to use browser bots
-
-        # Optional browser_bot_config dictionary
-        browser_bot_config=dict(
-            # All settings below are optional
-            check_html=True,          # Default is False
-            check_complete=True,      # Default is False
-            timeout_seconds=120,      # Default is 20
-            wait_between_submissions=1,  # Default is 0
-        ),
+        ...
     ),
 ]
 
