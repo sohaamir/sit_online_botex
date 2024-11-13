@@ -43,8 +43,10 @@ class WaitPage2(WaitPage):
   @staticmethod
   def after_all_players_arrive(group: Group):
        # This runs after a group is formed
-       # Store the group matrix in session vars for main task to use
-        group.subsession.session.vars['waiting_room_groups'] = group.subsession.get_group_matrix()
+       # Store each player's group assignment and position
+    for p in group.subsession.get_players():
+        p.participant.vars['main_task_group'] = p.group.id_in_subsession
+        p.participant.vars['main_task_id_in_group'] = p.id_in_group
 
 class TransitionToMainTask(Page):
   def vars_for_template(self):

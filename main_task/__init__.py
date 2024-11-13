@@ -243,22 +243,29 @@ EARNINGS_SEQUENCE = generate_earnings_sequence(NUM_ROUNDS)
 class Subsession(BaseSubsession):
     # This method is called when creating a new session or round
     def creating_session(self):
-
-        # Only need to set groups in round 1
         if self.round_number == 1:
-            # Get group matrices from waiting room app
-            waiting_room_groups = self.session.vars.get('waiting_room_groups')
-            if not waiting_room_groups:
-                # If waiting room groups not found in session vars, get them directly
-                waiting_room = self.session.get_subsession('waiting_room', 1)
-                if waiting_room:
-                    waiting_room_groups = waiting_room.get_group_matrix()
-                    # Store for future rounds
-                    self.session.vars['waiting_room_groups'] = waiting_room_groups
+            # Get players
+            players = self.get_players()
             
-            if waiting_room_groups:
-                # Set the same group structure for main task
-                self.set_group_matrix(waiting_room_groups)
+            # Create dictionary to store players by their assigned group from waiting room
+            groups_dict = {}
+            
+            # Sort players into their assigned groups from waiting room
+            for p in players:
+                assigned_group = p.participant.vars.get('main_task_group')
+                if assigned_group not in groups_dict:
+                    groups_dict[assigned_group] = []
+                groups_dict[assigned_group].append(p)
+                
+            # Create the group matrix
+            group_matrix = [group_players for group_id, group_players in sorted(groups_dict.items())]
+            
+            # Set the group matrix
+            self.set_group_matrix(group_matrix)
+            
+            # Set id_in_group for each player based on waiting room assignment
+            for p in players:
+                p.id_in_group = p.participant.vars.get('main_task_id_in_group')
         else:
             # In subsequent rounds, maintain the same groups as round 1
             self.group_like_round(1)
