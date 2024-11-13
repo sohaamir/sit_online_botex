@@ -2,11 +2,13 @@ from otree.api import *
 
 class C(BaseConstants):
     NAME_IN_URL = 'main_task_instructions'
-    PLAYERS_PER_GROUP = 5
+    PLAYERS_PER_GROUP = None
     NUM_ROUNDS = 1
 
 class Subsession(BaseSubsession):
-    pass
+    def creating_session(self):
+        # Break up existing groups
+        self.group_randomly(fixed_id_in_group=False)
 
 class Group(BaseGroup):
     pass
