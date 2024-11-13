@@ -69,6 +69,8 @@ class FixDimensions(Page):
 class WaitPage1(WaitPage):
    template_name = 'instructions/WaitPage1.html'  # Custom wait page template
 
+   group_by_arrival_time = True  # Form groups as players arrive
+
    @staticmethod
    def is_displayed(player: Player):
        return player.round_number == 1  # Only show in first round
