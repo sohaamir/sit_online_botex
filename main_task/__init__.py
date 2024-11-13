@@ -719,11 +719,10 @@ class Player(BasePlayer):
         If no reward, points are negative
         """
         if self.chosen_image_one == 'option1A.bmp':
-            choice1_reward = self.group.round_reward_A
+            choice1_reward = self.group.field_maybe_none('round_reward_A') or 0
         elif self.chosen_image_one == 'option1B.bmp':
-            choice1_reward = self.group.round_reward_B
+            choice1_reward = self.group.field_maybe_none('round_reward_B') or 0
         else:
-            pass
             return
 
         self.choice1_earnings = self.bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * self.bet1 * 20
