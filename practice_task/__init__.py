@@ -1,7 +1,3 @@
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from websocket_utils import safe_websocket # Uncomment to enable safe websocket
 from otree.api import *
 from . import *
 import random
@@ -803,7 +799,6 @@ class MyPage(Page):
 # --- If players do not respond within the time limit, the computer randomly selects a choice or bet for them
 
     @staticmethod
-    # @safe_websocket(max_retries=5, retry_delay=0.2) # Uncomment to enable Websocket decorator for reliable connections
     def live_method(player, data):
         if player.field_maybe_none('is_bot'):
             # Ensure bot has valid image fields

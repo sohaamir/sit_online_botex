@@ -16,10 +16,6 @@ from dotenv import load_dotenv
 # This allows us to keep sensitive information out of the codebase
 load_dotenv()
 
-# APPLICATION CONFIGURATION (oTree)
-# ----------------------------------------------------------------
-WEBDRIVER_URL = 'https://social-influence-task-e7974ebf1c60.herokuapp.com'
-
 # SECURITY SETTINGS
 # ----------------------------------------------------------------
 # Secret key for cryptographic signing. This is critical for security.
@@ -33,7 +29,7 @@ DEBUG = True if os.environ.get('OTREE_PRODUCTION') != '1' else False # For bots
 
 # Allowed hosts for the application. This is a security measure to prevent HTTP Host header attacks.
 # In development, we allow localhost and 127.0.0.1. In production, add your domain name.
-ALLOWED_HOSTS = ['localhost', '.social-influence-task-e7974ebf1c60.herokuapp.com']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.social-influence-task-e7974ebf1c60.herokuapp.com']
 
 # Admin credentials. The username is hardcoded, but the password should be an environment variable.
 # These credentials are used to access the oTree admin interface.
@@ -60,10 +56,9 @@ USE_POINTS = False
 BOTS_CHECK_HTML = True  # Enable HTML checking for bots
 BOTS_CHECK_COMPLETE = True  # Enable completion checking for bots
 USE_BROWSER_BOTS = True  # Enable browser bots globally
-BROWSER_BOTS_SERVER_URL = 'https://social-influence-task-e7974ebf1c60.herokuapp.com'
-BOT_SERVER_URL = 'https://social-influence-task-e7974ebf1c60.herokuapp.com'
 
 # DATABASE CONFIGURATION (PostgreSQL) - Heroku
+# ----------------------------------------------------------------
 # Force the use of HTTPS
 SECURE_SSL_REDIRECT = True
 # Additional security settings
@@ -85,7 +80,6 @@ SESSION_CONFIGS = [
             check_complete=True,
             timeout_seconds=120,  # Increase if needed
             wait_between_submissions=1,  # Delay between bot actions
-            url='https://social-influence-task-e7974ebf1c60.herokuapp.com',  # URL for the browser bots server
         ),
 
          # Prolific completion links for different scenarios
@@ -143,14 +137,6 @@ USE_PROFILER = True
 
 # MISCELLANEOUS SETTINGS
 # ----------------------------------------------------------------
-# HTML content for the demo page. This is displayed when accessed via demo mode.
-DEMO_PAGE_INTRO_HTML = """ """
 
 # Commented out AUTH_LEVEL setting. Uncomment and set to 'STUDY' to password-protect your site.
 # AUTH_LEVEL = os.environ.get('OTREE_AUTH_LEVEL', 'DEMO')
-
-# Add the websocket_utils extension app to the list of installed apps
-EXTENSION_APPS = ['websocket_utils']
-
-# Set the timeout for the WebSocket connection to 70 seconds to prevent timeouts
-WEBSOCKET_TIMEOUT = 300  # Increase this value if you experience WebSocket timeouts
