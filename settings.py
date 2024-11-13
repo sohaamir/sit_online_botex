@@ -33,7 +33,7 @@ DEBUG = True if os.environ.get('OTREE_PRODUCTION') != '1' else False # For bots
 
 # Allowed hosts for the application. This is a security measure to prevent HTTP Host header attacks.
 # In development, we allow localhost and 127.0.0.1. In production, add your domain name.
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.social-influence-task-e7974ebf1c60.herokuapp.com']
+ALLOWED_HOSTS = ['localhost', '.social-influence-task-e7974ebf1c60.herokuapp.com']
 
 # Admin credentials. The username is hardcoded, but the password should be an environment variable.
 # These credentials are used to access the oTree admin interface.
