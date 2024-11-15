@@ -13,7 +13,6 @@ class PlayerBot(Bot):
         try:
             # Handle WaitPage2 and TransitionToMainTask only in round 1
             if self.round_number == 1:
-                yield WaitPage2
                 yield Submission(TransitionToMainTask, check_html=False)
 
             # Initialize group rewards if needed (only player 1 does this)

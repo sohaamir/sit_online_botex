@@ -12,7 +12,6 @@ class PlayerBot(Bot):
 
         # Handle WaitPage1 and TransitionToPracticeTask only in round 1
         if self.round_number == 1:
-            yield WaitPage1
             yield Submission(TransitionToPracticeTask, check_html=False)
         
         # Initialize left/right images
