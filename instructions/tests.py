@@ -19,4 +19,3 @@ class PlayerBot(Bot):
         yield AdjustDimensions
         yield FixDimensions
         yield PracticeInstructions
-        yield TransitionToPracticeTask

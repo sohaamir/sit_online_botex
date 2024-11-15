@@ -16,7 +16,6 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('game_log.txt'),
         logging.StreamHandler()
     ]
 )
@@ -241,37 +240,23 @@ EARNINGS_SEQUENCE = generate_earnings_sequence(NUM_ROUNDS)
 # A subsession represents one round of the game
 
 class Subsession(BaseSubsession):
+    # This method handles grouping players as they arrive
+    # It is only used when group_by_arrival_time = True
+    def group_by_arrival_time_method(self, waiting_players):
+        # Form groups of 5 when enough players are available
+        if len(waiting_players) >= 5:
+            return waiting_players[:5]
+        return None
+
     # This method is called when creating a new session or round
     def creating_session(self):
-        if self.round_number == 1:
-            # Get players
-            players = self.get_players()
-            
-            # Create dictionary to store players by their assigned group from waiting room
-            groups_dict = {}
-            
-            # Sort players into their assigned groups from waiting room
-            for p in players:
-                assigned_group = p.participant.vars.get('main_task_group')
-                if assigned_group not in groups_dict:
-                    groups_dict[assigned_group] = []
-                groups_dict[assigned_group].append(p)
-                
-            # Create the group matrix
-            group_matrix = [group_players for group_id, group_players in sorted(groups_dict.items())]
-            
-            # Set the group matrix
-            self.set_group_matrix(group_matrix)
-            
-            # Set id_in_group for each player based on waiting room assignment
-            for p in players:
-                p.id_in_group = p.participant.vars.get('main_task_id_in_group')
-        else:
-            # In subsequent rounds, maintain the same groups as round 1
-            self.group_like_round(1)
-
         # Initialize trial number at start of each round
         self.trial_number = self.round_number
+
+        # For rounds after first, maintain group structure from round 1
+        # This ensures groups formed by arrival time persist across rounds
+        if self.round_number > 1:
+            self.group_like_round(1)
 
         # Initialize fields for all groups and players
         for group in self.get_groups():
@@ -756,6 +741,40 @@ class Player(BasePlayer):
 
         self.choice1_earnings = self.bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * self.bet1 * 20
 
+# -------------------------------------------------------------------------------------------------------------------- #
+# ---- WAIT AND TRANSITION PAGES: USED TO FORM GROUPS BY ARRIVAL TIME ON THE APP ------ #
+# -------------------------------------------------------------------------------------------------------------------- #
+
+class WaitPage2(WaitPage):
+    template_name = 'main_task/WaitPage2.html'  # Move template to main_task templates
+    group_by_arrival_time = True
+
+    @staticmethod
+    def is_displayed(player):
+        return player.round_number == 1
+
+    @staticmethod
+    def vars_for_template(player):
+        return {
+            'title_text': 'Waiting for Other Players',
+        }
+  
+    @staticmethod              
+    def js_vars(player):
+        return dict(
+            waitpagelink=player.subsession.session.config['waitpagelink']
+        )
+
+class TransitionToMainTask(Page):
+    @staticmethod
+    def is_displayed(player):
+        return player.round_number == 1
+
+    def vars_for_template(self):
+        return {
+            'transition_time': 15,
+        }
+    
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- MYPAGE: WHERE PLAYERS MAKE THEIR FIRST CHOICE, FIRST BET AND PREFERENCE CHOICES ------ #
 # -------------------------------------------------------------------------------------------------------------------- #
@@ -1558,21 +1577,13 @@ class FinalResults(Page):
         # This will record key payment information for each player
         column_names = [
             'Prolific ID',          # Player's ID from Prolific platform
-            'Base Payoff',          # Fixed participation payment
-            'Bonus Payoff',         # Additional earnings based on performance
-            'Total Payoff',         # Total payment (base + bonus)
-            'Final Bonus Score',    # Total points earned
-            'Final Choice 1 Sum'    # Cumulative earnings from first choices
+            'Total Payoff'          # Total payment (base + bonus)
         ]
 
         # Prepare the data row for this player
         data = [
             player.participant.vars.get('prolific_id', 'Unknown'),  # Get Prolific ID or mark as unknown
-            float(player.base_payoff),                             # Convert Currency to float
-            float(player.bonus_payoff),
-            float(player.total_payoff),
-            final_bonus_score,
-            final_choice1_sum
+            float(player.total_payoff)                             # Convert Currency to float
         ]
         
         # Check if the payoffs.csv file already exists
@@ -1602,8 +1613,10 @@ class FinalResults(Page):
     # In this case, players will be directed to the submission app after seeing their results
     @staticmethod
     def app_after_this_page(player, upcoming_apps):
+
         # Debug print to see what apps are coming next
         print('upcoming_apps is', upcoming_apps)
+
         # Direct players to the submission app after showing results
         return "submission"  # Hardcoded name of the last app
 
@@ -1613,6 +1626,6 @@ class FinalResults(Page):
 
 from .tests import PlayerBot # Import the PlayerBot class from the tests.py file
 
-page_sequence = [MyPage, FinalResults]  
+page_sequence = [WaitPage2, TransitionToMainTask, MyPage, FinalResults]  
 
 # -------------------------------------------------------------------------------------------------------------------- #

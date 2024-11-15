@@ -1,14 +1,21 @@
+# main_task/__init__.py:
+
 from otree.api import Bot, Submission, expect
 import random
 import time
 import logging
-from . import MyPage, FinalResults, C
+from . import MyPage, FinalResults, WaitPage2, TransitionToMainTask, C
 
 class PlayerBot(Bot):
     def play_round(self):
         logging.info(f"Bot starting round {self.round_number} for player {self.player.id_in_group}")
         
         try:
+            # Handle WaitPage2 and TransitionToMainTask only in round 1
+            if self.round_number == 1:
+                yield WaitPage2
+                yield Submission(TransitionToMainTask, check_html=False)
+
             # Initialize group rewards if needed (only player 1 does this)
             if self.player.id_in_group == 1:
                 # Get rewards from pre-generated sequence

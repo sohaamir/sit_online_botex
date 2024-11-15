@@ -1,12 +1,19 @@
+# practice_task/tests.py
+
 from otree.api import Bot, Submission, expect
 import random
 import time
 import logging
-from . import MyPage, FinalResults, C
+from . import MyPage, FinalResults, WaitPage1, TransitionToPracticeTask, C, MainTaskInstructions
 
 class PlayerBot(Bot):
     def play_round(self):
         logging.info(f"Bot starting round {self.round_number} for player {self.player.id_in_group}")
+
+        # Handle WaitPage1 and TransitionToPracticeTask only in round 1
+        if self.round_number == 1:
+            yield WaitPage1
+            yield Submission(TransitionToPracticeTask, check_html=False)
         
         # Initialize left/right images
         if not self.player.field_maybe_none('left_image'):
@@ -53,6 +60,7 @@ class PlayerBot(Bot):
         # Only show final results on last round
         if self.round_number == C.NUM_ROUNDS:
             yield Submission(FinalResults, check_html=False)
+            yield Submission(MainTaskInstructions, check_html=False)
 
     def validate_play(self):
         """Validate that the bot made all required choices and bets"""

@@ -1,11 +1,12 @@
+# practice_task/__init__.py
+
 from otree.api import *
 from . import *
 import random
 import time
 import csv
-from otree.api import Submission
+from otree.api import Submission, WaitPage
 import threading
-import asyncio
 import logging
 
 # Set up logging
@@ -13,7 +14,6 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('game_log.txt'),
         logging.StreamHandler()
     ]
 )
@@ -171,18 +171,23 @@ EARNINGS_SEQUENCE = generate_earnings_sequence(NUM_ROUNDS)
 # A subsession represents one round of the game
 
 class Subsession(BaseSubsession):
-    # This method is called when creating a new session or round
+
+    # This method groups players together based on their arrival time
+    def group_by_arrival_time_method(self, waiting_players):
+        if len(waiting_players) >= C.PLAYERS_PER_GROUP:
+            return waiting_players[:C.PLAYERS_PER_GROUP]
+        return None
+
     def creating_session(self):
-        # For all rounds after the first, ensure reward settings are reset
         if self.round_number > 1:
+            self.group_like_round(1)  # Keep same groups as round 1
             for group in self.get_groups():
                 group.round_reward_set = False
                 
-            # Check connection status of all players
             for player in self.get_players():
                 if hasattr(player, 'last_connection_time'):
                     time_since_connection = time.time() - player.last_connection_time
-                    if time_since_connection > 10:  # 10 seconds threshold
+                    if time_since_connection > 10:
                         player.increment_disconnect_streak()
 
     # Returns a list of all reversal rounds up to the current round
@@ -613,6 +618,40 @@ class Player(BasePlayer):
 
         bet1 = self.field_maybe_none('bet1') or 1
         self.choice1_earnings = bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * bet1 * 20
+
+# -------------------------------------------------------------------------------------------------------------------- #
+# ---- PAGES: DEFINE THE PAGES USED IN THE GAME INCLUDING WAITING ROOMS, TASKS AND RESULTS ------ #
+# -------------------------------------------------------------------------------------------------------------------- #
+
+class WaitPage1(WaitPage):
+    template_name = 'practice_task/WaitPage1.html'
+    group_by_arrival_time = True
+
+    @staticmethod
+    def is_displayed(player):
+        return player.round_number == 1
+
+    @staticmethod
+    def vars_for_template(player):
+        return {
+            'title_text': 'Waiting for Other Players',
+        }
+    
+    @staticmethod              
+    def js_vars(player):
+        return dict(
+            waitpagelink=player.subsession.session.config['waitpagelink']
+        )
+
+class TransitionToPracticeTask(Page):
+    @staticmethod 
+    def is_displayed(player):
+        return player.round_number == 1
+    
+    def vars_for_template(self):
+        return {
+            'transition_time': 15,
+        }
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- MYPAGE: WHERE PLAYERS MAKE THEIR FIRST CHOICE, FIRST BET AND PREFERENCE CHOICES ------ #
@@ -1312,9 +1351,22 @@ class FinalResults(Page):
             'choice2_sum_earnings': player.choice2_sum_earnings,
             'player_id': player.id_in_group,
         }
+    
+# -------------------------------------------------------------------------------------------------------------------- #
+# ---- MAIN TASK INSTRUCTIONS: DISPLAYED ON THE LAST ROUND BEFORE MAIN TASK ------ #
+# -------------------------------------------------------------------------------------------------------------------- #
+
+class MainTaskInstructions(Page):
+    @staticmethod 
+    def is_displayed(player):
+        return player.round_number == C.NUM_ROUNDS  # Only show on last round
+
+    @staticmethod
+    def app_after_this_page(player: Player, upcoming_apps):
+        return "main_task"  # Direct to main task after this page
 
 from .tests import PlayerBot
 
-page_sequence = [MyPage, FinalResults]  
+page_sequence = [WaitPage1, TransitionToPracticeTask, MyPage, FinalResults, MainTaskInstructions]
 
 # -------------------------------------------------------------------------------------------------------------------- #

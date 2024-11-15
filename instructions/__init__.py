@@ -1,3 +1,5 @@
+# instructions/__init__.py
+
 from otree.api import *
 
 # Constants class defining game-wide settings
@@ -5,17 +7,10 @@ class C(BaseConstants):
    NAME_IN_URL = 'instructions'  # URL segment for this app
    PLAYERS_PER_GROUP = None      # Individual decision-making (no grouping) 
    NUM_ROUNDS = 1                # Single-round game
-   TRANSITION_TIME = 15          # Seconds to wait before practice task
 
 # Model classes
-
-# Subsession class for grouping players on the wait page
 class Subsession(BaseSubsession):
-    def group_by_arrival_time_method(self, waiting_players):
-        # Form groups of 5 players when available
-        if len(waiting_players) >= 5:
-            return waiting_players[:5]
-        return None
+    pass
 
 class Group(BaseGroup):
    pass  # No group-level data needed 
@@ -72,43 +67,8 @@ class PracticeInstructions(Page):
 class FixDimensions(Page):
     pass  # Simple page to let players adjust their display dimensions
 
-class WaitPage1(WaitPage):
-   template_name = 'instructions/WaitPage1.html'  # Custom wait page template
-   group_by_arrival_time = True  # Form groups as players arrive
-
-   @staticmethod
-   def is_displayed(player: Player):
-       return True  # Show for all players
-   
-   @staticmethod
-   def vars_for_template(player):
-       # Pass title text to template
-       return {
-           'title_text': 'Waiting for Other Players',
-       }
-   
-   @staticmethod              
-   def js_vars(player):
-       # Pass waitpage redirect URL to JavaScript
-       return dict(
-           waitpagelink=player.subsession.session.config['waitpagelink']
-       )
-   pass
-
-   # Add after_all_players_arrive to handle newly formed groups
-   @staticmethod
-   def after_all_players_arrive(group: Group):
-        # This runs after a group is formed
-        # You can add any group initialization code here if needed
-        pass
-   
-class TransitionToPracticeTask(Page):
-   def vars_for_template(self):
-       # Pass transition countdown time to template
-       return {
-           'transition_time': C.TRANSITION_TIME,
-       }
-
 # Define sequence of pages shown to participants
-page_sequence = [Welcome, Consent, TaskOverview, TaskInstructionsPage1, TaskInstructionsPage2, RewardStructure, Leaving, 
-                 Comprehension, AdjustDimensions, FixDimensions, PracticeInstructions, WaitPage1, TransitionToPracticeTask]
+page_sequence = [Welcome, Consent, TaskOverview, TaskInstructionsPage1, 
+                TaskInstructionsPage2, RewardStructure, Leaving, 
+                Comprehension, AdjustDimensions, FixDimensions, 
+                PracticeInstructions]
