@@ -142,29 +142,6 @@ class C(BaseConstants):
     REWARD_SEQUENCE = REWARD_SEQUENCE
 
 # -------------------------------------------------------------------------------------------------------------------- #
-# This function generates a sequence determining which choice (first or second) will count for earnings in each round
-# This adds an element of uncertainty as players don't know which of their two choices will determine their earnings
-
-def generate_earnings_sequence(num_rounds):
-    # Use a fixed random seed for reproducibility
-    random.seed(42)  # Ensure reproducibility
-    
-    # Create initial sequence alternating between first and second choice earnings
-    sequence = ['choice1_earnings' if i % 2 == 0 else 'choice2_earnings' for i in range(num_rounds)]
-    
-    # Shuffle the sequence to make it unpredictable
-    random.shuffle(sequence)
-    
-    # Debug print statement (commented out)
-    for i, earnings_type in enumerate(sequence, 1):
-        pass # print(f"Round {i}: {earnings_type}") # Uncomment to print the sequence of earnings types
-    
-    return sequence
-
-# Generate the earnings sequence when the module is imported
-EARNINGS_SEQUENCE = generate_earnings_sequence(NUM_ROUNDS)
-
-# -------------------------------------------------------------------------------------------------------------------- #
 # ---- SUBSESSIONS: USED TO DEFINE THE ROUNDS FOR REVERSAL AND BOTS ------ #
 # -------------------------------------------------------------------------------------------------------------------- #
 
@@ -252,7 +229,6 @@ class Group(BaseGroup):
     disconnected_players = models.StringField(initial="")
     bot_players = models.StringField(initial="")
     active_bots = models.StringField(initial="")
-    disconnection_streaks = models.StringField(initial="{}")  # Store as JSON dict of player_id: streak_count
 
 #### ---------------- Define the bot ------------------------ ####
 # This method activates a bot for a player who has disconnected from the game 
@@ -337,15 +313,6 @@ class Group(BaseGroup):
             # Calculate earnings for second choice: bet amount * 20 * reward (1 or 0)
             # If reward is 0, player loses their bet amount * 20
             p.choice2_earnings = p.bet2 * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2 * 20
-            
-            # Calculate earnings for first choice similarly
-            choice1_reward = 0
-            if p.chosen_image_one == 'option1A.bmp':
-                choice1_reward = self.round_reward_A
-            elif p.chosen_image_one == 'option1B.bmp':
-                choice1_reward = self.round_reward_B
-            
-            p.choice1_earnings = p.bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * p.bet1 * 20
 
     print("-----------------------------\n")
 
@@ -414,20 +381,9 @@ class Player(BasePlayer):
     chosen_image_two = models.StringField(initial=None)  # Actual image chosen in second choice
     chosen_image_two_binary = models.IntegerField()      # Second choice coded as 1 or 2
     
-    # Social influence tracking
-    choice1_with = models.IntegerField(initial=0)        # Number of others who made same first choice
-    choice1_against = models.IntegerField(initial=0)     # Number of others who made different first choice
-    choice2_with = models.IntegerField(initial=0)        # Number of others who made same second choice
-    choice2_against = models.IntegerField(initial=0)     # Number of others who made different second choice
-    
     # Computer choice tracking
     chosen_image_computer = models.StringField(initial='')     # Image chosen by computer for first choice
     chosen_image_computer_two = models.StringField(initial='') # Image chosen by computer for second choice
-    
-    # Performance metrics
-    choice1_accuracy = models.BooleanField()             # Whether first choice was optimal
-    choice2_accuracy = models.BooleanField()             # Whether second choice was optimal
-    switch_vs_stay = models.IntegerField()               # Whether player switched (1) or stayed (0) between choices
     
     # Timing variables
     my_page_load_time = models.FloatField()             # When page loaded for this player
@@ -438,15 +394,10 @@ class Player(BasePlayer):
     second_bet_time = models.FloatField()                # Time taken for second bet
     
     # Earnings tracking
-    choice1_earnings = models.IntegerField(initial=0)    # Points earned from first choice
     choice2_earnings = models.IntegerField(initial=0)    # Points earned from second choice
-    choice1_sum_earnings = models.IntegerField(initial=0) # Cumulative earnings from first choices
     choice2_sum_earnings = models.IntegerField(initial=0) # Cumulative earnings from second choices
-    bonus_payment_score = models.IntegerField(initial=0) # Total bonus points earned
     
     # Final payment calculations
-    base_payoff = models.CurrencyField(initial=6)       # Base payment amount (£6)
-    bonus_payoff = models.CurrencyField(initial=0)      # Additional bonus earned
     total_payoff = models.CurrencyField(initial=0)      # Total payment (base + bonus)
     
     # Outcome tracking
@@ -457,43 +408,6 @@ class Player(BasePlayer):
     computer_bet_one = models.BooleanField(initial=False)     # If computer made first bet
     computer_choice_two = models.BooleanField(initial=True)   # If computer made second choice
     computer_bet_two = models.BooleanField(initial=False)     # If computer made second bet
-    
-    # Other players' choices tracking
-    # Track choices of all other players (1-4) for both first and second choices
-    player_1_choice_one = models.IntegerField()
-    player_2_choice_one = models.IntegerField()
-    player_3_choice_one = models.IntegerField()
-    player_4_choice_one = models.IntegerField()
-    player_1_choice_two = models.IntegerField()
-    player_2_choice_two = models.IntegerField()
-    player_3_choice_two = models.IntegerField()
-    player_4_choice_two = models.IntegerField()
-    
-    # Track when computer made choices for other players
-    player_1_computer_choice_one = models.BooleanField()
-    player_2_computer_choice_one = models.BooleanField()
-    player_3_computer_choice_one = models.BooleanField()
-    player_4_computer_choice_one = models.BooleanField()
-    player_1_computer_choice_two = models.BooleanField()
-    player_2_computer_choice_two = models.BooleanField()
-    player_3_computer_choice_two = models.BooleanField()
-    player_4_computer_choice_two = models.BooleanField()
-    
-    # Track accuracy of other players' choices
-    player1_choice1_accuracy = models.BooleanField()
-    player2_choice1_accuracy = models.BooleanField()
-    player3_choice1_accuracy = models.BooleanField()
-    player4_choice1_accuracy = models.BooleanField()
-    player1_choice2_accuracy = models.BooleanField()
-    player2_choice2_accuracy = models.BooleanField()
-    player3_choice2_accuracy = models.BooleanField()
-    player4_choice2_accuracy = models.BooleanField()
-    
-    # Track whether other players gained or lost points
-    loss_or_gain_player1 = models.IntegerField()
-    loss_or_gain_player2 = models.IntegerField()
-    loss_or_gain_player3 = models.IntegerField()
-    loss_or_gain_player4 = models.IntegerField()
     
     # Track if second choice was made manually
     manual_second_choice = models.BooleanField(initial=False)
@@ -557,67 +471,6 @@ class Player(BasePlayer):
         except TypeError:
             logging.warning(f"Null field access for player {self.id_in_group}: {field_name}")
             return None
-        
-    def calculate_choice_comparisons(self):
-        """Calculate how many other players made the same choices"""
-        other_players = self.get_others_in_group()
-        my_image_one = self.field_maybe_none('chosen_image_one')
-        my_image_two = self.field_maybe_none('chosen_image_two')
-        
-        # Only calculate if we have valid choices
-        if my_image_one is not None:
-            self.choice1_with = sum(1 for p in other_players 
-                                if p.field_maybe_none('chosen_image_one') == my_image_one)
-            self.choice1_against = len(other_players) - self.choice1_with
-        else:
-            self.choice1_with = 0
-            self.choice1_against = 0
-            
-        if my_image_two is not None:
-            self.choice2_with = sum(1 for p in other_players 
-                                if p.field_maybe_none('chosen_image_two') == my_image_two)
-            self.choice2_against = len(other_players) - self.choice2_with
-        else:
-            self.choice2_with = 0
-            self.choice2_against = 0
-
-    def calculate_payoffs(self):
-        """
-        Calculate final payment for the player
-        Includes base payment of £6 plus bonus based on points earned
-        Points are converted to bonus payment by dividing by 750
-        """
-        self.base_payoff = cu(6)  # Base payoff of £6
-        
-        # Only give bonus if points are positive
-        if self.bonus_payment_score <= 0:
-            self.bonus_payoff = cu(0)
-        else:
-            self.bonus_payoff = cu(round(self.bonus_payment_score / 750, 2))
-        
-        self.total_payoff = self.base_payoff + self.bonus_payoff
-
-    def calculate_choice1_earnings(self):
-        """Calculate earnings from first choice"""
-        chosen_image = self.field_maybe_none('chosen_image_one')
-        if chosen_image is None:
-            self.choice1_earnings = 0
-            return
-            
-        reward_a = self.group.field_maybe_none('round_reward_A')
-        reward_b = self.group.field_maybe_none('round_reward_B')
-        
-        if None in (reward_a, reward_b):
-            self.choice1_earnings = 0
-            return
-            
-        if chosen_image == 'option1A.bmp':
-            choice1_reward = reward_a
-        else:
-            choice1_reward = reward_b
-
-        bet1 = self.field_maybe_none('bet1') or 1
-        self.choice1_earnings = bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * bet1 * 20
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- PAGES: DEFINE THE PAGES USED IN THE GAME INCLUDING WAITING ROOMS, TASKS AND RESULTS ------ #
@@ -748,30 +601,15 @@ class MyPage(Page):
                 setattr(player, bet_field, 1)
 
         # Calculate earnings for both choices
-        player.calculate_choice1_earnings()
         player.choice2_earnings = player.bet2 * 20 * player.trial_reward if player.trial_reward == 1 else -1 * player.bet2 * 20
-
-        # Determine which choice's earnings count for this round and update total scores
-        earnings_type = EARNINGS_SEQUENCE[player.round_number - 1]
-        current_round_earnings = player.choice1_earnings if earnings_type == 'choice1_earnings' else player.choice2_earnings
 
         # Handle first round differently since there's no previous round to reference
         if player.round_number == 1:
-            player.bonus_payment_score = current_round_earnings
-            player.choice1_sum_earnings = player.choice1_earnings
             player.choice2_sum_earnings = player.choice2_earnings
         else:
             # Add current round earnings to previous totals
             previous_player = player.in_round(player.round_number - 1)
-            player.bonus_payment_score = previous_player.bonus_payment_score + current_round_earnings
-            player.choice1_sum_earnings = previous_player.choice1_sum_earnings + player.choice1_earnings
             player.choice2_sum_earnings = previous_player.choice2_sum_earnings + player.choice2_earnings
-
-        # Calculate various performance metrics
-        player.calculate_choice_comparisons()  # How many others made same choices
-        player.choice1_accuracy = player.chosen_image_one == player.group.seventy_percent_image  # Was first choice optimal?
-        player.choice2_accuracy = player.chosen_image_two == player.group.seventy_percent_image  # Was second choice optimal?
-        player.switch_vs_stay = 1 if player.chosen_image_one != player.chosen_image_two else 0  # Did player change their mind?
 
     # vars_for_template method is used to pass variables to the template
     # This is used to display information to the player in the interface
@@ -1010,34 +848,21 @@ class MyPage(Page):
                                 elif p.chosen_image_one == 'option1B.bmp':
                                     p.chosen_image_computer = 'option1B_tr.bmp'
                                     
-                                # Check accuracy against group's high-probability image
-                                if group.field_maybe_none('seventy_percent_image'):
-                                    p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
-                                else:
-                                    logging.error(f"seventy_percent_image not set for group in round {group.round_number}")
-                                    p.choice1_accuracy = False
-                                    
                             except Exception as e:
                                 logging.error(f"Error processing computer choice details for player {p.id_in_group}: {e}")
                                 # Set fallback values
                                 p.chosen_image_one_binary = 1
                                 p.computer_choice_one = True
                                 p.chosen_image_computer = 'option1A_tr.bmp'
-                                p.choice1_accuracy = False
                                 
                         else:
-                            # Record binary coding and accuracy for manual choices
+                            # Record binary coding for manual choices
                             try:
                                 p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
-                                if group.field_maybe_none('seventy_percent_image'):
-                                    p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
-                                else:
-                                    p.choice1_accuracy = False
                             except Exception as e:
                                 logging.error(f"Error processing manual choice details for player {p.id_in_group}: {e}")
                                 p.chosen_image_one_binary = 1
-                                p.choice1_accuracy = False
-                                
+                            
                     except Exception as e:
                         logging.error(f"Error processing choice for player {p.id_in_group}: {e}")
                         # Set safe fallback values
@@ -1046,51 +871,6 @@ class MyPage(Page):
                         p.chosen_image_one = C.IMAGES[0]
                         p.chosen_image_one_binary = 1
                         p.computer_choice_one = True
-                        p.choice1_accuracy = False
-
-                # Record information about other players' choices
-                for p in players:
-                    try:
-                        other_players = p.get_others_in_group()
-                        
-                        # Initialize default values
-                        choice_defaults = [1] * 4  # Default binary choices
-                        computer_defaults = [True] * 4  # Default computer choice flags
-                        accuracy_defaults = [False] * 4  # Default accuracy values
-                        
-                        # Try to get actual values, fall back to defaults if needed
-                        for i, other_p in enumerate(other_players):
-                            try:
-                                # Store choice information
-                                choice_defaults[i] = other_p.field_maybe_none('chosen_image_one_binary') or 1
-                                computer_defaults[i] = other_p.field_maybe_none('computer_choice_one') or True
-                                accuracy_defaults[i] = other_p.field_maybe_none('choice1_accuracy') or False
-                            except Exception as e:
-                                logging.error(f"Error getting other player {i+1} data for player {p.id_in_group}: {e}")
-                        
-                        # Assign values with fallbacks
-                        p.player_1_choice_one = choice_defaults[0]
-                        p.player_2_choice_one = choice_defaults[1]
-                        p.player_3_choice_one = choice_defaults[2]
-                        p.player_4_choice_one = choice_defaults[3]
-                        
-                        p.player_1_computer_choice_one = computer_defaults[0]
-                        p.player_2_computer_choice_one = computer_defaults[1]
-                        p.player_3_computer_choice_one = computer_defaults[2]
-                        p.player_4_computer_choice_one = computer_defaults[3]
-                        
-                        p.player1_choice1_accuracy = accuracy_defaults[0]
-                        p.player2_choice1_accuracy = accuracy_defaults[1]
-                        p.player3_choice1_accuracy = accuracy_defaults[2]
-                        p.player4_choice1_accuracy = accuracy_defaults[3]
-                        
-                    except Exception as e:
-                        logging.error(f"Error recording other players' info for player {p.id_in_group}: {e}")
-                        # Set safe fallback values for all other player fields
-                        for i in range(1, 5):
-                            setattr(p, f'player_{i}_choice_one', 1)
-                            setattr(p, f'player_{i}_computer_choice_one', True)
-                            setattr(p, f'player{i}_choice1_accuracy', False)
 
                 # Move to betting phase
                 return {p.id_in_group: dict(
@@ -1112,8 +892,6 @@ class MyPage(Page):
         # Handle display of betting interface
 
         if 'show_bet_container' in data and data['show_bet_container']:
-            for p in players:
-                p.calculate_choice_comparisons()
 
             player.participant.vars['bet_timer_started'] = True
             player.participant.vars['bet_phase_start_time'] = time.time()
@@ -1168,8 +946,6 @@ class MyPage(Page):
             player.manual_second_choice = True
             player.second_choice_time = round(data['second_choice_time'] / 1000, 2)
             player.chosen_image_two_binary = 1 if player.chosen_image_two == 'option1A.bmp' else 2
-            player.choice2_accuracy = player.chosen_image_two == player.group.seventy_percent_image
-            player.switch_vs_stay = 1 if player.field_maybe_none('chosen_image_one') != player.chosen_image_two else 0
             player.chosen_image_computer_two = ''
             player.computer_choice2 = ''
             
@@ -1193,30 +969,8 @@ class MyPage(Page):
                 # Calculate metrics for all choices
                 if p.field_maybe_none('chosen_image_two') is not None:
                     p.chosen_image_two_binary = 1 if p.chosen_image_two == 'option1A.bmp' else 2
-                    p.choice2_accuracy = p.chosen_image_two == p.group.seventy_percent_image
-                    p.switch_vs_stay = 1 if p.field_maybe_none('chosen_image_one') != p.chosen_image_two else 0
                 else:
                     print(f"Warning: chosen_image_two is None for player {p.id_in_group}")
-
-            # Record information about other players' second choices
-            for p in players:
-                other_players = p.get_others_in_group()
-                p.player_1_choice_two = other_players[0].chosen_image_two_binary
-                p.player_2_choice_two = other_players[1].chosen_image_two_binary
-                p.player_3_choice_two = other_players[2].chosen_image_two_binary
-                p.player_4_choice_two = other_players[3].chosen_image_two_binary
-                p.player_1_computer_choice_two = other_players[0].computer_choice_two
-                p.player_2_computer_choice_two = other_players[1].computer_choice_two
-                p.player_3_computer_choice_two = other_players[2].computer_choice_two
-                p.player_4_computer_choice_two = other_players[3].computer_choice_two
-                p.player1_choice2_accuracy = other_players[0].choice2_accuracy
-                p.player2_choice2_accuracy = other_players[1].choice2_accuracy
-                p.player3_choice2_accuracy = other_players[2].choice2_accuracy
-                p.player4_choice2_accuracy = other_players[3].choice2_accuracy
-
-            # Update choice comparisons
-            for p in players:
-                p.calculate_choice_comparisons()
 
             # Move to second betting phase if not already there
             if not group.bet_container_displayed:
@@ -1263,14 +1017,6 @@ class MyPage(Page):
                     p.choice2_earnings = p.bet2 * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2 * 20
                     p.choice2_sum_earnings = sum([prev_player.choice2_earnings for prev_player in p.in_previous_rounds()]) + p.choice2_earnings
                     p.loss_or_gain = -1 if p.choice2_earnings < 0 else 1
-
-                # Record gains/losses for other players
-                for p in players:
-                    other_players = p.get_others_in_group()
-                    p.loss_or_gain_player1 = 0 if other_players[0].choice2_earnings < 0 else 1
-                    p.loss_or_gain_player2 = 0 if other_players[1].choice2_earnings < 0 else 1
-                    p.loss_or_gain_player3 = 0 if other_players[2].choice2_earnings < 0 else 1
-                    p.loss_or_gain_player4 = 0 if other_players[3].choice2_earnings < 0 else 1
 
                 # Generate random delay before next round
                 group.generate_intertrial_interval()
