@@ -594,16 +594,6 @@ class Player(BasePlayer):
     player_3_choice_two = models.IntegerField()
     player_4_choice_two = models.IntegerField()
     
-    # Track when computer made choices for other players
-    player_1_computer_choice_one = models.BooleanField()
-    player_2_computer_choice_one = models.BooleanField()
-    player_3_computer_choice_one = models.BooleanField()
-    player_4_computer_choice_one = models.BooleanField()
-    player_1_computer_choice_two = models.BooleanField()
-    player_2_computer_choice_two = models.BooleanField()
-    player_3_computer_choice_two = models.BooleanField()
-    player_4_computer_choice_two = models.BooleanField()
-    
     # Track accuracy of other players' choices
     player1_choice1_accuracy = models.BooleanField()
     player2_choice1_accuracy = models.BooleanField()
@@ -627,6 +617,31 @@ class Player(BasePlayer):
     disconnection_streak = models.IntegerField(initial=0)
     is_bot = models.BooleanField(initial=False)
     last_connection_time = models.FloatField(initial=0)
+
+    last_check_time = models.FloatField(initial=0)
+    consecutive_missed_checks = models.IntegerField(initial=0)
+
+    def check_connection(self, current_time, time_since_activity):
+        # Only check every 10 seconds
+        if current_time - self.last_check_time < 10:
+            return False
+            
+        self.last_check_time = current_time
+        
+        # If inactive for more than 15 seconds
+        if time_since_activity > 15:
+            self.consecutive_missed_checks += 1
+            if self.consecutive_missed_checks >= 3:
+                self.increment_disconnect_streak()
+                return True
+        else:
+            # Reset counter if activity detected
+            if self.consecutive_missed_checks > 0:
+                self.consecutive_missed_checks = 0
+                self.reset_disconnect_streak()
+                return True
+                    
+        return False
 
     # Increment the disconnection streak for a player who has been inactive for too long (10 seconds)
     # This is used to activate a bot for players who have disconnected from the game but is sensitive to page reloads
@@ -1005,29 +1020,22 @@ class MyPage(Page):
         if 'check_connection' in data:
             try:
                 current_time = time.time()
-                last_disconnect = player.participant.vars.get('last_disconnect_time', 0)
-                last_activity = player.participant.vars.get('last_activity_time', current_time)
-                time_since_disconnect = current_time - last_disconnect
                 time_since_activity = data.get('time_since_activity', 0) / 1000  # Convert ms to seconds
                 
-                # Update connection time
-                player.last_connection_time = current_time
-                
-                # Process connection status
-                if time_since_activity > 15:  # If inactive for over 15 seconds
-                    if time_since_disconnect > 10:  # And disconnected for over 10 seconds
-                        player.increment_disconnect_streak()
-                else:
-                    # Only reset streak if properly connected for a while
-                    if time_since_disconnect >= 20:
-                        player.reset_disconnect_streak()
+                # Only process if connection status actually changed
+                if player.check_connection(current_time, time_since_activity):
+                    logging.info(f"Player {player.id_in_group} connection status changed")
+                    
+                    # Only activate bot if genuinely disconnected
+                    if (player.field_maybe_none('disconnection_streak') >= 5 and 
+                        not player.is_bot):
+                        player.group.activate_bot(player)
                         
-                # Detailed logging (5% of checks)
-                if random.random() < 0.05:
-                    current_streak = player.field_maybe_none('disconnection_streak') or 0
+                return  # Exit early if just a routine check
+                
             except Exception as e:
-                logging.error(f"Error processing connection check for player {player.id_in_group}: {e}")
-            return
+                logging.error(f"Error in connection check: {e}")
+                return
 
         # Handle disconnection notifications
         if 'connection_lost' in data:
@@ -1206,7 +1214,6 @@ class MyPage(Page):
                         
                         # Initialize default values
                         choice_defaults = [1] * 4  # Default binary choices
-                        computer_defaults = [0] * 4  # Default to 0 (manual choice) instead of True
                         accuracy_defaults = [False] * 4  # Default accuracy values
                         
                         # Try to get actual values, fall back to defaults if needed
@@ -1214,9 +1221,10 @@ class MyPage(Page):
                             try:
                                 # Store choice information
                                 choice_defaults[i] = other_p.field_maybe_none('chosen_image_one_binary') or 1
-                                # Set to 1 if computer made choice, 0 if manual
-                                computer_defaults[i] = 1 if other_p.field_maybe_none('computer_choice_one') else 0
+
+                                # Store choice accuracy information
                                 accuracy_defaults[i] = other_p.field_maybe_none('choice1_accuracy') or False
+
                             except Exception as e:
                                 logging.error(f"Error getting other player {i+1} data for player {p.id_in_group}: {e}")
                         
@@ -1225,12 +1233,6 @@ class MyPage(Page):
                         p.player_2_choice_one = choice_defaults[1]
                         p.player_3_choice_one = choice_defaults[2]
                         p.player_4_choice_one = choice_defaults[3]
-
-                        # Assign computer choice flags
-                        p.player_1_computer_choice_one = computer_defaults[0]
-                        p.player_2_computer_choice_one = computer_defaults[1]
-                        p.player_3_computer_choice_one = computer_defaults[2]
-                        p.player_4_computer_choice_one = computer_defaults[3]
                         
                         # Assign accuracy values
                         p.player1_choice1_accuracy = accuracy_defaults[0]
@@ -1404,12 +1406,6 @@ class MyPage(Page):
                 p.player_2_choice_two = other_players[1].chosen_image_two_binary
                 p.player_3_choice_two = other_players[2].chosen_image_two_binary
                 p.player_4_choice_two = other_players[3].chosen_image_two_binary
-
-                # Set computer choices for other players
-                p.player_1_computer_choice_two = other_players[0].computer_choice_two
-                p.player_2_computer_choice_two = other_players[1].computer_choice_two
-                p.player_3_computer_choice_two = other_players[2].computer_choice_two
-                p.player_4_computer_choice_two = other_players[3].computer_choice_two
 
                 # Set accuracy values for other players
                 p.player1_choice2_accuracy = other_players[0].choice2_accuracy

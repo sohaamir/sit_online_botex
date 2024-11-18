@@ -321,55 +321,24 @@
 
     // Function to send real-time data to the server
     function startConnectionChecking() {
-        const CHECK_INTERVAL = 10000; // Check every 10 seconds
-        const ACTIVITY_TIMEOUT = 15000; // 15 seconds without activity
-        const DISCONNECT_THRESHOLD = 3; // Need 3 consecutive failed checks
-        
+        const CHECK_INTERVAL = 10000;  // Check every 10 seconds
         let lastActivityTime = Date.now();
-        let consecutiveFailures = 0;
         
-        // Record all types of activity
-        function recordActivity() {
-            lastActivityTime = Date.now();
-            try {
-                liveSend({record_activity: true});
-            } catch (error) {
-                console.error("Failed to record activity:", error);
-            }
-        }
-        
-        // Monitor user activity
+        // Simple activity tracking
         ['mousemove', 'keydown', 'click', 'touchstart'].forEach(eventType => {
-            document.addEventListener(eventType, recordActivity);
+            document.addEventListener(eventType, () => {
+                lastActivityTime = Date.now();
+            });
         });
-
+        
+        // Main connection check loop
         setInterval(() => {
             const timeSinceActivity = Date.now() - lastActivityTime;
             
-            try {
-                liveSend({
-                    check_connection: true,
-                    time_since_activity: timeSinceActivity
-                });
-                consecutiveFailures = 0;
-            } catch (error) {
-                consecutiveFailures++;
-                console.log(`Connection check failed (${consecutiveFailures}/${DISCONNECT_THRESHOLD})`);
-                
-                // Only report disconnection if we've had multiple failures AND no recent activity
-                if (consecutiveFailures >= DISCONNECT_THRESHOLD && timeSinceActivity > ACTIVITY_TIMEOUT) {
-                    console.log("Extended inactivity detected");
-                    try {
-                        liveSend({
-                            connection_lost: true,
-                            duration: timeSinceActivity,
-                            consecutive_failures: consecutiveFailures
-                        });
-                    } catch (e) {
-                        console.error("Failed to send disconnect notification:", e);
-                    }
-                }
-            }
+            liveSend({
+                check_connection: true,
+                time_since_activity: timeSinceActivity
+            });
         }, CHECK_INTERVAL);
     }
 
