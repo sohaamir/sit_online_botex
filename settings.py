@@ -39,7 +39,7 @@ ADMIN_PASSWORD = environ.get('OTREE_ADMIN_PASSWORD')
 # OTREE-SPECIFIC SETTINGS
 # ----------------------------------------------------------------
 # Flag to indicate production environment. This affects various oTree behaviors.
-OTREE_PRODUCTION = True
+# OTREE_PRODUCTION = True
 
 # Custom fields for storing data at the participant and session level.
 # These allow you to store additional data not covered by oTree's default fields.
