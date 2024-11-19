@@ -3,6 +3,7 @@
 # -------------------------------------------------------------------------------------------------------------------- #
 
 from django.db.models import Prefetch
+from otree.models import BasePlayer
 from django.db import connection
 from otree.api import *
 import threading
@@ -417,9 +418,18 @@ class Group(BaseGroup):
     
     def get_players(self):
         """Optimized method to get players with pre-fetched related data"""
-        return super().get_players().select_related('participant').prefetch_related(
-            Prefetch('in_previous_rounds')
-        )
+
+        # Get the player model for the current app
+        PlayerModel = self.player_set.model
+
+        # Use the model manager to build the query
+        return (PlayerModel.objects
+                .filter(group=self)
+                .select_related('participant')
+                .prefetch_related(
+                    Prefetch('in_previous_rounds')
+                )
+                .order_by('id_in_group'))
 
 #### ---------------- Define the round reward ------------------------ ####
 # Sets up the rewards for each option in the current round based on the pre-generated sequence
@@ -1578,7 +1588,7 @@ class FinalResults(Page):
     @staticmethod
     def vars_for_template(player: Player):
         log_query_count("Final Results - Total queries across all rounds")
-        
+
         # Calculate final payments efficiently
         player.calculate_payoffs()
 
