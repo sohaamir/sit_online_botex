@@ -7,3 +7,5 @@ asgiref==3.8.1
 asyncio==3.4.3
 requests
 ws4py
+redis>=4.0.0
+django-redis>=5.0.0

@@ -64,6 +64,28 @@ SECURE_SSL_REDIRECT = True
 # Additional security settings
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
+# REDIS CONFIGURATION
+# ----------------------------------------------------------------
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": REDIS_URL,
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "MAX_ENTRIES": 1000,  # Limit cache size
+            "SOCKET_CONNECT_TIMEOUT": 5,  # Timeout settings
+            "SOCKET_TIMEOUT": 5,
+            "RETRY_ON_TIMEOUT": True,  # Auto retry on timeout
+        },
+        "KEY_PREFIX": "social_influence_task"  # Prefix for cache keys
+    }
+}
+
+# Cache timeout settings
+CACHE_TTL = 300  # 5 minutes default timeout
+
 # SESSION CONFIGURATION
 # ----------------------------------------------------------------
 # Define the experimental session(s) for your oTree project.

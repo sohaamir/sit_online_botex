@@ -2,6 +2,8 @@
 # --------------- IMPORTS: IMPORT ALL NECESSARY MODULES AND LIBRARIES REQUIRED FOR THE GAME ----------------- #
 # -------------------------------------------------------------------------------------------------------------------- #
 
+from django.core.cache import cache
+from django.db import transaction
 from otree.api import *
 import threading
 from . import *
@@ -426,28 +428,97 @@ class Group(BaseGroup):
 # Calculates earnings for each player based on their choices, bets, and the rewards
 
     def set_payoffs(self):
-        # Ensure rewards are set and calculated for all players
-        self.set_round_reward()
-        self.calculate_player_rewards()
-
-        print(f"\n--- Round {self.round_number} Results ---")
-
-        for p in self.get_players():
-            # Calculate earnings for second choice: bet amount * 20 * reward (1 or 0)
-            # If reward is 0, player loses their bet amount * 20
-            p.choice2_earnings = p.bet2 * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2 * 20
+        try:
+            with transaction.atomic():
+                # Pre-calculate all rewards at once
+                self.set_round_reward()
+                self.calculate_player_rewards()
+                
+                # Batch update all players
+                updates = []
+                for p in self.get_players():
+                    # Calculate both choice earnings at once
+                    if p.chosen_image_one == 'option1A.bmp':
+                        choice1_reward = self.round_reward_A
+                    elif p.chosen_image_one == 'option1B.bmp':
+                        choice1_reward = self.round_reward_B
+                    else:
+                        choice1_reward = 0
+                        
+                    p.choice1_earnings = p.bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * p.bet1 * 20
+                    p.choice2_earnings = p.bet2 * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2 * 20
+                    
+                    # Determine which earnings count for bonus
+                    earnings_type = EARNINGS_SEQUENCE[self.round_number - 1]
+                    current_round_earnings = p.choice1_earnings if earnings_type == 'choice1_earnings' else p.choice2_earnings
+                    
+                    # Calculate cumulative scores
+                    if self.round_number == 1:
+                        p.bonus_payment_score = current_round_earnings
+                        p.choice1_sum_earnings = p.choice1_earnings
+                        p.choice2_sum_earnings = p.choice2_earnings
+                    else:
+                        previous_player = p.in_round(self.round_number - 1)
+                        p.bonus_payment_score = previous_player.bonus_payment_score + current_round_earnings
+                        p.choice1_sum_earnings = previous_player.choice1_sum_earnings + p.choice1_earnings
+                        p.choice2_sum_earnings = previous_player.choice2_sum_earnings + p.choice2_earnings
+                    
+                    # Set win/loss indicator
+                    p.loss_or_gain = -1 if p.choice2_earnings < 0 else 1
+                    
+                    updates.append(p)
+                
+                # Single bulk update for all players
+                Player.objects.bulk_update(
+                    updates,
+                    ['choice1_earnings', 'choice2_earnings', 'bonus_payment_score',
+                     'choice1_sum_earnings', 'choice2_sum_earnings', 'loss_or_gain']
+                )
+                
+                # Update other players' win/loss indicators in one go
+                for p in self.get_players():
+                    other_players = p.get_others_in_group()
+                    p.loss_or_gain_player1 = 0 if other_players[0].choice2_earnings < 0 else 1
+                    p.loss_or_gain_player2 = 0 if other_players[1].choice2_earnings < 0 else 1
+                    p.loss_or_gain_player3 = 0 if other_players[2].choice2_earnings < 0 else 1
+                    p.loss_or_gain_player4 = 0 if other_players[3].choice2_earnings < 0 else 1
+                
+                Player.objects.bulk_update(
+                    updates,
+                    ['loss_or_gain_player1', 'loss_or_gain_player2', 
+                     'loss_or_gain_player3', 'loss_or_gain_player4']
+                )
+                
+        except Exception as e:
+            # Fallback to original behavior if batch update fails
+            self.set_round_reward()
+            self.calculate_player_rewards()
             
-            # Calculate earnings for first choice similarly
-            choice1_reward = 0
-            chosen_image_one = p.field_maybe_none('chosen_image_one')
-            
-            # Determine reward based on which image was chosen and which has high probability
-            if chosen_image_one == 'option1A.bmp':
-                choice1_reward = self.round_reward_A
-            elif chosen_image_one == 'option1B.bmp':
-                choice1_reward = self.round_reward_B
-            
-            p.choice1_earnings = p.bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * p.bet1 * 20
+            for p in self.get_players():
+                if p.chosen_image_one == 'option1A.bmp':
+                    choice1_reward = self.round_reward_A
+                elif p.chosen_image_one == 'option1B.bmp':
+                    choice1_reward = self.round_reward_B
+                else:
+                    choice1_reward = 0
+                    
+                p.choice1_earnings = p.bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * p.bet1 * 20
+                p.choice2_earnings = p.bet2 * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2 * 20
+                
+                earnings_type = EARNINGS_SEQUENCE[self.round_number - 1]
+                current_round_earnings = p.choice1_earnings if earnings_type == 'choice1_earnings' else p.choice2_earnings
+                
+                if self.round_number == 1:
+                    p.bonus_payment_score = current_round_earnings
+                    p.choice1_sum_earnings = p.choice1_earnings
+                    p.choice2_sum_earnings = p.choice2_earnings
+                else:
+                    previous_player = p.in_round(self.round_number - 1)
+                    p.bonus_payment_score = previous_player.bonus_payment_score + current_round_earnings
+                    p.choice1_sum_earnings = previous_player.choice1_sum_earnings + p.choice1_earnings
+                    p.choice2_sum_earnings = previous_player.choice2_sum_earnings + p.choice2_earnings
+                
+                p.loss_or_gain = -1 if p.choice2_earnings < 0 else 1
 
         print("-----------------------------\n")
 
@@ -1075,36 +1146,45 @@ class MyPage(Page):
 
         # Check if player has loaded the page
         if 'my_page_load_time' in data:
-            # Convert and record load times for individual player
-            player.my_page_load_time = round(data['my_page_load_time'] / 1000, 2)
-            player.individual_page_load_time = round(data['individual_page_load_time'] / 1000, 2)
+            cache_key = f'load_times_main_{player.group.id}_round_{player.round_number}'
             
-            # Track number of players who have loaded the page
-            if not player.field_maybe_none('my_page_load_time'):
-                group.players_loaded_count += 1
-            
-            # Check if all connected players have loaded
-            connected_players = [p for p in players if p.field_maybe_none('last_connection_time') > 0]
-            all_connected_loaded = all(
-                p.field_maybe_none('my_page_load_time') is not None 
-                for p in connected_players
-            )
-            
-            # When all connected players are loaded and have page load times
-            if all_connected_loaded and len(connected_players) > 0:
-                # Calculate and record group page load time
-                group.my_page_load_time = round(max(p.my_page_load_time for p in connected_players), 2)
+            try:
+                # Store individual load time
+                player.my_page_load_time = round(data['my_page_load_time'] / 1000, 2)
+                player.individual_page_load_time = round(data['individual_page_load_time'] / 1000, 2)
                 
-                # Handle reversals FIRST
-                group.reversal_learning()
+                # Use cache to track loaded players
+                with cache.lock(f'lock_{cache_key}', timeout=5):
+                    loaded_players = cache.get(cache_key, set())
+                    loaded_players.add(player.id_in_group)
+                    cache.set(cache_key, loaded_players, timeout=60)
+                    
+                    # If all connected players loaded, process group updates in batch
+                    if len(loaded_players) == C.PLAYERS_PER_GROUP:
+                        group = player.group
+                        with transaction.atomic():
+                            group.players_loaded_count = C.PLAYERS_PER_GROUP
+                            group.my_page_load_time = round(max(p.my_page_load_time for p in group.get_players()), 2)
+                            group.reversal_learning()
+                            group.set_round_reward()
+                            group.save()
+                            
+                        cache.delete(cache_key)  # Clean up
+                        return {p.id_in_group: dict(start_choice_phase_timer=True) for p in group.get_players()}
                 
-                # Then set rewards
-                group.set_round_reward()
+                return {player.id_in_group: dict(acknowledged=True)}
                 
-                # Signal all players to show content and start timer
-                return {p.id_in_group: dict(start_choice_phase_timer=True) for p in players}
-            
-            return {player.id_in_group: dict(acknowledged=True)}
+            except Exception as e:
+                # Fallback to original behavior if caching fails
+                if not player.field_maybe_none('my_page_load_time'):
+                    group = player.group
+                    group.players_loaded_count += 1
+                    if group.players_loaded_count == C.PLAYERS_PER_GROUP:
+                        group.my_page_load_time = round(max(p.my_page_load_time for p in group.get_players()), 2)
+                        group.reversal_learning()
+                        group.set_round_reward()
+                        return {p.id_in_group: dict(start_choice_phase_timer=True) for p in group.get_players()}
+                return {player.id_in_group: dict(acknowledged=True)}
 
         # ---- FIRST CHOICE PHASE ----
         # Handle player's first choice and timing
@@ -1456,30 +1536,16 @@ class MyPage(Page):
                         p.second_bet_time = DECISION_TIME
                         response[p.id_in_group] = dict(highlight_computer_second_bet=p.bet2)
 
-                # Calculate final results for the round
-                group.set_round_reward()
-                group.calculate_player_rewards()
-
-                # Calculate earnings for all players
-                for p in players:
-                    p.choice2_earnings = p.bet2 * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2 * 20
-                    p.choice2_sum_earnings = sum([prev_player.choice2_earnings for prev_player in p.in_previous_rounds()]) + p.choice2_earnings
-                    p.loss_or_gain = -1 if p.choice2_earnings < 0 else 1
-
-                # Record gains/losses for other players
-                for p in players:
-                    other_players = p.get_others_in_group()
-                    p.loss_or_gain_player1 = 0 if other_players[0].choice2_earnings < 0 else 1
-                    p.loss_or_gain_player2 = 0 if other_players[1].choice2_earnings < 0 else 1
-                    p.loss_or_gain_player3 = 0 if other_players[2].choice2_earnings < 0 else 1
-                    p.loss_or_gain_player4 = 0 if other_players[3].choice2_earnings < 0 else 1
+                # Calculate all payoffs with the optimized method
+                # This now includes all the earnings calculations, loss/gain calculations, 
+                # and other players' loss/gain in a batched way
+                group.set_payoffs()
 
                 # Generate random delay before next round
                 group.generate_intertrial_interval()
                 group.next_round_transition_time = time.time() * 1000 + group.intertrial_interval
 
                 # Prepare final display information
-                # Create dictionaries mapping player IDs to their chosen images and win/loss status
                 chosen_images_secondchoicepage = {
                     p.id_in_group: f"main_task/{p.chosen_image_computer_two if p.computer_choice_two else p.chosen_image_two}" 
                     for p in players
