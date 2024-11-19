@@ -2,9 +2,6 @@
 # --------------- IMPORTS: IMPORT ALL NECESSARY MODULES AND LIBRARIES REQUIRED FOR THE GAME ----------------- #
 # -------------------------------------------------------------------------------------------------------------------- #
 
-from django.db.models import Prefetch
-from otree.models import BasePlayer
-from django.db import connection
 from otree.api import *
 import threading
 from . import *
@@ -22,23 +19,6 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-
-# Add after your imports
-TOTAL_QUERIES = 0
-
-def log_query_count(action_name, round_number=None):
-    """Debug function to log number of database queries"""
-    global TOTAL_QUERIES
-    query_count = len(connection.queries)
-    current_queries = query_count - TOTAL_QUERIES
-    TOTAL_QUERIES = query_count
-    
-    if round_number:
-        print(f"Round {round_number} - {action_name}: {current_queries} queries (Total: {TOTAL_QUERIES})")
-    else:
-        print(f"{action_name}: {current_queries} queries (Total: {TOTAL_QUERIES})")
-    
-    return query_count
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # --------------- AUTHORSHIP INFORMATION: DEFINE THE AUTHOR AND DOCUMENTATION FOR THE GAME ----------------- #
@@ -415,21 +395,6 @@ class Group(BaseGroup):
         except Exception as e:
             logging.error(f"Bot activation failed: {e}")
             player.is_bot = False
-    
-    def get_players(self):
-        """Optimized method to get players with pre-fetched related data"""
-
-        # Get the player model for the current app
-        PlayerModel = self.player_set.model
-
-        # Use the model manager to build the query
-        return (PlayerModel.objects
-                .filter(group=self)
-                .select_related('participant')
-                .prefetch_related(
-                    Prefetch('in_previous_rounds')
-                )
-                .order_by('id_in_group'))
 
 #### ---------------- Define the round reward ------------------------ ####
 # Sets up the rewards for each option in the current round based on the pre-generated sequence
@@ -656,22 +621,6 @@ class Player(BasePlayer):
     last_check_time = models.FloatField(initial=0)
     consecutive_missed_checks = models.IntegerField(initial=0)
 
-    def get_others_in_group(self):
-        """Optimized method to get other players in group"""
-        return super().get_others_in_group().select_related('participant')
-    
-    def in_previous_rounds(self):
-        """Optimized method to get player's previous rounds"""
-        return super().in_previous_rounds().select_related('group', 'participant')
-
-    def in_round(self, round_number):
-        """Optimized method to get player in specific round"""
-        return super().in_round(round_number).select_related('group', 'participant')
-    
-    def log_queries(self):
-        """Debug function to log number of queries"""
-        return len(connection.queries)
-
     def check_connection(self, current_time, time_since_activity):
         # Only check every 10 seconds
         if current_time - self.last_check_time < 10:
@@ -750,18 +699,46 @@ class Player(BasePlayer):
         """Reset all player variables to their initial states at the start of each round"""
         pass
         
+    def calculate_choice_comparisons(self):
+        """Calculate choice comparisons with other players in a single batch"""
+        other_players = self.get_others_in_group()
+        updates = {}
+        
+        # Get all choices at once
+        my_choices = {
+            '1': self.field_maybe_none('chosen_image_one'),
+            '2': self.field_maybe_none('chosen_image_two')
+        }
+        
+        other_choices = {
+            '1': [p.field_maybe_none('chosen_image_one') for p in other_players],
+            '2': [p.field_maybe_none('chosen_image_two') for p in other_players]
+        }
+        
+        # Calculate both comparisons at once
+        for choice_num in ['1', '2']:
+            my_choice = my_choices[choice_num]
+            if my_choice is not None:
+                with_count = sum(1 for c in other_choices[choice_num] if c == my_choice)
+                updates[f'choice{choice_num}_with'] = with_count
+                updates[f'choice{choice_num}_against'] = len(other_players) - with_count
+            else:
+                updates[f'choice{choice_num}_with'] = 0
+                updates[f'choice{choice_num}_against'] = 0
+        
+        # Apply all updates at once
+        for field, value in updates.items():
+            setattr(self, field, value)
+
     def calculate_payoffs(self):
-        """Calculate final payment with optimized queries"""
+        """
+        Calculate final payment for the player
+        Includes base payment of £6 plus bonus based on points earned
+        Points are converted to bonus payment by dividing by 750
+        """
         self.base_payoff = cu(6)  # Base payoff of £6
         
-        # Get previous rounds data efficiently in one query
-        if self.round_number > 1:
-            previous_rounds = self.in_previous_rounds()
-            cumulative_score = sum(p.bonus_payment_score for p in previous_rounds)
-            self.bonus_payment_score = cumulative_score + self.choice2_earnings
-        else:
-            self.bonus_payment_score = self.choice2_earnings
-        
+        # Only give bonus if points are positive
         if self.bonus_payment_score <= 0:
             self.bonus_payoff = cu(0)
         else:
@@ -769,31 +746,12 @@ class Player(BasePlayer):
         
         self.total_payoff = self.base_payoff + self.bonus_payoff
 
-    def calculate_choice_comparisons(self):
-        """Calculate how many others made same choices with optimized queries"""
-        other_players = self.get_others_in_group()
-        
-        my_choice_one = self.field_maybe_none('chosen_image_one')
-        my_choice_two = self.field_maybe_none('chosen_image_two')
-        
-        if my_choice_one is not None:
-            self.choice1_with = sum(1 for p in other_players 
-                                if p.field_maybe_none('chosen_image_one') == my_choice_one)
-            self.choice1_against = len(other_players) - self.choice1_with
-        else:
-            self.choice1_with = 0
-            self.choice1_against = 0
-        
-        if my_choice_two is not None:
-            self.choice2_with = sum(1 for p in other_players 
-                                if p.field_maybe_none('chosen_image_two') == my_choice_two)
-            self.choice2_against = len(other_players) - self.choice2_with
-        else:
-            self.choice2_with = 0
-            self.choice2_against = 0
-
     def calculate_choice1_earnings(self):
-        """Calculate earnings from first choice with optimized queries"""
+        """
+        Calculate earnings from first choice
+        Points = bet amount * 20 * reward (1 or 0)
+        If no reward, points are negative
+        """
         if self.chosen_image_one == 'option1A.bmp':
             choice1_reward = self.group.field_maybe_none('round_reward_A') or 0
         elif self.chosen_image_one == 'option1B.bmp':
@@ -802,6 +760,48 @@ class Player(BasePlayer):
             return
 
         self.choice1_earnings = self.bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * self.bet1 * 20
+
+    def set_computer_choice(self, choice_number, decision_time):
+        """Set computer choice for a player in a single batch operation"""
+        updates = {}
+        
+        # Ensure valid image fields
+        if self.field_maybe_none('left_image') is None:
+            updates['left_image'] = C.IMAGES[0]
+        if self.field_maybe_none('right_image') is None:
+            updates['right_image'] = C.IMAGES[1]
+        
+        # Generate random choice
+        random_choice = random.choice(['left', 'right'])
+        chosen_img = (self.field_maybe_none('left_image') if random_choice == 'left' 
+                    else self.field_maybe_none('right_image'))
+        
+        # Prepare all updates in a single dictionary
+        field_prefix = '' if choice_number == 1 else '_two'
+        updates.update({
+            f'choice{choice_number}': random_choice,
+            f'computer_choice{choice_number}': random_choice,
+            f'chosen_image{field_prefix}': chosen_img,
+            f'{"initial" if choice_number == 1 else "second"}_choice_time': decision_time,
+            f'chosen_image{field_prefix}_binary': 1 if chosen_img == 'option1A.bmp' else 2,
+            f'computer_choice_{choice_number}': True,
+            f'chosen_image_computer{field_prefix}': f"{chosen_img.split('.')[0]}_tr.bmp"
+        })
+        
+        # Add accuracy calculation if high-probability image is set
+        if self.group.field_maybe_none('seventy_percent_image'):
+            updates[f'choice{choice_number}_accuracy'] = chosen_img == self.group.seventy_percent_image
+        else:
+            updates[f'choice{choice_number}_accuracy'] = False
+        
+        # Apply all updates at once
+        for field, value in updates.items():
+            setattr(self, field, value)
+        
+        # Update participant vars
+        self.participant.vars[f'chosen_image{field_prefix}'] = chosen_img
+        
+        return random_choice
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- WAIT AND TRANSITION PAGES: USED TO FORM GROUPS BY ARRIVAL TIME ON THE APP ------ #
@@ -865,7 +865,6 @@ class MyPage(Page):
     # It's used to process the player's choices and bets
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
-
         # Add at the start of the method:
         current_streak = player.field_maybe_none('disconnection_streak') or 0
         if current_streak >= 5 and not player.is_bot:
@@ -888,67 +887,75 @@ class MyPage(Page):
         if timeout_happened:
             player.participant.vars['timed_out'] = True
 
-        # Prefetch previous round data if needed
-        if player.round_number > 1:
-            previous_player = player.in_round(player.round_number - 1).select_related('group')
-        
         # Process both first and second choices/bets using the same logic
+        # This loop handles two sets of fields: first choice/bet and second choice/bet
         for choice_field, computer_choice_field, bet_field, image_field in [
             ('choice1', 'computer_choice1', 'bet1', 'chosen_image_one'),
             ('choice2', 'computer_choice2', 'bet2', 'chosen_image_two')
         ]:
+            # Get the player's manual choice and any computer-made choice
             manual_choice = player.field_maybe_none(choice_field)
             computer_choice = player.field_maybe_none(computer_choice_field)
 
-            # Decision tree for handling choices
+            # Decision tree for handling choices:
+            # 1. If there's a valid manual choice but no valid computer choice, keep manual choice
             if manual_choice is not None and (computer_choice is None or computer_choice not in ['left', 'right']):
                 pass  # Keep the manual choice
+
+            # 2. If there's a valid computer choice, use it instead
             elif computer_choice in ['left', 'right']:
                 setattr(player, choice_field, None)
                 setattr(player, computer_choice_field, computer_choice)
+                
+            # 3. If neither choice is valid, explicitly set both to None
             elif manual_choice is None and computer_choice is None:
                 setattr(player, choice_field, None)
                 setattr(player, computer_choice_field, None)
 
-            # Determine final choice and set chosen image
+            # Determine which choice (manual or computer) to use as the final choice
             final_choice = getattr(player, computer_choice_field) or getattr(player, choice_field)
+
+            # Convert the left/right choice into the actual image chosen
             if final_choice in ['left', 'right']:
                 chosen_image = player.left_image if final_choice == 'left' else player.right_image
+                # Save the chosen image both in the player model and participant variables
                 setattr(player, image_field, chosen_image)
                 player.participant.vars[image_field] = chosen_image
             else:
+                # If no valid choice was made, set chosen image to None
                 setattr(player, image_field, None)
                 player.participant.vars[image_field] = None
 
-            # Set default bet
+            # Set default bet of 1 if no bet was made
             bet_value = player.field_maybe_none(bet_field)
             if bet_value is None:
                 setattr(player, bet_field, 1)
 
-        # Calculate earnings with prefetched data
+        # Calculate earnings for both choices
         player.calculate_choice1_earnings()
         player.choice2_earnings = player.bet2 * 20 * player.trial_reward if player.trial_reward == 1 else -1 * player.bet2 * 20
 
-        # Get earnings type and calculate current round earnings
+        # Determine which choice's earnings count for this round and update total scores
         earnings_type = EARNINGS_SEQUENCE[player.round_number - 1]
         current_round_earnings = player.choice1_earnings if earnings_type == 'choice1_earnings' else player.choice2_earnings
 
-        # Update cumulative scores efficiently
+        # Handle first round differently since there's no previous round to reference
         if player.round_number == 1:
             player.bonus_payment_score = current_round_earnings
             player.choice1_sum_earnings = player.choice1_earnings
             player.choice2_sum_earnings = player.choice2_earnings
         else:
-            # Use prefetched previous round data
+            # Add current round earnings to previous totals
+            previous_player = player.in_round(player.round_number - 1)
             player.bonus_payment_score = previous_player.bonus_payment_score + current_round_earnings
             player.choice1_sum_earnings = previous_player.choice1_sum_earnings + player.choice1_earnings
             player.choice2_sum_earnings = previous_player.choice2_sum_earnings + player.choice2_earnings
 
-        # Calculate metrics using prefetched data
-        player.calculate_choice_comparisons()
-        player.choice1_accuracy = player.chosen_image_one == player.group.seventy_percent_image
-        player.choice2_accuracy = player.chosen_image_two == player.group.seventy_percent_image
-        player.switch_vs_stay = 1 if player.chosen_image_one != player.chosen_image_two else 0
+        # Calculate various performance metrics
+        player.calculate_choice_comparisons()  # How many others made same choices
+        player.choice1_accuracy = player.chosen_image_one == player.group.seventy_percent_image  # Was first choice optimal?
+        player.choice2_accuracy = player.chosen_image_two == player.group.seventy_percent_image  # Was second choice optimal?
+        player.switch_vs_stay = 1 if player.chosen_image_one != player.chosen_image_two else 0  # Did the player change their mind?
 
     # app_after_this_page method is used to redirect players who have timed out to a different page
     @staticmethod
@@ -962,42 +969,50 @@ class MyPage(Page):
     @staticmethod
     def vars_for_template(player: Player):
         group = player.group
-        
-        # Use optimized query to get players
-        players = group.get_players()
 
-        if player.id_in_group == 1:
+        # Only process at the start of each round and only once
+        if player.id_in_group == 1:  # Only do this once per round
+            # First do reversal learning
             group.reversal_learning()
+            
+            # Then reset control flags
             group.reset_fields()
-            for p in players:
+            for p in group.get_players():
                 p.reset_fields()
 
-        for p in players:
+        # At the start of each round, check all players' connection status
+        for p in group.get_players():
             current_streak = p.field_maybe_none('disconnection_streak')
             if current_streak is not None and current_streak > 0:
                 logging.info(f"Start of round {group.round_number}: Player {p.id_in_group} has streak of {current_streak}/5")
+                # If they're already at or past threshold, ensure bot is active
                 if current_streak >= 5 and not p.is_bot:
                     p.increment_disconnect_streak()
         
+        # Initialize connection tracking for new rounds
         player.last_connection_time = time.time()
 
+        # Randomly determine which image appears on left/right for each player for each round
         try:
             images = C.IMAGES.copy()
             random.shuffle(images)
             left_image = images[0]
             right_image = images[1]
 
+            # Initialize both fields explicitly 
             player.left_image = left_image
             player.right_image = right_image
 
         except Exception as e:
             logging.error(f"Failed to set images for player {player.id_in_group}: {e}")
+
+            # Provide fallback values
             left_image = 'option1A.bmp'
             right_image = 'option1B.bmp'
             player.left_image = left_image 
             player.right_image = right_image
 
-        # Get other players efficiently
+        # Get other_players before using it
         other_players = player.get_others_in_group()
 
         return {
@@ -1006,7 +1021,7 @@ class MyPage(Page):
             'player_id': player.id_in_group,
             'avatar_image': C.AVATAR_IMAGE,
             'other_player_ids': [p.id_in_group for p in other_players],
-            'chosen_images': {p.id_in_group: f"main_task/{p.field_maybe_none('chosen_image_computer') or p.field_maybe_none('chosen_image_one') or 'default_image.png'}" for p in players},
+            'chosen_images': {p.id_in_group: f"main_task/{p.field_maybe_none('chosen_image_computer') or p.field_maybe_none('chosen_image_one') or 'default_image.png'}" for p in group.get_players()},
             'previous_choice': player.participant.vars.get('chosen_image_one'),
             'previous_bet': player.participant.vars.get('bet1'),
             'round_number': player.round_number,
@@ -1142,143 +1157,60 @@ class MyPage(Page):
         # Handle player's first choice and timing
 
         if 'initial_choice_time' in data:
-            # Calculate and record how long the player took to make their choice
+            updates = {}
+            
+            # Calculate and record timing
             if data['initial_choice_time'] is not None:
                 actual_choice_time = round((data['initial_choice_time'] - player.individual_page_load_time) / 1000, 2)
-                player.initial_choice_time = min(actual_choice_time, DECISION_TIME)  # Cap at 3 seconds
+                updates['initial_choice_time'] = min(actual_choice_time, DECISION_TIME)
             else:
-                player.initial_choice_time = DECISION_TIME
+                updates['initial_choice_time'] = DECISION_TIME
 
             # Record player's manual choice if made
             if 'choice' in data and not player.field_maybe_none('chosen_image_one'):
-                player.choice1 = data['choice']
-                player.chosen_image_one = player.left_image if data['choice'] == 'left' else player.right_image
-                player.participant.vars['chosen_image_one'] = player.chosen_image_one
-                player.computer_choice_one = False  # Mark as manual choice
+                chosen_image = player.left_image if data['choice'] == 'left' else player.right_image
+                updates.update({
+                    'choice1': data['choice'],
+                    'chosen_image_one': chosen_image,
+                    'computer_choice_one': False
+                })
+                player.participant.vars['chosen_image_one'] = chosen_image
+
+            # Apply all updates at once
+            for field, value in updates.items():
+                setattr(player, field, value)
 
         # ---- CHOICE TIMER END PHASE ----
         # Handle what happens when the choice timer expires
 
         if 'choice_phase_timer_ended' in data:
             choices_to_process = False
+            response = {}
             
             try:
                 # Process choices for all players
                 for p in players:
                     try:
-                        # If player hasn't made a choice, computer makes one
+                        # If player hasn't made a choice, use set_computer_choice method
                         if p.field_maybe_none('choice1') is None or p.choice1 == '':
                             choices_to_process = True
-                            
-                            # Ensure valid image fields exist
-                            left_img = p.field_maybe_none('left_image')
-                            right_img = p.field_maybe_none('right_image')
-                            
-                            if left_img is None:
-                                left_img = C.IMAGES[0]
-                                p.left_image = left_img
-                            if right_img is None:
-                                right_img = C.IMAGES[1]
-                                p.right_image = right_img
-                                
-                            random_choice = random.choice(['left', 'right'])
-                            
-                            # Record computer's choice
-                            p.choice1 = random_choice
-                            p.computer_choice1 = random_choice
-                            p.chosen_image_one = left_img if random_choice == 'left' else right_img
-                            p.participant.vars['chosen_image_one'] = p.chosen_image_one
-                            p.initial_choice_time = DECISION_TIME
-                            
-                            # Handle binary coding and image selection
-                            try:
-                                p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
-                                p.computer_choice_one = True
-                                
-                                # Use transparent version of image for computer choices
-                                if p.chosen_image_one == 'option1A.bmp':
-                                    p.chosen_image_computer = 'option1A_tr.bmp'
-                                elif p.chosen_image_one == 'option1B.bmp':
-                                    p.chosen_image_computer = 'option1B_tr.bmp'
-                                    
-                                # Check accuracy against group's high-probability image
-                                if group.field_maybe_none('seventy_percent_image'):
-                                    p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
-                                else:
-                                    logging.error(f"seventy_percent_image not set for group in round {group.round_number}")
-                                    p.choice1_accuracy = False
-                                    
-                            except Exception as e:
-                                logging.error(f"Error processing computer choice details for player {p.id_in_group}: {e}")
-                                # Set fallback values
-                                p.chosen_image_one_binary = 1
-                                p.computer_choice_one = True
-                                p.chosen_image_computer = 'option1A_tr.bmp'
-                                p.choice1_accuracy = False
-                                
+                            p.set_computer_choice(1, DECISION_TIME)
                         else:
-                            # Record binary coding and accuracy for manual choices
-                            try:
-                                p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
-                                if group.field_maybe_none('seventy_percent_image'):
-                                    p.choice1_accuracy = p.chosen_image_one == group.seventy_percent_image
-                                else:
-                                    p.choice1_accuracy = False
-                            except Exception as e:
-                                logging.error(f"Error processing manual choice details for player {p.id_in_group}: {e}")
-                                p.chosen_image_one_binary = 1
-                                p.choice1_accuracy = False
-                                
+                            # For manual choices, just update binary coding and accuracy
+                            updates = {
+                                'chosen_image_one_binary': 1 if p.chosen_image_one == 'option1A.bmp' else 2,
+                                'choice1_accuracy': p.chosen_image_one == p.group.seventy_percent_image if p.group.field_maybe_none('seventy_percent_image') else False
+                            }
+                            for field, value in updates.items():
+                                setattr(p, field, value)
+                            
                     except Exception as e:
                         logging.error(f"Error processing choice for player {p.id_in_group}: {e}")
-                        # Set safe fallback values
-                        p.choice1 = 'left'
-                        p.computer_choice1 = 'left'
-                        p.chosen_image_one = C.IMAGES[0]
-                        p.chosen_image_one_binary = 1
-                        p.computer_choice_one = True
-                        p.choice1_accuracy = False
+                        # Use set_computer_choice as fallback
+                        p.set_computer_choice(1, DECISION_TIME)
 
-                # Record information about other players' choices
-                for p in players:
-                    try:
-                        other_players = p.get_others_in_group()
-                        
-                        # Initialize default values
-                        choice_defaults = [1] * 4  # Default binary choices
-                        accuracy_defaults = [False] * 4  # Default accuracy values
-                        
-                        # Try to get actual values, fall back to defaults if needed
-                        for i, other_p in enumerate(other_players):
-                            try:
-                                # Store choice information
-                                choice_defaults[i] = other_p.field_maybe_none('chosen_image_one_binary') or 1
-
-                                # Store choice accuracy information
-                                accuracy_defaults[i] = other_p.field_maybe_none('choice1_accuracy') or False
-
-                            except Exception as e:
-                                logging.error(f"Error getting other player {i+1} data for player {p.id_in_group}: {e}")
-                        
-                        # Assign values with fallbacks
-                        p.player_1_choice_one = choice_defaults[0]
-                        p.player_2_choice_one = choice_defaults[1]
-                        p.player_3_choice_one = choice_defaults[2]
-                        p.player_4_choice_one = choice_defaults[3]
-                        
-                        # Assign accuracy values
-                        p.player1_choice1_accuracy = accuracy_defaults[0]
-                        p.player2_choice1_accuracy = accuracy_defaults[1]
-                        p.player3_choice1_accuracy = accuracy_defaults[2]
-                        p.player4_choice1_accuracy = accuracy_defaults[3]
-                        
-                    except Exception as e:
-                        logging.error(f"Error recording other players' info for player {p.id_in_group}: {e}")
-                        # Set safe fallback values for all other player fields
-                        for i in range(1, 5):
-                            setattr(p, f'player_{i}_choice_one', 1)
-                            setattr(p, f'player_{i}_computer_choice_one', 0)  # Default to 0 for manual choice
-                            setattr(p, f'player{i}_choice1_accuracy', False)
+                # Record information about other players' choices using batch method
+                MyPage.update_player_comparisons(players)
 
                 # Move to betting phase
                 return {p.id_in_group: dict(
@@ -1286,7 +1218,7 @@ class MyPage(Page):
                     start_bet_timer=True, 
                     highlight_selected_choice=p.field_maybe_none('choice1') or 'left'
                 ) for p in players}
-                
+                            
             except Exception as e:
                 logging.error(f"Critical error in choice phase timer end: {e}")
                 # Provide safe fallback response to keep game running
@@ -1346,55 +1278,59 @@ class MyPage(Page):
         # Handle manual second choices
 
         if 'second_choice' in data and data.get('manual_second_choice', False):
-            # Record player's second choice (existing code)
-            player.choice2 = data['second_choice']
-            player.chosen_image_two = (player.left_image 
+            updates = {}
+            
+            # Record player's second choice
+            chosen_image = (player.left_image 
                 if data['second_choice'] == 'left' 
                 else player.right_image)
-            player.participant.vars['chosen_image_two'] = player.chosen_image_two
-            player.computer_choice_two = False
-            player.manual_second_choice = True
             
-            # Record timing (existing code)
+            updates.update({
+                'choice2': data['second_choice'],
+                'chosen_image_two': chosen_image,
+                'computer_choice_two': False,
+                'manual_second_choice': True,
+                'chosen_image_two_binary': 1 if chosen_image == 'option1A.bmp' else 2,
+                'choice2_accuracy': chosen_image == player.group.seventy_percent_image,
+                'switch_vs_stay': 1 if player.field_maybe_none('chosen_image_one') != chosen_image else 0,
+                'chosen_image_computer_two': '',
+                'computer_choice2': ''
+            })
+            
+            # Record timing
             if data['second_choice_time'] is not None:
                 actual_choice_time = round(data['second_choice_time'] / 1000, 2)
-                player.second_choice_time = min(actual_choice_time, DECISION_TIME)
+                updates['second_choice_time'] = min(actual_choice_time, DECISION_TIME)
             else:
-                player.second_choice_time = DECISION_TIME
+                updates['second_choice_time'] = DECISION_TIME
             
-            # Calculate metrics for this player
-            player.chosen_image_two_binary = 1 if player.chosen_image_two == 'option1A.bmp' else 2
-            player.choice2_accuracy = player.chosen_image_two == player.group.seventy_percent_image
-            player.switch_vs_stay = (1 
-                if player.field_maybe_none('chosen_image_one') != player.chosen_image_two 
-                else 0)
+            # Apply all updates at once
+            for field, value in updates.items():
+                setattr(player, field, value)
+                
+            player.participant.vars['chosen_image_two'] = chosen_image
             
-            # Clear computer choice fields
-            player.chosen_image_computer_two = ''
-            player.computer_choice2 = ''
-            
-            # NEW CODE: Check if all players have made their second choices
+            # Check if all players have made their second choices
             group = player.group
-            all_choices_made = all(p.field_maybe_none('chosen_image_two') is not None for p in group.get_players())
+            all_choices_made = all(p.field_maybe_none('chosen_image_two') is not None 
+                                for p in group.get_players())
             
             if all_choices_made:
                 # Calculate metrics for all players
                 for p in group.get_players():
                     other_players = p.get_others_in_group()
                     
-                    # Record other players' choices
+                    # Batch updates for other players' choices
+                    updates = {}
                     for i, other_p in enumerate(other_players):
-                        # Binary choice (1 for option1A, 2 for option1B)
-                        setattr(p, f'player_{i+1}_choice_two', 
-                            1 if other_p.chosen_image_two == 'option1A.bmp' else 2)
-                        
-                        # Computer choice flag (0 for manual, 1 for computer)
-                        setattr(p, f'player_{i+1}_computer_choice_two',
-                            1 if other_p.computer_choice_two else 0)
-                        
-                        # Choice accuracy
-                        setattr(p, f'player{i+1}_choice2_accuracy',
-                            other_p.chosen_image_two == group.seventy_percent_image)
+                        updates.update({
+                            f'player_{i+1}_choice_two': 1 if other_p.chosen_image_two == 'option1A.bmp' else 2,
+                            f'player{i+1}_choice2_accuracy': other_p.chosen_image_two == group.seventy_percent_image
+                        })
+                    
+                    # Apply updates
+                    for field, value in updates.items():
+                        setattr(p, field, value)
             
             return {
                 player.id_in_group: dict(
@@ -1407,19 +1343,7 @@ class MyPage(Page):
             # Process computer choices for players who didn't respond
             for p in players:
                 if not p.field_maybe_none('choice2'):
-
-                    # Set time to 3 seconds if a manual choice was not made
-                    p.second_choice_time = DECISION_TIME
-
-                    p.computer_choice2 = random.choice(['left', 'right'])
-                    p.choice2 = p.computer_choice2
-                    p.chosen_image_two = p.left_image if p.computer_choice2 == 'left' else p.right_image
-                    
-                    # Use transparent images for computer choices
-                    if p.chosen_image_two == 'option1A.bmp':
-                        p.chosen_image_computer_two = 'option1A_tr.bmp'
-                    else:
-                        p.chosen_image_computer_two = 'option1B_tr.bmp'
+                    p.set_computer_choice(2, DECISION_TIME)
                 
                 # Calculate metrics for all choices
                 if p.field_maybe_none('chosen_image_two') is not None:
@@ -1430,20 +1354,7 @@ class MyPage(Page):
                     print(f"Warning: chosen_image_two is None for player {p.id_in_group}")
 
             # Record information about other players' second choices
-            for p in players:
-
-                # Initialize default values
-                other_players = p.get_others_in_group()
-                p.player_1_choice_two = other_players[0].chosen_image_two_binary
-                p.player_2_choice_two = other_players[1].chosen_image_two_binary
-                p.player_3_choice_two = other_players[2].chosen_image_two_binary
-                p.player_4_choice_two = other_players[3].chosen_image_two_binary
-
-                # Set accuracy values for other players
-                p.player1_choice2_accuracy = other_players[0].choice2_accuracy
-                p.player2_choice2_accuracy = other_players[1].choice2_accuracy
-                p.player3_choice2_accuracy = other_players[2].choice2_accuracy
-                p.player4_choice2_accuracy = other_players[3].choice2_accuracy
+            MyPage.update_player_comparisons(players)
 
             # Update choice comparisons
             for p in players:
@@ -1476,70 +1387,118 @@ class MyPage(Page):
                 response = {}
 
                 # Update trial number
-                group.trial_number = player.round_number  # track trial numbers
+                group.trial_number = player.round_number
 
-                # Assign computer bets if needed
+                # Process all players
                 for p in players:
+                    updates = {}
+                    
+                    # Assign computer bets if needed
                     if p.bet2 == 0:
                         random_bet = random.randint(1, 3)
-                        p.bet2 = random_bet
-                        p.bet2 = p.bet2
-                        p.computer_bet_two = True
-                        p.second_bet_time = DECISION_TIME
-                        response[p.id_in_group] = dict(highlight_computer_second_bet=p.bet2)
+                        updates.update({
+                            'bet2': random_bet,
+                            'computer_bet_two': True,
+                            'second_bet_time': DECISION_TIME
+                        })
+                        response[p.id_in_group] = dict(highlight_computer_second_bet=random_bet)
+                    
+                    # Apply updates if any
+                    if updates:
+                        for field, value in updates.items():
+                            setattr(p, field, value)
 
                 # Calculate final results for the round
                 group.set_round_reward()
                 group.calculate_player_rewards()
 
-                # Calculate earnings for all players
+                # Calculate earnings and results for all players
                 for p in players:
-                    p.choice2_earnings = p.bet2 * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2 * 20
-                    p.choice2_sum_earnings = sum([prev_player.choice2_earnings for prev_player in p.in_previous_rounds()]) + p.choice2_earnings
-                    p.loss_or_gain = -1 if p.choice2_earnings < 0 else 1
+                    # Batch all calculations and updates
+                    updates = {}
+                    
+                    # Calculate earnings
+                    choice2_earnings = p.bet2 * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2 * 20
+                    prev_rounds_earnings = sum([prev_player.choice2_earnings 
+                                            for prev_player in p.in_previous_rounds()])
+                    
+                    updates.update({
+                        'choice2_earnings': choice2_earnings,
+                        'choice2_sum_earnings': prev_rounds_earnings + choice2_earnings,
+                        'loss_or_gain': -1 if choice2_earnings < 0 else 1
+                    })
+                    
+                    # Apply updates
+                    for field, value in updates.items():
+                        setattr(p, field, value)
 
                 # Record gains/losses for other players
                 for p in players:
                     other_players = p.get_others_in_group()
-                    p.loss_or_gain_player1 = 0 if other_players[0].choice2_earnings < 0 else 1
-                    p.loss_or_gain_player2 = 0 if other_players[1].choice2_earnings < 0 else 1
-                    p.loss_or_gain_player3 = 0 if other_players[2].choice2_earnings < 0 else 1
-                    p.loss_or_gain_player4 = 0 if other_players[3].choice2_earnings < 0 else 1
+                    updates = {}
+                    
+                    # Batch updates for other players' results
+                    for i, other_p in enumerate(other_players):
+                        updates[f'loss_or_gain_player{i+1}'] = (
+                            0 if other_p.choice2_earnings < 0 else 1
+                        )
+                    
+                    # Apply updates
+                    for field, value in updates.items():
+                        setattr(p, field, value)
 
                 # Generate random delay before next round
                 group.generate_intertrial_interval()
                 group.next_round_transition_time = time.time() * 1000 + group.intertrial_interval
 
                 # Prepare final display information
-                # Create dictionaries mapping player IDs to their chosen images and win/loss status
                 chosen_images_secondchoicepage = {
                     p.id_in_group: f"main_task/{p.chosen_image_computer_two if p.computer_choice_two else p.chosen_image_two}" 
                     for p in players
                 }
-                win_loss_images = {p.id_in_group: f'main_task/{"win" if p.trial_reward == 1 else "loss"}.png' for p in players}
+                win_loss_images = {
+                    p.id_in_group: f'main_task/{"win" if p.trial_reward == 1 else "loss"}.png' 
+                    for p in players
+                }
 
                 # Prepare final response for each player
                 for p in players:
                     response[p.id_in_group] = {
-                        **response.get(p.id_in_group, {}),  # Preserve any existing response data
-                        **dict(
-                            show_results=True,              # Signal to show results screen
-                            second_bet_reward=p.choice2_earnings,  # Points earned/lost
-                            chosen_images=chosen_images_secondchoicepage,  # All players' final choices
-                            win_loss_images=win_loss_images,      # Win/loss indicators for all
-                            player_win_loss_image=win_loss_images[p.id_in_group],  # This player's result
-                            intertrial_interval=group.intertrial_interval,  # Time until next round
-                            round_number=player.round_number,     # Current round number
-                            num_rounds=C.NUM_ROUNDS,             # Total rounds in game
-                            selected_bet=p.bet2,                 # Final bet amount
-                            second_choice=p.choice2             # Final choice made
-                        )
+                        **response.get(p.id_in_group, {}),
+                        'show_results': True,
+                        'second_bet_reward': p.choice2_earnings,
+                        'chosen_images': chosen_images_secondchoicepage,
+                        'win_loss_images': win_loss_images,
+                        'player_win_loss_image': win_loss_images[p.id_in_group],
+                        'intertrial_interval': group.intertrial_interval,
+                        'round_number': player.round_number,
+                        'num_rounds': C.NUM_ROUNDS,
+                        'selected_bet': p.bet2,
+                        'second_choice': p.choice2
                     }
 
                 return response
 
         # Default response - echo back any unhandled data to all players
         return {p.id_in_group: data for p in group.get_players()}
+
+    @staticmethod
+    def update_player_comparisons(players):
+        """Update all player comparisons in a single batch"""
+        for p in players:
+            other_players = p.get_others_in_group()
+            updates = {}
+            
+            # Collect all updates in one go
+            for i, other_p in enumerate(other_players, 1):
+                updates.update({
+                    f'player_{i}_choice_two': other_p.chosen_image_two_binary,
+                    f'player{i}_choice2_accuracy': other_p.choice2_accuracy
+                })
+            
+            # Apply all updates at once
+            for field, value in updates.items():
+                setattr(p, field, value)
 
     @staticmethod
     def display_remaining_images(player, players):
@@ -1587,43 +1546,54 @@ class FinalResults(Page):
     # This is used to calculate and display the final results to the player
     @staticmethod
     def vars_for_template(player: Player):
-        log_query_count("Final Results - Total queries across all rounds")
+        # Calculate final payments for the player
+        player.calculate_payoffs()  
 
-        # Calculate final payments efficiently
-        player.calculate_payoffs()
+        # Get final scores from the last round
+        # These are the cumulative totals across all rounds
+        final_bonus_score = player.in_round(C.NUM_ROUNDS).bonus_payment_score  # Total bonus points
+        final_choice1_sum = player.in_round(C.NUM_ROUNDS).choice1_sum_earnings # Total earnings from first choices
+        
+        # Iterate through all rounds to gather complete data
+        # This loop could be used for additional calculations if needed
+        for round_num in range(1, C.NUM_ROUNDS + 1):
+            round_score = player.in_round(round_num).bonus_payment_score
+            round_choice1_sum = player.in_round(round_num).choice1_sum_earnings
 
-        # Get final round data efficiently
-        final_round = player.in_round(C.NUM_ROUNDS)
-        final_bonus_score = final_round.bonus_payment_score
-        final_choice1_sum = final_round.choice1_sum_earnings
-
-        # Prepare CSV data
+        # Define the columns for the CSV output file
+        # This will record key payment information for each player
         column_names = [
-            'Prolific ID',
-            'Total Payoff'
+            'Prolific ID',          # Player's ID from Prolific platform
+            'Total Payoff'          # Total payment (base + bonus)
         ]
 
+        # Prepare the data row for this player
         data = [
-            player.participant.vars.get('prolific_id', 'Unknown'),
-            float(player.total_payoff)
+            player.participant.vars.get('prolific_id', 'Unknown'),  # Get Prolific ID or mark as unknown
+            float(player.total_payoff)                             # Convert Currency to float
         ]
         
+        # Check if the payoffs.csv file already exists
         file_exists = os.path.isfile('payoffs.csv')
         
+        # Save the payment data to CSV file
         with open('payoffs.csv', 'a', newline='') as f:
             writer = csv.writer(f)
             if not file_exists:
+                # If new file, write the column headers first
                 writer.writerow(column_names)
-            writer.writerow(data)
+            writer.writerow(data)  # Write the player's data
         
+        # Return variables needed for the final results template
+        # These will be displayed to the player on the results page
         return {
-            'choice2_sum_earnings': player.choice2_sum_earnings,
-            'bonus_payment_score': final_bonus_score,
-            'choice1_sum_earnings': final_choice1_sum,
-            'player_id': player.id_in_group,
-            'base_payoff': player.base_payoff,
-            'bonus_payoff': player.bonus_payoff,
-            'total_payoff': player.total_payoff,
+            'choice2_sum_earnings': player.choice2_sum_earnings,    # Total earnings from second choices
+            'bonus_payment_score': final_bonus_score,              # Final bonus points
+            'choice1_sum_earnings': final_choice1_sum,             # Total earnings from first choices
+            'player_id': player.id_in_group,                       # Player's ID in the group
+            'base_payoff': player.base_payoff,                     # Base payment amount
+            'bonus_payoff': player.bonus_payoff,                   # Additional earnings
+            'total_payoff': player.total_payoff,                   # Total payment
         }
 
     # app_after_this_page method is used to redirect players to the next app
