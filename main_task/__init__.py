@@ -2,6 +2,8 @@
 # --------------- IMPORTS: IMPORT ALL NECESSARY MODULES AND LIBRARIES REQUIRED FOR THE GAME ----------------- #
 # -------------------------------------------------------------------------------------------------------------------- #
 
+from django.db.models import Prefetch
+from django.db import connection
 from otree.api import *
 import threading
 from . import *
@@ -19,6 +21,23 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
+
+# Add after your imports
+TOTAL_QUERIES = 0
+
+def log_query_count(action_name, round_number=None):
+    """Debug function to log number of database queries"""
+    global TOTAL_QUERIES
+    query_count = len(connection.queries)
+    current_queries = query_count - TOTAL_QUERIES
+    TOTAL_QUERIES = query_count
+    
+    if round_number:
+        print(f"Round {round_number} - {action_name}: {current_queries} queries (Total: {TOTAL_QUERIES})")
+    else:
+        print(f"{action_name}: {current_queries} queries (Total: {TOTAL_QUERIES})")
+    
+    return query_count
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # --------------- AUTHORSHIP INFORMATION: DEFINE THE AUTHOR AND DOCUMENTATION FOR THE GAME ----------------- #
@@ -395,6 +414,12 @@ class Group(BaseGroup):
         except Exception as e:
             logging.error(f"Bot activation failed: {e}")
             player.is_bot = False
+    
+    def get_players(self):
+        """Optimized method to get players with pre-fetched related data"""
+        return super().get_players().select_related('participant').prefetch_related(
+            Prefetch('in_previous_rounds')
+        )
 
 #### ---------------- Define the round reward ------------------------ ####
 # Sets up the rewards for each option in the current round based on the pre-generated sequence
@@ -621,6 +646,22 @@ class Player(BasePlayer):
     last_check_time = models.FloatField(initial=0)
     consecutive_missed_checks = models.IntegerField(initial=0)
 
+    def get_others_in_group(self):
+        """Optimized method to get other players in group"""
+        return super().get_others_in_group().select_related('participant')
+    
+    def in_previous_rounds(self):
+        """Optimized method to get player's previous rounds"""
+        return super().in_previous_rounds().select_related('group', 'participant')
+
+    def in_round(self, round_number):
+        """Optimized method to get player in specific round"""
+        return super().in_round(round_number).select_related('group', 'participant')
+    
+    def log_queries(self):
+        """Debug function to log number of queries"""
+        return len(connection.queries)
+
     def check_connection(self, current_time, time_since_activity):
         # Only check every 10 seconds
         if current_time - self.last_check_time < 10:
@@ -699,15 +740,32 @@ class Player(BasePlayer):
         """Reset all player variables to their initial states at the start of each round"""
         pass
         
+    def calculate_payoffs(self):
+        """Calculate final payment with optimized queries"""
+        self.base_payoff = cu(6)  # Base payoff of £6
+        
+        # Get previous rounds data efficiently in one query
+        if self.round_number > 1:
+            previous_rounds = self.in_previous_rounds()
+            cumulative_score = sum(p.bonus_payment_score for p in previous_rounds)
+            self.bonus_payment_score = cumulative_score + self.choice2_earnings
+        else:
+            self.bonus_payment_score = self.choice2_earnings
+        
+        if self.bonus_payment_score <= 0:
+            self.bonus_payoff = cu(0)
+        else:
+            self.bonus_payoff = cu(round(self.bonus_payment_score / 750, 2))
+        
+        self.total_payoff = self.base_payoff + self.bonus_payoff
+
     def calculate_choice_comparisons(self):
-        """Calculate how many others made same choices"""
+        """Calculate how many others made same choices with optimized queries"""
         other_players = self.get_others_in_group()
         
-        # Get current player's choices using field_maybe_none
         my_choice_one = self.field_maybe_none('chosen_image_one')
         my_choice_two = self.field_maybe_none('chosen_image_two')
         
-        # Calculate first choice comparisons
         if my_choice_one is not None:
             self.choice1_with = sum(1 for p in other_players 
                                 if p.field_maybe_none('chosen_image_one') == my_choice_one)
@@ -716,7 +774,6 @@ class Player(BasePlayer):
             self.choice1_with = 0
             self.choice1_against = 0
         
-        # Calculate second choice comparisons
         if my_choice_two is not None:
             self.choice2_with = sum(1 for p in other_players 
                                 if p.field_maybe_none('chosen_image_two') == my_choice_two)
@@ -725,28 +782,8 @@ class Player(BasePlayer):
             self.choice2_with = 0
             self.choice2_against = 0
 
-    def calculate_payoffs(self):
-        """
-        Calculate final payment for the player
-        Includes base payment of £6 plus bonus based on points earned
-        Points are converted to bonus payment by dividing by 750
-        """
-        self.base_payoff = cu(6)  # Base payoff of £6
-        
-        # Only give bonus if points are positive
-        if self.bonus_payment_score <= 0:
-            self.bonus_payoff = cu(0)
-        else:
-            self.bonus_payoff = cu(round(self.bonus_payment_score / 750, 2))
-        
-        self.total_payoff = self.base_payoff + self.bonus_payoff
-
     def calculate_choice1_earnings(self):
-        """
-        Calculate earnings from first choice
-        Points = bet amount * 20 * reward (1 or 0)
-        If no reward, points are negative
-        """
+        """Calculate earnings from first choice with optimized queries"""
         if self.chosen_image_one == 'option1A.bmp':
             choice1_reward = self.group.field_maybe_none('round_reward_A') or 0
         elif self.chosen_image_one == 'option1B.bmp':
@@ -818,6 +855,7 @@ class MyPage(Page):
     # It's used to process the player's choices and bets
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
+
         # Add at the start of the method:
         current_streak = player.field_maybe_none('disconnection_streak') or 0
         if current_streak >= 5 and not player.is_bot:
@@ -840,75 +878,67 @@ class MyPage(Page):
         if timeout_happened:
             player.participant.vars['timed_out'] = True
 
+        # Prefetch previous round data if needed
+        if player.round_number > 1:
+            previous_player = player.in_round(player.round_number - 1).select_related('group')
+        
         # Process both first and second choices/bets using the same logic
-        # This loop handles two sets of fields: first choice/bet and second choice/bet
         for choice_field, computer_choice_field, bet_field, image_field in [
             ('choice1', 'computer_choice1', 'bet1', 'chosen_image_one'),
             ('choice2', 'computer_choice2', 'bet2', 'chosen_image_two')
         ]:
-            # Get the player's manual choice and any computer-made choice
             manual_choice = player.field_maybe_none(choice_field)
             computer_choice = player.field_maybe_none(computer_choice_field)
 
-            # Decision tree for handling choices:
-            # 1. If there's a valid manual choice but no valid computer choice, keep manual choice
+            # Decision tree for handling choices
             if manual_choice is not None and (computer_choice is None or computer_choice not in ['left', 'right']):
                 pass  # Keep the manual choice
-
-            # 2. If there's a valid computer choice, use it instead
             elif computer_choice in ['left', 'right']:
                 setattr(player, choice_field, None)
                 setattr(player, computer_choice_field, computer_choice)
-                
-            # 3. If neither choice is valid, explicitly set both to None
             elif manual_choice is None and computer_choice is None:
                 setattr(player, choice_field, None)
                 setattr(player, computer_choice_field, None)
 
-            # Determine which choice (manual or computer) to use as the final choice
+            # Determine final choice and set chosen image
             final_choice = getattr(player, computer_choice_field) or getattr(player, choice_field)
-
-            # Convert the left/right choice into the actual image chosen
             if final_choice in ['left', 'right']:
                 chosen_image = player.left_image if final_choice == 'left' else player.right_image
-                # Save the chosen image both in the player model and participant variables
                 setattr(player, image_field, chosen_image)
                 player.participant.vars[image_field] = chosen_image
             else:
-                # If no valid choice was made, set chosen image to None
                 setattr(player, image_field, None)
                 player.participant.vars[image_field] = None
 
-            # Set default bet of 1 if no bet was made
+            # Set default bet
             bet_value = player.field_maybe_none(bet_field)
             if bet_value is None:
                 setattr(player, bet_field, 1)
 
-        # Calculate earnings for both choices
+        # Calculate earnings with prefetched data
         player.calculate_choice1_earnings()
         player.choice2_earnings = player.bet2 * 20 * player.trial_reward if player.trial_reward == 1 else -1 * player.bet2 * 20
 
-        # Determine which choice's earnings count for this round and update total scores
+        # Get earnings type and calculate current round earnings
         earnings_type = EARNINGS_SEQUENCE[player.round_number - 1]
         current_round_earnings = player.choice1_earnings if earnings_type == 'choice1_earnings' else player.choice2_earnings
 
-        # Handle first round differently since there's no previous round to reference
+        # Update cumulative scores efficiently
         if player.round_number == 1:
             player.bonus_payment_score = current_round_earnings
             player.choice1_sum_earnings = player.choice1_earnings
             player.choice2_sum_earnings = player.choice2_earnings
         else:
-            # Add current round earnings to previous totals
-            previous_player = player.in_round(player.round_number - 1)
+            # Use prefetched previous round data
             player.bonus_payment_score = previous_player.bonus_payment_score + current_round_earnings
             player.choice1_sum_earnings = previous_player.choice1_sum_earnings + player.choice1_earnings
             player.choice2_sum_earnings = previous_player.choice2_sum_earnings + player.choice2_earnings
 
-        # Calculate various performance metrics
-        player.calculate_choice_comparisons()  # How many others made same choices
-        player.choice1_accuracy = player.chosen_image_one == player.group.seventy_percent_image  # Was first choice optimal?
-        player.choice2_accuracy = player.chosen_image_two == player.group.seventy_percent_image  # Was second choice optimal?
-        player.switch_vs_stay = 1 if player.chosen_image_one != player.chosen_image_two else 0  # Did the player change their mind?
+        # Calculate metrics using prefetched data
+        player.calculate_choice_comparisons()
+        player.choice1_accuracy = player.chosen_image_one == player.group.seventy_percent_image
+        player.choice2_accuracy = player.chosen_image_two == player.group.seventy_percent_image
+        player.switch_vs_stay = 1 if player.chosen_image_one != player.chosen_image_two else 0
 
     # app_after_this_page method is used to redirect players who have timed out to a different page
     @staticmethod
@@ -922,50 +952,42 @@ class MyPage(Page):
     @staticmethod
     def vars_for_template(player: Player):
         group = player.group
+        
+        # Use optimized query to get players
+        players = group.get_players()
 
-        # Only process at the start of each round and only once
-        if player.id_in_group == 1:  # Only do this once per round
-            # First do reversal learning
+        if player.id_in_group == 1:
             group.reversal_learning()
-            
-            # Then reset control flags
             group.reset_fields()
-            for p in group.get_players():
+            for p in players:
                 p.reset_fields()
 
-        # At the start of each round, check all players' connection status
-        for p in group.get_players():
+        for p in players:
             current_streak = p.field_maybe_none('disconnection_streak')
             if current_streak is not None and current_streak > 0:
                 logging.info(f"Start of round {group.round_number}: Player {p.id_in_group} has streak of {current_streak}/5")
-                # If they're already at or past threshold, ensure bot is active
                 if current_streak >= 5 and not p.is_bot:
                     p.increment_disconnect_streak()
         
-        # Initialize connection tracking for new rounds
         player.last_connection_time = time.time()
 
-        # Randomly determine which image appears on left/right for each player for each round
         try:
             images = C.IMAGES.copy()
             random.shuffle(images)
             left_image = images[0]
             right_image = images[1]
 
-            # Initialize both fields explicitly 
             player.left_image = left_image
             player.right_image = right_image
 
         except Exception as e:
             logging.error(f"Failed to set images for player {player.id_in_group}: {e}")
-
-            # Provide fallback values
             left_image = 'option1A.bmp'
             right_image = 'option1B.bmp'
             player.left_image = left_image 
             player.right_image = right_image
 
-        # Get other_players before using it
+        # Get other players efficiently
         other_players = player.get_others_in_group()
 
         return {
@@ -974,7 +996,7 @@ class MyPage(Page):
             'player_id': player.id_in_group,
             'avatar_image': C.AVATAR_IMAGE,
             'other_player_ids': [p.id_in_group for p in other_players],
-            'chosen_images': {p.id_in_group: f"main_task/{p.field_maybe_none('chosen_image_computer') or p.field_maybe_none('chosen_image_one') or 'default_image.png'}" for p in group.get_players()},
+            'chosen_images': {p.id_in_group: f"main_task/{p.field_maybe_none('chosen_image_computer') or p.field_maybe_none('chosen_image_one') or 'default_image.png'}" for p in players},
             'previous_choice': player.participant.vars.get('chosen_image_one'),
             'previous_bet': player.participant.vars.get('bet1'),
             'round_number': player.round_number,
@@ -1555,54 +1577,43 @@ class FinalResults(Page):
     # This is used to calculate and display the final results to the player
     @staticmethod
     def vars_for_template(player: Player):
-        # Calculate final payments for the player
-        player.calculate_payoffs()  
-
-        # Get final scores from the last round
-        # These are the cumulative totals across all rounds
-        final_bonus_score = player.in_round(C.NUM_ROUNDS).bonus_payment_score  # Total bonus points
-        final_choice1_sum = player.in_round(C.NUM_ROUNDS).choice1_sum_earnings # Total earnings from first choices
+        log_query_count("Final Results - Total queries across all rounds")
         
-        # Iterate through all rounds to gather complete data
-        # This loop could be used for additional calculations if needed
-        for round_num in range(1, C.NUM_ROUNDS + 1):
-            round_score = player.in_round(round_num).bonus_payment_score
-            round_choice1_sum = player.in_round(round_num).choice1_sum_earnings
+        # Calculate final payments efficiently
+        player.calculate_payoffs()
 
-        # Define the columns for the CSV output file
-        # This will record key payment information for each player
+        # Get final round data efficiently
+        final_round = player.in_round(C.NUM_ROUNDS)
+        final_bonus_score = final_round.bonus_payment_score
+        final_choice1_sum = final_round.choice1_sum_earnings
+
+        # Prepare CSV data
         column_names = [
-            'Prolific ID',          # Player's ID from Prolific platform
-            'Total Payoff'          # Total payment (base + bonus)
+            'Prolific ID',
+            'Total Payoff'
         ]
 
-        # Prepare the data row for this player
         data = [
-            player.participant.vars.get('prolific_id', 'Unknown'),  # Get Prolific ID or mark as unknown
-            float(player.total_payoff)                             # Convert Currency to float
+            player.participant.vars.get('prolific_id', 'Unknown'),
+            float(player.total_payoff)
         ]
         
-        # Check if the payoffs.csv file already exists
         file_exists = os.path.isfile('payoffs.csv')
         
-        # Save the payment data to CSV file
         with open('payoffs.csv', 'a', newline='') as f:
             writer = csv.writer(f)
             if not file_exists:
-                # If new file, write the column headers first
                 writer.writerow(column_names)
-            writer.writerow(data)  # Write the player's data
+            writer.writerow(data)
         
-        # Return variables needed for the final results template
-        # These will be displayed to the player on the results page
         return {
-            'choice2_sum_earnings': player.choice2_sum_earnings,    # Total earnings from second choices
-            'bonus_payment_score': final_bonus_score,              # Final bonus points
-            'choice1_sum_earnings': final_choice1_sum,             # Total earnings from first choices
-            'player_id': player.id_in_group,                       # Player's ID in the group
-            'base_payoff': player.base_payoff,                     # Base payment amount
-            'bonus_payoff': player.bonus_payoff,                   # Additional earnings
-            'total_payoff': player.total_payoff,                   # Total payment
+            'choice2_sum_earnings': player.choice2_sum_earnings,
+            'bonus_payment_score': final_bonus_score,
+            'choice1_sum_earnings': final_choice1_sum,
+            'player_id': player.id_in_group,
+            'base_payoff': player.base_payoff,
+            'bonus_payoff': player.bonus_payoff,
+            'total_payoff': player.total_payoff,
         }
 
     # app_after_this_page method is used to redirect players to the next app
