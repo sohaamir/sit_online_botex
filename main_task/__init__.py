@@ -13,13 +13,12 @@ import os
 
 # Set up logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARNING,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler()
     ]
 )
-
 # -------------------------------------------------------------------------------------------------------------------- #
 # --------------- AUTHORSHIP INFORMATION: DEFINE THE AUTHOR AND DOCUMENTATION FOR THE GAME ----------------- #
 # -------------------------------------------------------------------------------------------------------------------- #
@@ -359,12 +358,11 @@ class Group(BaseGroup):
 
     def activate_bot(self, player):
         """Activate a bot for a disconnected player"""
+        
         if player.is_bot:
-            logging.info(f"Bot already active for player {player.id_in_group}")
             return
 
         try:
-            logging.info(f"Activating bot for player {player.id_in_group}")
             player.is_bot = True
             
             # Ensure bot has valid image fields
@@ -377,21 +375,21 @@ class Group(BaseGroup):
             player.participant.vars['is_bot'] = True
             player.participant.vars['timed_out'] = True
             
+            # Create a new bot instance for the player
             bot = PlayerBot(player)
             def run_bot():
                 try:
-                    logging.info(f"Bot starting round for player {player.id_in_group}")
                     for submission in bot.play_round():
                         try:
                             submission.submit()
                         except Exception as e:
                             logging.error(f"Bot submission error: {e}")
-                    logging.info(f"Bot completed round for player {player.id_in_group}")
                 except Exception as e:
                     logging.error(f"Bot runtime error: {e}")
                     
             threading.Thread(target=run_bot).start()
-                
+        
+        # Log any errors that occur during bot activation
         except Exception as e:
             logging.error(f"Bot activation failed: {e}")
             player.is_bot = False
@@ -821,7 +819,6 @@ class MyPage(Page):
         # Add at the start of the method:
         current_streak = player.field_maybe_none('disconnection_streak') or 0
         if current_streak >= 5 and not player.is_bot:
-            logging.info(f"before_next_page: Activating bot for player {player.id_in_group} (streak: {current_streak})")
             player.group.activate_bot(player)
             player.participant.vars['timed_out'] = True
 
@@ -833,7 +830,6 @@ class MyPage(Page):
             
             # If disconnected for more than 10 seconds, activate bot
             if time.time() - player.participant.vars['disconnection_time'] > 10:
-                logging.info(f"Player {player.id_in_group} disconnected for over 10 seconds at end of round {player.round_number}")
                 player.group.player_disconnected(player.id_in_group)
 
         # Handle what happens when the page times out
@@ -937,7 +933,6 @@ class MyPage(Page):
         for p in group.get_players():
             current_streak = p.field_maybe_none('disconnection_streak')
             if current_streak is not None and current_streak > 0:
-                logging.info(f"Start of round {group.round_number}: Player {p.id_in_group} has streak of {current_streak}/5")
                 # If they're already at or past threshold, ensure bot is active
                 if current_streak >= 5 and not p.is_bot:
                     p.increment_disconnect_streak()
@@ -1024,7 +1019,6 @@ class MyPage(Page):
                 
                 # Only process if connection status actually changed
                 if player.check_connection(current_time, time_since_activity):
-                    logging.info(f"Player {player.id_in_group} connection status changed")
                     
                     # Only activate bot if genuinely disconnected
                     if (player.field_maybe_none('disconnection_streak') >= 5 and 
@@ -1056,9 +1050,6 @@ class MyPage(Page):
                 if (time_since_connect > 10 and 
                     consecutive_failures >= 3 and 
                     duration > 15):
-                    logging.info(f"Processing disconnect for player {player.id_in_group} "
-                            f"after {time_since_connect:.1f}s connected "
-                            f"(inactive: {duration:.1f}s, failures: {consecutive_failures})")
                     player.increment_disconnect_streak()
             except Exception as e:
                 logging.error(f"Error processing connection loss for player {player.id_in_group}: {e}")
@@ -1066,7 +1057,6 @@ class MyPage(Page):
 
         # Handle connection restoration
         if 'connection_restored' in data:
-            logging.info(f"Connection restored for player {player.id_in_group}")
             player.reset_disconnect_streak()
             return
 
