@@ -792,9 +792,9 @@ class MyPage(Page):
             # Calculate and record how long the player took to make their choice
             if data['initial_choice_time'] is not None:
                 actual_choice_time = round((data['initial_choice_time'] - player.individual_page_load_time) / 1000, 2)
-                player.initial_choice_time = min(actual_choice_time, 3.0)  # Cap at 3 seconds
+                player.initial_choice_time = min(actual_choice_time, 6.0)  # Cap at 3 seconds
             else:
-                player.initial_choice_time = 3.0
+                player.initial_choice_time = 6.0
 
             # Record player's manual choice if made
             if 'choice' in data and not player.field_maybe_none('chosen_image_one'):
@@ -835,7 +835,7 @@ class MyPage(Page):
                             p.computer_choice1 = random_choice
                             p.chosen_image_one = left_img if random_choice == 'left' else right_img
                             p.participant.vars['chosen_image_one'] = p.chosen_image_one
-                            p.initial_choice_time = 3.0
+                            p.initial_choice_time = 6.0
                             
                             # Handle binary coding and image selection
                             try:
@@ -914,7 +914,7 @@ class MyPage(Page):
                     random_bet = random.randint(1, 3)
                     p.bet1 = random_bet
                     p.participant.vars['bet1'] = p.bet1
-                    p.initial_bet_time = 3.0
+                    p.initial_bet_time = 6.0
                     p.computer_bet_one = True
                     response[p.id_in_group] = dict(highlight_computer_bet=p.bet1)
 
@@ -1005,7 +1005,7 @@ class MyPage(Page):
                         p.bet2 = random_bet
                         p.bet2 = p.bet2
                         p.computer_bet_two = True
-                        p.second_bet_time = 3.0
+                        p.second_bet_time = 6.0
                         response[p.id_in_group] = dict(highlight_computer_second_bet=p.bet2)
 
                 # Calculate final results for the round

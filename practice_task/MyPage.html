@@ -450,13 +450,21 @@
         }
 
         // Handle second choice phase - left/right arrow keys
-        else if (currentStage === 'second_choice' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !secondChoiceMade) {
+        if (currentStage === 'second_choice' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !secondChoiceMade) {
+            // Prevent any further keyboard processing
+            event.preventDefault();
+            
+            // Set choice made flag immediately
+            secondChoiceMade = true;
+            
             console.log('Manual second choice made');
             secondChoiceTime = performance.now() - secondChoiceStartTime;
             const choice = event.key === 'ArrowLeft' ? 'left' : 'right';
             
-            // Hide the choice title immediately when manual choice is made
-            document.getElementById('choice-title').style.display = 'none';
+            // Permanently hide the choice title
+            const choiceTitle = document.getElementById('choice-title');
+            choiceTitle.style.display = 'none';
+            choiceTitle.parentNode.removeChild(choiceTitle);
             
             console.log(`Choice: ${choice}, Time: ${secondChoiceTime}`);
             chooseSecond(choice);
@@ -465,7 +473,13 @@
                 second_choice_time: secondChoiceTime,
                 manual_second_choice: true
             });
-            secondChoiceMade = true;
+            
+            // Remove ALL keydown event listeners
+            document.removeEventListener('keydown', handleKeyDown);
+            
+            // Prevent event bubbling
+            event.stopPropagation();
+            return false;
         }
 
         // Handle second betting phase - number keys 1-3
@@ -537,30 +551,35 @@
     // Function to handle the second choice selection
     function chooseSecond(option) {
         if (currentStage === 'second_choice' && !secondChoiceMade) {
+            // Lock in the choice immediately
+            secondChoiceMade = true;
+            currentStage = 'waiting_for_second_bet';  // Change stage immediately
+            
             const selectedOption = document.getElementById(`option_${option}`);
             const otherOption = document.getElementById(`option_${option === 'left' ? 'right' : 'left'}`);
             
-            // Clear all previous highlights from both options
+            // Remove ALL existing highlights
             document.getElementById('option_left').classList.remove('selected', 'selected-second-choice');
             document.getElementById('option_right').classList.remove('selected', 'selected-second-choice');
             
             // Add new highlight style for second choice
             selectedOption.classList.add('selected-second-choice');
             
-            // Store the second choice in a hidden form field
+            // Store the second choice in the hidden form field
             document.getElementById('choice2_field').value = option;
-            secondChoiceMade = true;
             
-            console.log(`Second choice made: ${option}`);  // Add this for debugging
+            console.log(`Second choice made and locked: ${option}`);
+            
+            // Remove ALL keyboard event listeners
+            const oldHandler = handleKeyDown;
+            document.removeEventListener('keydown', oldHandler);
+            document.removeEventListener('keydown', function(event) {
+                console.log('Key pressed:', event.key, 'Current stage:', currentStage);
+                handleKeyDown(event);
+            });
         }
     }
-
-    // Add debugging event listener to log all keyboard inputs
-    document.addEventListener('keydown', function(event) {
-        console.log('Key pressed:', event.key, 'Current stage:', currentStage);
-        handleKeyDown(event);
-    });
-
+    
     // Function to handle the second bet selection
     function selectSecondBet(bet) {
 
@@ -613,6 +632,18 @@
     // Function to initiate the second choice phase
     function startSecondChoicePhase() {
         currentStage = 'second_choice';
+        secondChoiceMade = false;
+        
+        // Remove any existing keydown listeners
+        document.removeEventListener('keydown', handleKeyDown);
+        document.removeEventListener('keydown', function(event) {
+            console.log('Key pressed:', event.key, 'Current stage:', currentStage);
+            handleKeyDown(event);
+        });
+        
+        // Add a single keydown listener
+        document.addEventListener('keydown', handleKeyDown);
+        
         // Update display for second choice phase
         document.getElementById('bet-title').style.display = 'none';
         document.getElementById('choice-title').textContent = 'Second choice?';
@@ -620,11 +651,10 @@
         
         // Start timing for second choice
         secondChoiceStartTime = performance.now();
-        secondChoiceMade = false;
 
         console.log('Starting second choice phase');
 
-        // End second choice phase after 3 seconds
+        // End second choice phase after 6 seconds
         setTimeout(function() {
             if (!secondChoiceMade) {
                 console.log('Second choice timer ended, no manual choice made');
