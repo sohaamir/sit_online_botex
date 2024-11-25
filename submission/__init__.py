@@ -21,6 +21,8 @@ class Player(BasePlayer):
    real_players = models.IntegerField(min=0, max=100)        # Belief about real players
    attention_focus = models.IntegerField(min=0, max=100)     # Attention level
 
+   additional_feedback = models.LongStringField(blank=True)  # Additional comments (optional)
+
    def get_prolific_id(self):
        # Retrieve stored Prolific ID from participant vars
        return self.participant.vars.get('prolific_id', '')
@@ -34,7 +36,7 @@ def creating_session(subsession):
 class Feedback(Page):
    form_model = 'player'
    # Fields to collect in feedback form
-   form_fields = ['task_understanding', 'engagement', 'influence', 'real_players', 'attention_focus']
+   form_fields = ['task_understanding', 'engagement', 'influence', 'real_players', 'attention_focus', 'additional_feedback']
 
 class Submit(Page):
    @staticmethod

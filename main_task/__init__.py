@@ -453,8 +453,8 @@ class Group(BaseGroup):
 # Creates a random pause between trials to prevent rhythmic responding
 
     def generate_intertrial_interval(self):
-        # Generate random interval between 3 and 4 seconds
-        self.intertrial_interval = random.randint(3000, 4000)
+        # Generate random interval of approximately 5 seconds
+        self.intertrial_interval = random.randint(4900, 5000)
         print(f"Intertrial interval of {self.intertrial_interval}ms generated")
 
 #### ----------- Define and record the reversal learning rounds ------------------- ####
@@ -1345,10 +1345,6 @@ class MyPage(Page):
                         # Binary choice (1 for option1A, 2 for option1B)
                         setattr(p, f'player_{i+1}_choice_two', 
                             1 if other_p.chosen_image_two == 'option1A.bmp' else 2)
-                        
-                        # Computer choice flag (0 for manual, 1 for computer)
-                        setattr(p, f'player_{i+1}_computer_choice_two',
-                            1 if other_p.computer_choice_two else 0)
                         
                         # Choice accuracy
                         setattr(p, f'player{i+1}_choice2_accuracy',

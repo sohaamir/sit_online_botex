@@ -489,7 +489,7 @@
             // Store the bet in a hidden form field
             document.getElementById('bet1_field').value = bet;
             // Only process the bet if it's made within the time limit (3 seconds)
-            if (performance.now() - betPhaseStartTime <= 700) {
+            if (performance.now() - betPhaseStartTime <= 3000) {
                 liveSend({ 
                     bet: bet, 
                     initial_bet_time: performance.now() - betPhaseStartTime, 
@@ -549,6 +549,7 @@
             }
             // Store the second bet in a hidden form field
             document.getElementById('bet2_field').value = bet;
+            document.getElementById('second-bet-title').style.display = 'none';
             secondBetMade = true;
         }
     }
@@ -572,7 +573,7 @@
                 liveSend({bet_timer_ended: true});
                 document.removeEventListener('keydown', handleKeyDown);
                 betTimerStarted = false;
-            }, 700);
+            }, 3000);
         }
     }
 
@@ -591,14 +592,14 @@
         secondChoiceStartTime = performance.now();
         secondChoiceMade = false;
 
-        // Set timer for exactly 700ms
+        // Set timer for exactly 3000ms
         setTimeout(function() {
             if (!secondChoiceMade) {
                 console.log('Second choice timer ended, no manual choice made');
                 liveSend({second_choice_timer_ended: true});
             }
             startSecondBetTimer();
-        }, 700);
+        }, 3000);
     }
 
     // Function to initiate the second betting phase
@@ -619,7 +620,7 @@
                 liveSend({second_bet_timer_ended: true});
                 document.removeEventListener('keydown', handleKeyDown);
                 secondBetTimerStarted = false;
-            }, 700);
+            }, 3000);
         }
     }
 
@@ -663,15 +664,15 @@
             // End the choice phase after exactly 3 seconds
             setTimeout(function() {
                 liveSend({choice_phase_timer_ended: true});
-            }, 700);
+            }, 3000);
         }
 
         // Handle completion of all choices
         if ('all_choices_made' in data) {
-            // Calculate remaining time until 700ms from phase start
-            const remainingTime = Math.max(0, 700 - (performance.now() - choicePhaseStartTime));
+            // Calculate remaining time until 3000ms from phase start
+            const remainingTime = Math.max(0, 3000 - (performance.now() - choicePhaseStartTime));
             
-            // Set a timeout to end the choice phase at exactly 700ms
+            // Set a timeout to end the choice phase at exactly 3000ms
             setTimeout(() => {
                 liveSend({choice_phase_timer_ended: true});
             }, remainingTime);
@@ -768,22 +769,23 @@
 
         // Handle end of second choice timer
         if ('second_choice_timer_ended' in data) {
-            console.log('Second choice timer ended, applying computer choice');
-            // Clear initial choice highlights
-            document.querySelectorAll('#options img').forEach(img => {
-                img.classList.remove('selected');
+            // Process everything in a single animation frame for synchronization
+            requestAnimationFrame(() => {
+                // Clear highlights
+                document.querySelectorAll('#options img').forEach(img => {
+                    img.classList.remove('selected');
+                });
+                    
+                // Apply computer's choice and show bet interface simultaneously 
+                const computerChoice = data.computer_second_choice;
+                if (computerChoice) {
+                    const selectedOption = document.getElementById(`option_${computerChoice}`);
+                    selectedOption.classList.add('selected-second-choice');
+                }
+
+                document.getElementById('bet-container').style.display = 'block';
+                document.getElementById('second-bet-title').style.display = 'block';
             });
-            
-            // Apply computer's choice if made
-            const computerChoice = data.computer_second_choice;
-            if (computerChoice) {
-                const selectedOption = document.getElementById(`option_${computerChoice}`);
-                selectedOption.classList.add('selected-second-choice');
-            }
-            
-            // Show betting interface
-            document.getElementById('bet-container').style.display = 'block';
-            document.getElementById('second-bet-title').style.display = 'block';
         }
 
         // Highlight manually selected second choice
