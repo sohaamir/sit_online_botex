@@ -203,7 +203,7 @@
         <br>
         <p>The image associated with your second choice will subsequently be highlighted with a red box, <b>regardless if it is different to or the same as your first choice.</b></p>
         <br>
-
+        <p>In the example below, the player initially chose the blue image, but switched to the green image for their second choice after seeing the other players initial choices.</p>
         <div class="dual-image-container">
             <div class="image-with-caption">
                 <img src="{% static 'instructions/TaskInstructionsPage2/choice2.png' %}" alt="Choice 2" class="large-instruction-image">
@@ -232,6 +232,10 @@
         <br><p>
             This second bet will be highlighted by a red box, regardless if it is the same or different to your first.
             You will have 3 seconds, after which a random bet will be made for you if you do not choose manually within the time frame.</p>
+            <br>
+            <p>In the example below, the player made a first bet of 3, indicating that they were very confident in their first image choice, but switched to a 
+                second bet of 2, indicating that they were reasonably confident in their second choice.
+            </p>
             <div class="dual-image-container">
                 <div class="image-with-caption">
                     <img src="{% static 'instructions/TaskInstructionsPage2/bet2.png' %}" alt="Bet 2" class="large-instruction-image">
@@ -243,9 +247,9 @@
                 </div>
             </div>
         <br>
-        <p>Your bonus payment is <b>also partly determined by your second choice and bet.</b>
-            It is therefore important to <b>make your second choice and bet appropriately</b> to maximise your bonus.</p>
-        </p>
+        <div class="red-highlight-box">
+            <p class="normal-weight">Your bonus payment is <b>also partly determined by your second choice and bet.</b>
+                It is therefore important to <b>make your second choice and bet appropriately</b> to maximise your bonus.</p>
         </div>
         <br>
         <p>Finally, you will receive <b>feedback for your second choice/bet</b> as well as the second choices made by others within the group.</p>
