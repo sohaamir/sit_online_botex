@@ -37,12 +37,12 @@ The task is the same as reported in (Zhang & Glascher, 2020) https://www.science
 # -------------------------------------------------------------------------------------------------------------------- #
 
 # Generate a trial sequence for the experiment based on the number of rounds and reversal rounds
-# The sequence is generated randomly with reversal rounds every 8-12 rounds, but remains the same for all groups
+# The sequence is generated randomly with reversal rounds every 9-11 rounds, but remains the same for all groups
 
 def generate_trial_sequence():
     # Using a fixed random seed ensures the same sequence is generated each time the experiment runs
     # This is important for reproducibility and consistency across different groups
-    random.seed(49)  # You can change this number, but keep it constant
+    random.seed(21)  # You can change this number, but keep it constant
 
     sequence = []
     # Randomly select which image will start as the high-probability option
@@ -50,11 +50,11 @@ def generate_trial_sequence():
     reversal_rounds = []
     
     # Create a list of rounds where reversals will occur
-    # Reversals happen every 8-12 rounds (randomly determined)
-    current_round = random.randint(8, 12)
+    # Reversals happen every 9-11 rounds (randomly determined)
+    current_round = random.randint(9, 11)
     while current_round <= NUM_ROUNDS:
         reversal_rounds.append(current_round)
-        current_round += random.randint(8, 12)
+        current_round += random.randint(9, 11)
     
     # Generate the full sequence of trials
     # At each reversal round, the high-probability image switches
@@ -78,9 +78,9 @@ def generate_trial_sequence():
 # ---- REWARD SEQUENCE: GENERATE A SEQUENCE OF REWARDS FOR THE EXPERIMENT BASED ON THE NUMBER OF ROUNDS ------ #
 
 # Define the core parameters of the experiment
-NUM_ROUNDS = 60  # Total number of rounds in the experiment
-REWARD_PROBABILITY_A = 0.7  # 70% chance of reward for option A when it's the high-probability option
-REWARD_PROBABILITY_B = 0.3  # 30% chance of reward for option A when it's the low-probability option
+NUM_ROUNDS = 2  # Total number of rounds in the experiment
+REWARD_PROBABILITY_A = 0.75  # 75% chance of reward for option A when it's the high-probability option
+REWARD_PROBABILITY_B = 0.25  # 25% chance of reward for option A when it's the low-probability option
 DECISION_TIME = 3.0 # Time limit for making choices and bets (3 seconds)
 
 # This function generates the actual sequence of rewards that players will receive
@@ -90,8 +90,8 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
     current_high_prob_image = 'A'  # Start with image A as high probability
     high_prob_rewards = 0  # Counter for high probability rewards given
     low_prob_rewards = 0   # Counter for low probability rewards given
-    target_high_rewards = 42  # Target number of high probability rewards (70% of 60 rounds)
-    target_low_rewards = 18   # Target number of low probability rewards (30% of 60 rounds)
+    target_high_rewards = 45  # Target number of high probability rewards (75% of 60 rounds)
+    target_low_rewards = 15   # Target number of low probability rewards (25% of 60 rounds)
 
     # Prepare CSV file headers for logging the reward sequence
     csv_data = [['Round', 'High Prob', 'reward_A', 'reward_B']]
@@ -168,7 +168,7 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
 
 # Generate all sequences needed for the experiment when this module is first imported
 TRIAL_SEQUENCE, REVERSAL_ROUNDS = generate_trial_sequence()
-REWARD_SEQUENCE = generate_reward_sequence(60, REVERSAL_ROUNDS)
+REWARD_SEQUENCE = generate_reward_sequence(2, REVERSAL_ROUNDS)
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Base Constants: Used to define constants across all pages and subsessions in the game
@@ -185,8 +185,8 @@ class C(BaseConstants):
     NUM_ROUNDS = NUM_ROUNDS
     
     # The reward probabilities for each option
-    # When an option is in its "high probability" state, it has a 70% chance of giving a reward
-    # When an option is in its "low probability" state, it has a 30% chance of giving a reward
+    # When an option is in its "high probability" state, it has a 75% chance of giving a reward
+    # When an option is in its "low probability" state, it has a 25% chance of giving a reward
     REWARD_PROBABILITY_A = REWARD_PROBABILITY_A
     REWARD_PROBABILITY_B = REWARD_PROBABILITY_B
     
@@ -215,7 +215,7 @@ class C(BaseConstants):
 
 def generate_earnings_sequence(num_rounds):
     # Use a fixed random seed for reproducibility
-    random.seed(42)  # Ensure reproducibility
+    random.seed(51)  # Ensure reproducibility
     
     # Create initial sequence alternating between first and second choice earnings
     sequence = ['choice1_earnings' if i % 2 == 0 else 'choice2_earnings' for i in range(num_rounds)]
@@ -454,7 +454,7 @@ class Group(BaseGroup):
 
     def generate_intertrial_interval(self):
         # Generate random interval of approximately 5 seconds
-        self.intertrial_interval = random.randint(4900, 5000)
+        self.intertrial_interval = random.randint(4995, 5000)
         print(f"Intertrial interval of {self.intertrial_interval}ms generated")
 
 #### ----------- Define and record the reversal learning rounds ------------------- ####
@@ -1536,6 +1536,28 @@ class FinalResults(Page):
     def is_displayed(player: Player):
         # Only show this page after the last round
         return player.round_number == C.NUM_ROUNDS
+    
+    # before_next_page method is used to store data before moving to the next page
+    # In this case, we store the player and group IDs in participant vars
+    @staticmethod
+    def before_next_page(player, timeout_happened):
+        # Store group information in session vars for access in feedback app
+        if 'main_task_groups' not in player.session.vars:
+            player.session.vars['main_task_groups'] = {}
+        
+        group_data = [
+            {
+                'id_in_group': p.id_in_group,
+                'participant_code': p.participant.code
+            }
+            for p in player.group.get_players()
+        ]
+        
+        player.session.vars['main_task_groups'][str(player.group.id_in_subsession)] = group_data
+        
+        # Store player's own IDs in participant vars
+        player.participant.vars['main_task_player_id'] = player.id_in_group
+        player.participant.vars['main_task_group_id'] = player.group.id_in_subsession
 
     # vars_for_template method is used to pass variables to the template
     # This is used to calculate and display the final results to the player

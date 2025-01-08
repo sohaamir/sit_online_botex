@@ -71,12 +71,12 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_CONFIGS = [
      dict(
          name='social_influence_task',  # Unique identifier for this session configuration
-         app_sequence=['instructions', 'practice_task', 'main_task', 'submission'],  # Order of apps in the experiment
+         app_sequence=['instructions', 'main_task', 'submission'],  # Order of apps in the experiment
          num_demo_participants=5,  # Number of demo participants, useful for testing
          # use_browser_bots=True,  # Uncomment to use bots for testing
 
          # Prolific completion links for different scenarios
-         completionlink='https://bhampsychology.eu.qualtrics.com/jfe/form/SV_78qlaEMwYhSyUui', # Send to Qualtrics survey if participant completes the task
+         completionlink='https://bhampsychology.eu.qualtrics.com/jfe/form/SV_bgb9ixraKKEd1LU', # Send to Qualtrics survey if participant completes the task
          noconsentlink='https://app.prolific.com/submissions/complete?cc=CDVJRJBR', # Send to Prolific if participant does not consent
          playerleftlink='https://app.prolific.com/submissions/complete?cc=CXG9SKDC', # End the task and send to Prolific if a participant leaves mid-task
          waitpagelink='https://app.prolific.com/submissions/complete?cc=C1J67YK4', # Send to Prolific if participant decides to leave the task

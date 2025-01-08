@@ -69,13 +69,18 @@
     <div class="container">
         <h2><b>How do I know which image to choose?</b></h2>
         <br>
+        <p>In each round, one image will reward you whilst the other will lower your score. <b>This is the same for all players in the group.</b></p>
+        <br>
+        <p>The 60 rounds are split into a number of blocks. Within each block, both images will give you wins and losses,<b> but one image will give you more wins than the other.</b>
+            For example, whilst it may be better overall to choose the 'Green' image than the 'Blue' image in one block, in the next block it will be the other way round.</p>
+        <br>
+        <div class="image-container">
+            <img src="{% static 'instructions/reward_structure.png' %}" alt="Reward Structure" width="900" height="auto">
+        </div>
+        <br>
+        <p><b>This is a very important aspect of the task</b>, because if the image gave you the same outcome everytime in each block, you would always know which one to pick and when exactly the reversals happen!</p>
+        <br>
         <div class="blue-highlight-box">
-            <p>The 60 rounds are split into a number of blocks, where one image is <b>more likely to give you points than the other but not always</b>. 
-                <br>
-                <br>
-                In other words, within each block, both images will give you wins and losses, but one image will give you more wins than the other.
-                For example, whilst it may be better overall to choose the Green image than the Blue image in one block, in the next block it will be the other way round.
-                 <b>This switch will happen at several points within the experiment, and you will not be told when.</b><br></p>
                  <p><b>When and how often the switches take place are unknown to you and you will be able to use your choices and feedback to find this out.</b></p>
             <p>It is therefore important to pay attention to the feedback and adjust your choices accordingly.</p>
         </div>
@@ -83,16 +88,14 @@
         <p>Over the course of the game, you may therefore choose to either trust your own learning experience through trial and error and/or 
             take decisions from others into consideration, as some of the other players might learn faster than others.</p>
         <br>
-        <div class="red-highlight-box">
-            <p><b>Remember that the more points you score, the more your bonus payment is!</b></p>
-        </div>
-        <br>
         <div class="blue-highlight-box">
             <p>After completing 60 rounds, the total number of points you earned will be displayed along with your bonus, 
                 after which you can subsequently complete the questionnaires.</p>  
             <div class="image-container">
                 <img src="{% static 'instructions/TaskInstructionsPage2/final_results.png' %}" alt="Final Results" width="600" height="auto">
             </div>
+            <br>
+            <p>Remember the more points you score, the higher your bonus payment is!</p>
         </div>
         <br>
         <p>When you are ready, please press the button below to move onto the next page of instructions.</p>

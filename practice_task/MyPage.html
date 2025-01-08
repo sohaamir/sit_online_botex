@@ -300,7 +300,7 @@
             setTimeout(() => {
                 // Remove the condition - always send timer ended event at 6000ms
                 liveSend({choice_phase_timer_ended: true});
-            }, 6000);  // First choice phase lasts 3 seconds
+            }, 6000);  // First choice phase lasts 6 seconds
         }, 0);
 
         // Set up page timeout handling
@@ -486,8 +486,11 @@
         else if (currentStage === 'second_bet' && (event.key >= '1' && event.key <= '3') && !secondBetMade) {
             const bet = parseInt(event.key);
             const secondBetTime = performance.now() - secondBetStartTime;
-            // Hide 'Second bet?' text when manual bet is made
+            
+            // Hide 'Second bet?' text and prevent it from being shown again
             document.getElementById('second-bet-title').style.display = 'none';
+            window.manualSecondBetMade = true;
+            
             liveSend({
                 second_bet_time: secondBetTime,
                 second_bet: bet
@@ -536,7 +539,7 @@
             }
             // Store the bet in a hidden form field
             document.getElementById('bet1_field').value = bet;
-            // Only process the bet if it's made within the time limit (3 seconds)
+            // Only process the bet if it's made within the time limit (6 seconds)
             if (performance.now() - betPhaseStartTime <= 6000) {
                 liveSend({ 
                     bet: bet, 
@@ -582,7 +585,6 @@
     
     // Function to handle the second bet selection
     function selectSecondBet(bet) {
-
         // Ignore all inputs during display phase
         if (inDisplayPhase) {
             return;
@@ -595,13 +597,16 @@
                 element.classList.remove('selected'); // Remove yellow highlight from initial bet
                 element.classList.remove('selected-second-bet');
             });
+            
             // Add highlight to the selected second bet
             const selectedBetElement = document.querySelector(`.bet-options div[data-bet="${bet}"]`);
             if (selectedBetElement) {
                 selectedBetElement.classList.add('selected-second-bet');
             }
+            
             // Store the second bet in a hidden form field
             document.getElementById('bet2_field').value = bet;
+            
             secondBetMade = true;
         }
     }
@@ -620,7 +625,7 @@
             document.addEventListener('keydown', handleKeyDown);
             betPhaseStartTime = performance.now();
 
-            // End betting phase after 3 seconds
+            // End betting phase after 6 seconds
             setTimeout(function() {
                 liveSend({bet_timer_ended: true});
                 document.removeEventListener('keydown', handleKeyDown);
@@ -672,14 +677,17 @@
             secondBetTimerStarted = true;
             // Show second betting interface
             document.getElementById('bet-container').style.display = 'block';
-            showTitle('second-bet-title');
+            // Only show the title if no manual bet was made
+            if (!window.manualSecondBetMade) {
+                showTitle('second-bet-title');
+            }
             currentStage = 'second_bet';
             secondBetMade = false;
             // Add keyboard listener and start timing
             document.addEventListener('keydown', handleKeyDown);
             secondBetStartTime = performance.now();
 
-            // End second betting phase after 3 seconds
+            // End second betting phase after 6 seconds
             setTimeout(function() {
                 liveSend({second_bet_timer_ended: true});
                 document.removeEventListener('keydown', handleKeyDown);
@@ -722,7 +730,7 @@
             document.getElementById('choice-title').style.display = 'block';
             choicePhaseStartTime = performance.now();
             
-            // End the choice phase after 3 seconds
+            // End the choice phase after 6 seconds
             setTimeout(function() {
                 liveSend({choice_phase_timer_ended: true});
             }, 6000);
@@ -845,9 +853,12 @@
                 selectedOption.classList.add('selected-second-choice');
             }
             
-            // Show betting interface
+            // Show betting interface without showing the title if a manual bet was already made
             document.getElementById('bet-container').style.display = 'block';
-            document.getElementById('second-bet-title').style.display = 'block';
+            const secondBetTitle = document.getElementById('second-bet-title');
+            if (secondBetTitle && !window.manualSecondBetMade) {
+                secondBetTitle.style.display = 'block';
+            }
         }
 
         // Highlight manually selected second choice

@@ -203,7 +203,7 @@
         <br>
         <p>The image associated with your second choice will subsequently be highlighted with a red box, <b>regardless if it is different to or the same as your first choice.</b></p>
         <br>
-        <p>In the example below, the player initially chose the blue image, but switched to the green image for their second choice after seeing the other players initial choices.</p>
+        <p>In the example below, the player initially chose the blue image, but switched to the green image for their second choice.</p>
         <div class="dual-image-container">
             <div class="image-with-caption">
                 <img src="{% static 'instructions/TaskInstructionsPage2/choice2.png' %}" alt="Choice 2" class="large-instruction-image">
@@ -233,8 +233,8 @@
             This second bet will be highlighted by a red box, regardless if it is the same or different to your first.
             You will have 3 seconds, after which a random bet will be made for you if you do not choose manually within the time frame.</p>
             <br>
-            <p>In the example below, the player made a first bet of 3, indicating that they were very confident in their first image choice, but switched to a 
-                second bet of 2, indicating that they were reasonably confident in their second choice.
+            <p>In the example below, the player made a first bet of '3', indicating that they were <b>very confident</b> in their first image choice, but switched to a 
+                second bet of '2', indicating that they were <b>reasonably confident</b> in their second choice.
             </p>
             <div class="dual-image-container">
                 <div class="image-with-caption">
@@ -279,19 +279,27 @@
         <br>
         <p>You also are provided with the <b>amount of points</b> gained or lost for that round.
             <b>The amount of points displayed represents your second choice and second bet only.</b></p>
-        <div class="image-container">
-            <img src="{% static 'instructions/TaskInstructionsPage2/points.png' %}" alt="Points" width="200" height="auto">
-        </div>
         <br>
         <div class="red-highlight-box">
             <p class="normal-weight">As with the first bet, it is important that you also make your second bet appropriately based on how confident you are.</p>
-            <p>For example, if you bet 3 and win, you will receive 60 points, but if you bet 3 and lose, you will lose 60 points (as the bet is multiplied by 20).</p>
-            <p>Conversely, if you bet 1 and win, you will only receive 20 points, but if you bet 1 and lose, you will only lose 20 points.</p>
+            <p>For example, if you bet '3' and win, you will receive 60 points, but if you bet '3' and lose, you will lose 60 points (as the bet is multiplied by 20).</p>
+            <p>Conversely, if you bet '1' and win, you will only receive 20 points, but if you bet '1' and lose, you will only lose 20 points.</p>
+        </div>
+        <br>
+        <div class="dual-image-container">
+            <div class="image-with-caption">
+                <img src="{% static 'instructions/TaskInstructionsPage2/points.png' %}" alt="Points" class="large-instruction-image">
+                <p class="image-caption">Getting feedback that you have won 40 points.</p>
+            </div>
+            <div class="image-with-caption">
+                <img src="{% static 'instructions/TaskInstructionsPage2/points_loss.png' %}" alt="Points Loss" class="large-instruction-image" width="600">
+                <p class="image-caption">Getting feedback that you have lost 60 points.</p>
+            </div>
         </div>
         <br>
         <div class="blue-highlight-box">
-            <p class="normal-weight">Remember that whilst feedback is only given for your second choice/bet, 
-                your bonus is calculated randomly on each round from <b>either your first or second choice/bet.</b></p>
+            <p class="normal-weight">Remember that your bonus is calculated <b>randomly on each round from the points associated with either your first choice/bet or your second choice/bet.</b>
+                Feedback is only given for your second choice/bet, so you can learn which image is being rewarded. You should therefore treat both choices and bets as if they were going to both contribute to your score.</p>
         </div>
         <br>
         <p>You will also see the second choice for all the other players in the group (so you can determine whether they changed their choice) and an icon indicating whether they won or lost.
@@ -312,7 +320,8 @@
         <p>After this, you will move onto the next round, where you will start again by making a new first choice. 
             <b>There are a total of 60 rounds, lasting approximately 20 minutes.</b></p>
         <br>
-        <p>Please make sure that you understand how the task works, and what is expected before moving ahead as you will not be able to return to this page.</p>
+        <p>Please make sure that you understand how the task works, and what is expected before moving ahead as you will not be able to return to this page.
+            Feel-free to re-read the instructions on this page if you are unsure.</p>
         <br>
         <p>When you are ready, please press the button below to move onto the next page of instructions.</p>
 
