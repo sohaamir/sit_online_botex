@@ -1,4 +1,15 @@
 # -------------------------------------------------------------------------------------------------------------------- #
+# --------------- AUTHORSHIP INFORMATION: DEFINE THE AUTHOR AND DOCUMENTATION FOR THE GAME ----------------- #
+# -------------------------------------------------------------------------------------------------------------------- #
+
+author = 'Aamir Sohail'
+
+doc = """
+This is a multiplayer social influence task where players in groups of 5 make choices and bets to earn rewards in real time. 
+The task is the same as reported in (Zhang & Glascher, 2020) https://www.science.org/doi/full/10.1126/sciadv.abb4159
+"""
+
+# -------------------------------------------------------------------------------------------------------------------- #
 # --------------- IMPORTS: IMPORT ALL NECESSARY MODULES AND LIBRARIES REQUIRED FOR THE GAME ----------------- #
 # -------------------------------------------------------------------------------------------------------------------- #
 
@@ -19,16 +30,6 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-# -------------------------------------------------------------------------------------------------------------------- #
-# --------------- AUTHORSHIP INFORMATION: DEFINE THE AUTHOR AND DOCUMENTATION FOR THE GAME ----------------- #
-# -------------------------------------------------------------------------------------------------------------------- #
-
-author = 'Aamir Sohail'
-
-doc = """
-This is a multiplayer social influence task where players in groups of 5 make choices and bets to earn rewards in real time. 
-The task is the same as reported in (Zhang & Glascher, 2020) https://www.science.org/doi/full/10.1126/sciadv.abb4159
-"""
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- CONSTANTS: DEFINE CONSTANTS USED IN THE GAME INCLUDING NUMBER OF PLAYERS, ROUNDS AND TRIAL SEQUENCE------ #
@@ -78,7 +79,7 @@ def generate_trial_sequence():
 # ---- REWARD SEQUENCE: GENERATE A SEQUENCE OF REWARDS FOR THE EXPERIMENT BASED ON THE NUMBER OF ROUNDS ------ #
 
 # Define the core parameters of the experiment
-NUM_ROUNDS = 2  # Total number of rounds in the experiment
+NUM_ROUNDS = 10  # Total number of rounds in the experiment
 REWARD_PROBABILITY_A = 0.75  # 75% chance of reward for option A when it's the high-probability option
 REWARD_PROBABILITY_B = 0.25  # 25% chance of reward for option A when it's the low-probability option
 DECISION_TIME = 3.0 # Time limit for making choices and bets (3 seconds)
@@ -453,8 +454,8 @@ class Group(BaseGroup):
 # Creates a random pause between trials to prevent rhythmic responding
 
     def generate_intertrial_interval(self):
-        # Generate random interval of approximately 5 seconds
-        self.intertrial_interval = random.randint(4995, 5000)
+        # Generate trial interval (feedback phase) of 5 seconds
+        self.intertrial_interval = 5000
         print(f"Intertrial interval of {self.intertrial_interval}ms generated")
 
 #### ----------- Define and record the reversal learning rounds ------------------- ####
@@ -532,9 +533,9 @@ class Player(BasePlayer):
     trial_reward = models.IntegerField(initial=0)        # Reward received in current trial
     
     # Detailed choice tracking
-    chosen_image_one = models.StringField(initial=None)              # Actual image chosen in first choice
+    chosen_image_one = models.StringField(initial=None)           # Actual image chosen in first choice
     chosen_image_one_binary = models.IntegerField(initial=1)      # First choice coded as 1 or 2
-    chosen_image_two = models.StringField(initial=None)  # Actual image chosen in second choice
+    chosen_image_two = models.StringField(initial=None)           # Actual image chosen in second choice
     chosen_image_two_binary = models.IntegerField(initial=1)      # Second choice coded as 1 or 2
     
     # Social influence tracking
@@ -544,8 +545,8 @@ class Player(BasePlayer):
     choice2_against = models.IntegerField(initial=0)     # Number of others who made different second choice
     
     # Computer choice tracking
-    chosen_image_computer = models.StringField(initial='')     # Image chosen by computer for first choice
-    chosen_image_computer_two = models.StringField(initial='') # Image chosen by computer for second choice
+    chosen_image_computer = models.StringField(initial='')         # Image chosen by computer for first choice
+    chosen_image_computer_two = models.StringField(initial='')     # Image chosen by computer for second choice
     
     # Performance metrics
     choice1_accuracy = models.BooleanField()             # Whether first choice was optimal
@@ -553,7 +554,7 @@ class Player(BasePlayer):
     switch_vs_stay = models.IntegerField()               # Whether player switched (1) or stayed (0) between choices
     
     # Timing variables
-    my_page_load_time = models.FloatField()             # When page loaded for this player
+    my_page_load_time = models.FloatField()              # When page loaded for this player
     individual_page_load_time = models.FloatField()      # Individual timing for page load
     initial_choice_time = models.FloatField()            # Time taken for first choice
     initial_bet_time = models.FloatField()               # Time taken for first bet
@@ -561,11 +562,11 @@ class Player(BasePlayer):
     second_bet_time = models.FloatField()                # Time taken for second bet
     
     # Earnings tracking
-    choice1_earnings = models.IntegerField(initial=0)    # Points earned from first choice
-    choice2_earnings = models.IntegerField(initial=0)    # Points earned from second choice
+    choice1_earnings = models.IntegerField(initial=0)     # Points earned from first choice
+    choice2_earnings = models.IntegerField(initial=0)     # Points earned from second choice
     choice1_sum_earnings = models.IntegerField(initial=0) # Cumulative earnings from first choices
     choice2_sum_earnings = models.IntegerField(initial=0) # Cumulative earnings from second choices
-    bonus_payment_score = models.IntegerField(initial=0) # Total bonus points earned
+    bonus_payment_score = models.IntegerField(initial=0)  # Total bonus points earned
     
     # Final payment calculations
     base_payoff = models.CurrencyField(initial=6)       # Base payment amount (£6)
@@ -727,7 +728,7 @@ class Player(BasePlayer):
         """
         Calculate final payment for the player
         Includes base payment of £6 plus bonus based on points earned
-        Points are converted to bonus payment by dividing by 750
+        Points are converted to bonus payment by dividing by 720
         """
         self.base_payoff = cu(6)  # Base payoff of £6
         
@@ -735,7 +736,7 @@ class Player(BasePlayer):
         if self.bonus_payment_score <= 0:
             self.bonus_payoff = cu(0)
         else:
-            self.bonus_payoff = cu(round(self.bonus_payment_score / 750, 2))
+            self.bonus_payoff = cu(round(self.bonus_payment_score / 720, 2))
         
         self.total_payoff = self.base_payoff + self.bonus_payoff
 
