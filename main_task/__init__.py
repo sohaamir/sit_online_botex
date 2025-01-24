@@ -169,7 +169,7 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
 
 # Generate all sequences needed for the experiment when this module is first imported
 TRIAL_SEQUENCE, REVERSAL_ROUNDS = generate_trial_sequence()
-REWARD_SEQUENCE = generate_reward_sequence(2, REVERSAL_ROUNDS)
+REWARD_SEQUENCE = generate_reward_sequence(10, REVERSAL_ROUNDS)
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Base Constants: Used to define constants across all pages and subsessions in the game
@@ -569,7 +569,7 @@ class Player(BasePlayer):
     bonus_payment_score = models.IntegerField(initial=0)  # Total bonus points earned
     
     # Final payment calculations
-    base_payoff = models.CurrencyField(initial=6)       # Base payment amount (£6)
+    base_payoff = models.CurrencyField(initial=8)       # Base payment amount (£8/p hr)
     bonus_payoff = models.CurrencyField(initial=0)      # Additional bonus earned
     total_payoff = models.CurrencyField(initial=0)      # Total payment (base + bonus)
     
