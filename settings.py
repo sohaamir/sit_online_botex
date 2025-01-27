@@ -88,7 +88,7 @@ SESSION_CONFIGS = [
 SESSION_CONFIG_DEFAULTS = dict(
     real_world_currency_per_point=0.00,  # Conversion rate from points to real currency
     participation_fee=0.00,  # Fixed fee for participating
-    payoff=6.00,  # Default payoff for the experiment
+    payoff=10.00,  # Default payoff for the experiment
     doc=""  # Documentation string
 )
 

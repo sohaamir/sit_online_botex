@@ -99,6 +99,10 @@
             padding: 10px 20px;
             border-radius: 0.25rem;
         }
+
+        .third-phase-caption {
+            font-size: 1.6rem; 
+        }
     </style>
 
     <div class="container">
@@ -186,8 +190,17 @@
         <p><b>The other four players in the group will be making choices and bets at the same time as you.</b> After you have made your choice and bet, the choices of the other players in the group will then be revealed below their respective avatar.</p>
         <br>
         <div class="image-container">
-            <img src="{% static 'instructions/TaskInstructionsPage1/third_display_phase.png' %}" alt="Third Display Phase" width="600" height="auto">
-            <p class="image-caption">The choices of the other players are then displayed below their avatar.</p>
+            <figure class="third-phase-figure">
+                <img 
+                    src="{% static 'instructions/TaskInstructionsPage1/third_display_phase.png' %}"
+                    alt="Third Display Phase"
+                    width="600"
+                    height="auto"
+                >
+                <figcaption class="image-caption third-phase-caption">
+                    The choices of the other players are then displayed below their avatar
+                </figcaption>
+            </figure>
         </div>
         <br>
         <p><b>Where players do not make their first choice within the time-limit, and are therefore made by the computer, 
