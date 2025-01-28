@@ -42,7 +42,7 @@ if __name__ == "__main__":
         try:
             score, divider = map(float, user_input.split())
             bonus_payoff = calculate_bonus_payoff(score, divider)
-            total_payoff = 6 + bonus_payoff
+            total_payoff = 10 + bonus_payoff
             print(f"For a score of {score} and divider {divider}:")
             print(f"Bonus payoff: £{bonus_payoff:.2f}")
             print(f"Total payoff: £{total_payoff:.2f}")

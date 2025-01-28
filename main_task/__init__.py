@@ -43,7 +43,7 @@ logging.basicConfig(
 def generate_trial_sequence():
     # Using a fixed random seed ensures the same sequence is generated each time the experiment runs
     # This is important for reproducibility and consistency across different groups
-    random.seed(21)  # You can change this number, but keep it constant
+    random.seed(40)  # You can change this number, but keep it constant
 
     sequence = []
     # Randomly select which image will start as the high-probability option
@@ -86,16 +86,64 @@ DECISION_TIME = 3.0 # Time limit for making choices and bets (3 seconds)
 
 # This function generates the actual sequence of rewards that players will receive
 # It ensures a balanced distribution of rewards while maintaining the intended probabilities
+def generate_trial_sequence():
+    # Using a fixed random seed ensures the same sequence is generated each time the experiment runs
+    # This is important for reproducibility and consistency across different groups
+    random.seed(40)  # You can change this number, but keep it constant
+
+    sequence = []
+    # Randomly select which image will start as the high-probability option
+    current_image = random.choice(['option1A.bmp', 'option1B.bmp'])
+    reversal_rounds = []
+    
+    # Create a list of rounds where reversals will occur
+    # Reversals happen every 9-11 rounds (randomly determined)
+    current_round = random.randint(9, 11)
+    while current_round <= NUM_ROUNDS:
+        reversal_rounds.append(current_round)
+        current_round += random.randint(9, 11)
+    
+    # Generate the full sequence of trials
+    # At each reversal round, the high-probability image switches
+    for round_number in range(1, NUM_ROUNDS + 1):
+        if round_number in reversal_rounds:
+            current_image = 'option1B.bmp' if current_image == 'option1A.bmp' else 'option1A.bmp'
+        sequence.append((round_number, current_image))
+
+    # Save sequence to CSV
+    file_path = os.path.join(os.getcwd(), 'reversal_sequence.csv')
+    with open(file_path, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['round', 'seventy_percent_image', 'is_reversal'])
+        for round_num, image in sequence:
+            writer.writerows([(round_num, image, round_num in reversal_rounds)])
+
+    print(f"Reversal rounds: {reversal_rounds}")
+    return sequence, reversal_rounds
+
+# Define the core parameters of the experiment
+NUM_ROUNDS = 60  # Total number of rounds in the experiment
+REWARD_PROBABILITY_A = 0.75  # 75% chance of reward for option A when it's the high-probability option
+REWARD_PROBABILITY_B = 0.25  # 25% chance of reward for option A when it's the low-probability option
+DECISION_TIME = 3.0 # Time limit for making choices and bets (3 seconds)
+
+# Generate a reward sequence consisting the specified number of rounds and reversal rounds
+# Importantly, to get the specific reward contingency, we make two adjustments to the generated blocks:
+# 1. Swap blocks 2 and 6 (to make sure that blocks with only 2 1's aren't all clustered together) 
+# 2. Swap trials 31 and 32 (to ensure that the first trial of the reversal block for the high probability option is a 1 as should be the case)
+# The original trial sequence generator without these two additions is located within trial_sequence.py
+
 def generate_reward_sequence(num_rounds, reversal_rounds):
+    # Initialize block storage for the modified sequence
+    blocks = []
+    current_block = []
+    
     sequence = []
     current_high_prob_image = 'A'  # Start with image A as high probability
     high_prob_rewards = 0  # Counter for high probability rewards given
     low_prob_rewards = 0   # Counter for low probability rewards given
     target_high_rewards = 45  # Target number of high probability rewards (75% of 60 rounds)
     target_low_rewards = 15   # Target number of low probability rewards (25% of 60 rounds)
-
-    # Prepare CSV file headers for logging the reward sequence
-    csv_data = [['Round', 'High Prob', 'reward_A', 'reward_B']]
 
     print("\nGenerated Reward Sequence:")
     print("Round | High Prob | reward_A | reward_B")
@@ -115,13 +163,13 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
 
     # Generate rewards for each round
     for round_num in range(1, num_rounds + 1):
-        # Switch the high probability image at reversal rounds
+        # At reversal rounds, store the completed block and start a new one
         if round_num in reversal_rounds:
+            blocks.append((current_block[:], current_high_prob_image))
+            current_block = []
             current_high_prob_image = 'B' if current_high_prob_image == 'A' else 'A'
-            print("-------|-----------|----------|----------")
-            csv_data.append(['-------|-----------|----------|----------'])
 
-        # Calculate how many more rewards are needed of each type
+        # Calculate remaining rewards needed
         remaining_rounds = num_rounds - round_num + 1
         min_high_needed = target_high_rewards - high_prob_rewards
         min_low_needed = target_low_rewards - low_prob_rewards
@@ -147,8 +195,45 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
             low_prob_rewards += 1
 
         sequence.append((reward_A, reward_B))
-        print(f"{round_num:5d} | {current_high_prob_image:9s} | {reward_A:8d} | {reward_B:8d}")
-        csv_data.append([round_num, current_high_prob_image, reward_A, reward_B])
+        current_block.append((round_num, reward_A, reward_B))
+
+    # Add the final block
+    blocks.append((current_block[:], current_high_prob_image))
+
+    # Swap blocks 2 and 6 (indices 1 and 5)
+    blocks[1], blocks[5] = blocks[5], blocks[1]
+
+    # Find and swap trials 31 and 32
+    current_round = 1
+    trial_31_block = None
+    trial_31_index = None
+    
+    # First pass to find trial 31
+    for block_index, (block, _) in enumerate(blocks):
+        for trial_index, (_, _, _) in enumerate(block):
+            if current_round == 31:
+                trial_31_block = block_index
+                trial_31_index = trial_index
+            elif current_round == 32:
+                # Swap the rewards for trials 31 and 32
+                if trial_31_block is not None:
+                    # Get the original trials
+                    trial_31_round, trial_31_reward_A, trial_31_reward_B = blocks[trial_31_block][0][trial_31_index]
+                    trial_32_round, trial_32_reward_A, trial_32_reward_B = block[trial_index]
+                    
+                    # Create new tuples with swapped rewards
+                    blocks[trial_31_block][0][trial_31_index] = (trial_31_round, trial_32_reward_A, trial_32_reward_B)
+                    block[trial_index] = (trial_32_round, trial_31_reward_A, trial_31_reward_B)
+            current_round += 1
+
+    # Print the final modified sequence
+    current_round = 1
+    for block, high_prob_image in blocks:
+        for round_data in block:
+            _, reward_A, reward_B = round_data
+            print(f"{current_round:5d} | {high_prob_image:9s} | {reward_A:8d} | {reward_B:8d}")
+            current_round += 1
+        print("-------|-----------|----------|----------")
 
     # Calculate and display statistics about the generated sequence
     high_prob_percentage = (high_prob_rewards / num_rounds) * 100
@@ -158,7 +243,16 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
     print(f"High probability rewards: {high_prob_rewards}/{num_rounds} ({high_prob_percentage:.2f}%)")
     print(f"Low probability rewards: {low_prob_rewards}/{num_rounds} ({low_prob_percentage:.2f}%)")
 
-    # Save the complete reward sequence to a CSV file
+    # Save the modified sequence to CSV
+    csv_data = [['Round', 'High Prob', 'reward_A', 'reward_B']]
+    current_round = 1
+    for block, high_prob_image in blocks:
+        for round_data in block:
+            _, reward_A, reward_B = round_data
+            csv_data.append([current_round, high_prob_image, reward_A, reward_B])
+            current_round += 1
+        csv_data.append(['-------|-----------|----------|----------'])
+
     with open('reward_sequence.csv', 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerows(csv_data)
