@@ -1,3 +1,5 @@
+### Original trial sequence generator
+
 def generate_trial_sequence():
     # Using a fixed random seed ensures the same sequence is generated each time the experiment runs
     # This is important for reproducibility and consistency across different groups
@@ -117,6 +119,185 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
     print(f"Low probability rewards: {low_prob_rewards}/{num_rounds} ({low_prob_percentage:.2f}%)")
 
     # Save the complete reward sequence to a CSV file
+    with open('reward_sequence.csv', 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerows(csv_data)
+
+    print("Reward sequence saved to 'reward_sequence.csv'")
+
+    return sequence
+
+# Generate all sequences needed for the experiment when this module is first imported
+TRIAL_SEQUENCE, REVERSAL_ROUNDS = generate_trial_sequence()
+REWARD_SEQUENCE = generate_reward_sequence(60, REVERSAL_ROUNDS)
+
+# -------------------------------------------------------------------------------------------------------------------- #
+
+# Trial sequence generator with modifications to ensure specific reward contingencies 
+
+# This function generates the actual sequence of rewards that players will receive
+# It ensures a balanced distribution of rewards while maintaining the intended probabilities
+def generate_trial_sequence():
+    # Using a fixed random seed ensures the same sequence is generated each time the experiment runs
+    # This is important for reproducibility and consistency across different groups
+    random.seed(40)  # You can change this number, but keep it constant
+
+    sequence = []
+    # Randomly select which image will start as the high-probability option
+    current_image = random.choice(['option1A.bmp', 'option1B.bmp'])
+    reversal_rounds = []
+    
+    # Create a list of rounds where reversals will occur
+    # Reversals happen every 9-11 rounds (randomly determined)
+    current_round = random.randint(9, 11)
+    while current_round <= NUM_ROUNDS:
+        reversal_rounds.append(current_round)
+        current_round += random.randint(9, 11)
+    
+    # Generate the full sequence of trials
+    # At each reversal round, the high-probability image switches
+    for round_number in range(1, NUM_ROUNDS + 1):
+        if round_number in reversal_rounds:
+            current_image = 'option1B.bmp' if current_image == 'option1A.bmp' else 'option1A.bmp'
+        sequence.append((round_number, current_image))
+
+    # Save sequence to CSV
+    file_path = os.path.join(os.getcwd(), 'reversal_sequence.csv')
+    with open(file_path, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['round', 'seventy_percent_image', 'is_reversal'])
+        for round_num, image in sequence:
+            writer.writerows([(round_num, image, round_num in reversal_rounds)])
+
+    print(f"Reversal rounds: {reversal_rounds}")
+    return sequence, reversal_rounds
+
+# Generate a reward sequence consisting the specified number of rounds and reversal rounds
+# Importantly, to get the specific reward contingency, we make two adjustments to the generated blocks:
+# 1. Swap blocks 2 and 6 (to make sure that blocks with only 2 1's aren't all clustered together) 
+# 2. Swap trials 31 and 32 (to ensure that the first trial of the reversal block for the high probability option is a 1 as should be the case)
+# The original trial sequence generator without these two additions is located within trial_sequence.py
+
+def generate_reward_sequence(num_rounds, reversal_rounds):
+    # Initialize block storage for the modified sequence
+    blocks = []
+    current_block = []
+    
+    sequence = []
+    current_high_prob_image = 'A'  # Start with image A as high probability
+    high_prob_rewards = 0  # Counter for high probability rewards given
+    low_prob_rewards = 0   # Counter for low probability rewards given
+    target_high_rewards = 45  # Target number of high probability rewards (75% of 60 rounds)
+    target_low_rewards = 15   # Target number of low probability rewards (25% of 60 rounds)
+
+    print("\nGenerated Reward Sequence:")
+    print("Round | High Prob | reward_A | reward_B")
+    print("------|-----------|----------|----------")
+
+    # Helper function to prevent too many consecutive high probability rewards
+    def can_add_high_prob():
+        if len(sequence) < 3:
+            return True
+        return not all(s[0] if current_high_prob_image == 'A' else s[1] for s in sequence[-3:])
+
+    # Helper function to prevent too many consecutive low probability rewards
+    def can_add_low_prob():
+        if len(sequence) < 3:
+            return True
+        return not all(s[1] if current_high_prob_image == 'A' else s[0] for s in sequence[-3:])
+
+    # Generate rewards for each round
+    for round_num in range(1, num_rounds + 1):
+        # At reversal rounds, store the completed block and start a new one
+        if round_num in reversal_rounds:
+            blocks.append((current_block[:], current_high_prob_image))
+            current_block = []
+            current_high_prob_image = 'B' if current_high_prob_image == 'A' else 'A'
+
+        # Calculate remaining rewards needed
+        remaining_rounds = num_rounds - round_num + 1
+        min_high_needed = target_high_rewards - high_prob_rewards
+        min_low_needed = target_low_rewards - low_prob_rewards
+
+        # Logic to ensure we meet our target numbers while maintaining randomness
+        if min_high_needed > remaining_rounds * 0.7:
+            choice = 'high'
+        elif min_low_needed > remaining_rounds * 0.3:
+            choice = 'low'
+        elif not can_add_high_prob():
+            choice = 'low'
+        elif not can_add_low_prob():
+            choice = 'high'
+        else:
+            choice = random.choices(['high', 'low'], weights=[0.7, 0.3])[0]
+
+        # Assign rewards based on the choice
+        if choice == 'high' and can_add_high_prob():
+            reward_A, reward_B = (1, 0) if current_high_prob_image == 'A' else (0, 1)
+            high_prob_rewards += 1
+        else:
+            reward_A, reward_B = (0, 1) if current_high_prob_image == 'A' else (1, 0)
+            low_prob_rewards += 1
+
+        sequence.append((reward_A, reward_B))
+        current_block.append((round_num, reward_A, reward_B))
+
+    # Add the final block
+    blocks.append((current_block[:], current_high_prob_image))
+
+    # Swap blocks 2 and 6 (indices 1 and 5)
+    blocks[1], blocks[5] = blocks[5], blocks[1]
+
+    # Find and swap trials 31 and 32
+    current_round = 1
+    trial_31_block = None
+    trial_31_index = None
+    
+    # First pass to find trial 31
+    for block_index, (block, _) in enumerate(blocks):
+        for trial_index, (_, _, _) in enumerate(block):
+            if current_round == 31:
+                trial_31_block = block_index
+                trial_31_index = trial_index
+            elif current_round == 32:
+                # Swap the rewards for trials 31 and 32
+                if trial_31_block is not None:
+                    # Get the original trials
+                    trial_31_round, trial_31_reward_A, trial_31_reward_B = blocks[trial_31_block][0][trial_31_index]
+                    trial_32_round, trial_32_reward_A, trial_32_reward_B = block[trial_index]
+                    
+                    # Create new tuples with swapped rewards
+                    blocks[trial_31_block][0][trial_31_index] = (trial_31_round, trial_32_reward_A, trial_32_reward_B)
+                    block[trial_index] = (trial_32_round, trial_31_reward_A, trial_31_reward_B)
+            current_round += 1
+
+    # Print the final modified sequence
+    current_round = 1
+    for block, high_prob_image in blocks:
+        for round_data in block:
+            _, reward_A, reward_B = round_data
+            print(f"{current_round:5d} | {high_prob_image:9s} | {reward_A:8d} | {reward_B:8d}")
+            current_round += 1
+        print("-------|-----------|----------|----------")
+
+    # Calculate and display statistics about the generated sequence
+    high_prob_percentage = (high_prob_rewards / num_rounds) * 100
+    low_prob_percentage = (low_prob_rewards / num_rounds) * 100
+    
+    print("\nReward Statistics:")
+    print(f"High probability rewards: {high_prob_rewards}/{num_rounds} ({high_prob_percentage:.2f}%)")
+    print(f"Low probability rewards: {low_prob_rewards}/{num_rounds} ({low_prob_percentage:.2f}%)")
+
+    # Save the modified sequence to CSV
+    csv_data = [['Round', 'High Prob', 'reward_A', 'reward_B']]
+    current_round = 1
+    for block, high_prob_image in blocks:
+        for round_data in block:
+            _, reward_A, reward_B = round_data
+            csv_data.append([current_round, high_prob_image, reward_A, reward_B])
+            current_round += 1
+        csv_data.append(['-------|-----------|----------|----------'])
+
     with open('reward_sequence.csv', 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerows(csv_data)
