@@ -43,7 +43,7 @@ OTREE_PRODUCTION = True
 
 # Custom fields for storing data at the participant and session level.
 # These allow you to store additional data not covered by oTree's default fields.
-PARTICIPANT_FIELDS = ['finished']
+PARTICIPANT_FIELDS = ['finished', 'wait_page_arrival']
 SESSION_FIELDS = []
 
 # Use points instead of cash rewards.
