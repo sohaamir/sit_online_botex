@@ -657,7 +657,7 @@ class Player(BasePlayer):
     bonus_payment_score = models.IntegerField(initial=0)  # Total bonus points earned
     
     # Final payment calculations
-    base_payoff = models.CurrencyField(initial=8)       # Base payment amount (£8/p hr)
+    base_payoff = models.CurrencyField(initial=10)       # Base payment amount (£10/p hr)
     bonus_payoff = models.CurrencyField(initial=0)      # Additional bonus earned
     total_payoff = models.CurrencyField(initial=0)      # Total payment (base + bonus)
     
@@ -850,7 +850,6 @@ class Player(BasePlayer):
 class WaitPage2(WaitPage):
     template_name = 'main_task/WaitPage2.html'
     group_by_arrival_time = True
-    timeout_seconds = 60  # 10 minutes
 
     @staticmethod
     def is_displayed(player):
@@ -867,9 +866,12 @@ class WaitPage2(WaitPage):
         return dict(
             waitpagelink=player.subsession.session.config['waitpagelink']
         )
-    
-    def get_timeout_url(self):
-        return self.session.config['waitpagelink']
+
+    def get_timeout_seconds(self):
+        return 60  # 10 minutes
+
+    def get_timeout_url(player):
+        return player.session.config['waitpagelink']
 
 class TransitionToMainTask(Page):
     @staticmethod
