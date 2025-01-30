@@ -198,6 +198,30 @@
         }
 
         initGame();
+
+        // Add a persistent timer using localStorage
+        let startTime = localStorage.getItem('waitPageStartTime');
+        if (!startTime) {
+            startTime = Date.now();
+            localStorage.setItem('waitPageStartTime', startTime);
+        }
+
+        // Check time every second
+        setInterval(() => {
+            const currentTime = Date.now();
+            const elapsedTime = (currentTime - startTime) / 1000; // Convert to seconds
+            
+            if (elapsedTime >= 600) { // 10 minutes
+                localStorage.removeItem('waitPageStartTime'); // Clean up
+                window.location.href = js_vars.waitpagelink;
+            }
+        }, 1000);
+
+        // Clean up localStorage if they use the return button
+        returnButton.addEventListener('click', () => {
+            localStorage.removeItem('waitPageStartTime');
+            window.location.href = waitpagelink;
+        });
     </script>
     <br>
     <br>

@@ -859,23 +859,14 @@ class WaitPage2(WaitPage):
     def vars_for_template(player):
         return {
             'title_text': 'Waiting for Other Players',
+            'timeout_seconds': 30  # 10 minutes
         }
-  
+    
     @staticmethod              
     def js_vars(player):
         return dict(
             waitpagelink=player.subsession.session.config['waitpagelink']
         )
-
-    @staticmethod
-    def get_timeout_seconds(player):
-        return 60  # 10 minutes
-
-    @staticmethod
-    def before_next_page(player, timeout_happened):
-        if timeout_happened:
-            # Redirect to waitpagelink if timeout occurs
-            return player.session.config['waitpagelink']
 
 class TransitionToMainTask(Page):
     @staticmethod

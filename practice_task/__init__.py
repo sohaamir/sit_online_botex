@@ -486,13 +486,9 @@ class WaitPage1(WaitPage):
 
     @staticmethod
     def vars_for_template(player):
-
-        # Set arrival time when page is first displayed
-        if not hasattr(player.participant, 'wait_page_arrival'):
-            player.participant.wait_page_arrival = time.time()
-        
         return {
             'title_text': 'Waiting for Other Players',
+            'timeout_seconds': 30  # 10 minutes
         }
     
     @staticmethod              
@@ -500,25 +496,6 @@ class WaitPage1(WaitPage):
         return dict(
             waitpagelink=player.subsession.session.config['waitpagelink']
         )
-
-    @staticmethod
-    def get_timeout_seconds(player):
-
-        # Check how long they've been waiting
-        current_time = time.time()
-        arrival_time = getattr(player.participant, 'wait_page_arrival', current_time)
-        time_spent = current_time - arrival_time
-        
-        # If they've waited more than 10 minutes, return 1 to trigger timeout
-        if time_spent >= 30:
-            return 1
-        return 30 - int(time_spent)
-
-    @staticmethod
-    def after_all_players_arrive(group):
-        for player in group.get_players():
-            if hasattr(player.participant, 'wait_page_arrival'):
-                del player.participant.wait_page_arrival
 
 class TransitionToPracticeTask(Page):
     @staticmethod 
