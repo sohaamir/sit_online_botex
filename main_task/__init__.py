@@ -848,8 +848,9 @@ class Player(BasePlayer):
 # -------------------------------------------------------------------------------------------------------------------- #
 
 class WaitPage2(WaitPage):
-    template_name = 'main_task/WaitPage2.html'  # Move template to main_task templates
+    template_name = 'main_task/WaitPage2.html'
     group_by_arrival_time = True
+    timeout_seconds = 60  # 10 minutes
 
     @staticmethod
     def is_displayed(player):
@@ -866,6 +867,9 @@ class WaitPage2(WaitPage):
         return dict(
             waitpagelink=player.subsession.session.config['waitpagelink']
         )
+    
+    def get_timeout_url(self):
+        return self.session.config['waitpagelink']
 
 class TransitionToMainTask(Page):
     @staticmethod

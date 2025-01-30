@@ -479,6 +479,7 @@ class Player(BasePlayer):
 class WaitPage1(WaitPage):
     template_name = 'practice_task/WaitPage1.html'
     group_by_arrival_time = True
+    timeout_seconds = 60  # 10 minutes
 
     @staticmethod
     def is_displayed(player):
@@ -495,6 +496,9 @@ class WaitPage1(WaitPage):
         return dict(
             waitpagelink=player.subsession.session.config['waitpagelink']
         )
+    
+    def get_timeout_url(self):
+        return self.session.config['waitpagelink']
 
 class TransitionToPracticeTask(Page):
     @staticmethod 
