@@ -867,11 +867,15 @@ class WaitPage2(WaitPage):
             waitpagelink=player.subsession.session.config['waitpagelink']
         )
 
-    def get_timeout_seconds(self):
+    @staticmethod
+    def get_timeout_seconds(player):
         return 60  # 10 minutes
 
-    def get_timeout_url(player):
-        return player.session.config['waitpagelink']
+    @staticmethod
+    def before_next_page(player, timeout_happened):
+        if timeout_happened:
+            # Redirect to waitpagelink if timeout occurs
+            return player.session.config['waitpagelink']
 
 class TransitionToMainTask(Page):
     @staticmethod
