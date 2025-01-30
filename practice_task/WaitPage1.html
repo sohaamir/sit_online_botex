@@ -211,7 +211,7 @@
             const currentTime = Date.now();
             const elapsedTime = (currentTime - startTime) / 1000; // Convert to seconds
             
-            if (elapsedTime >= 30) { // 10 minutes
+            if (elapsedTime >= 600) { // 10 minutes
                 localStorage.removeItem('waitPage1StartTime'); // Clean up
                 window.location.href = js_vars.waitpagelink;
             }
