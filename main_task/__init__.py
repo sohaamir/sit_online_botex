@@ -672,14 +672,14 @@ class Player(BasePlayer):
     
     # Other players' choices tracking
     # Track choices of all other players (1-4) for both first and second choices
-    player_1_choice_one = models.IntegerField()
-    player_2_choice_one = models.IntegerField()
-    player_3_choice_one = models.IntegerField()
-    player_4_choice_one = models.IntegerField()
-    player_1_choice_two = models.IntegerField()
-    player_2_choice_two = models.IntegerField()
-    player_3_choice_two = models.IntegerField()
-    player_4_choice_two = models.IntegerField()
+    player1_choice_one = models.IntegerField()
+    player2_choice_one = models.IntegerField()
+    player3_choice_one = models.IntegerField()
+    player4_choice_one = models.IntegerField()
+    player1_choice_two = models.IntegerField()
+    player2_choice_two = models.IntegerField()
+    player3_choice_two = models.IntegerField()
+    player4_choice_two = models.IntegerField()
     
     # Track accuracy of other players' choices
     player1_choice1_accuracy = models.BooleanField()
@@ -692,10 +692,20 @@ class Player(BasePlayer):
     player4_choice2_accuracy = models.BooleanField()
     
     # Track whether other players gained or lost points
-    loss_or_gain_player1 = models.IntegerField()
-    loss_or_gain_player2 = models.IntegerField()
-    loss_or_gain_player3 = models.IntegerField()
-    loss_or_gain_player4 = models.IntegerField()
+    player1_loss_or_gain = models.IntegerField()
+    player2_loss_or_gain = models.IntegerField()
+    player3_loss_or_gain = models.IntegerField()
+    player4_loss_or_gain = models.IntegerField()
+
+    # Track if choices were made by the computer or manually for other players
+    player1_choice1_computer = models.IntegerField()
+    player2_choice1_computer = models.IntegerField()
+    player3_choice1_computer = models.IntegerField()
+    player4_choice1_computer = models.IntegerField()
+    player1_choice2_computer = models.IntegerField()
+    player2_choice2_computer = models.IntegerField()
+    player3_choice2_computer = models.IntegerField()
+    player4_choice2_computer = models.IntegerField()
     
     # Track if second choice was made manually
     manual_second_choice = models.BooleanField(initial=False)
@@ -704,7 +714,6 @@ class Player(BasePlayer):
     disconnection_streak = models.IntegerField(initial=0)
     is_bot = models.BooleanField(initial=False)
     last_connection_time = models.FloatField(initial=0)
-
     last_check_time = models.FloatField(initial=0)
     consecutive_missed_checks = models.IntegerField(initial=0)
 
@@ -1309,10 +1318,10 @@ class MyPage(Page):
                                 logging.error(f"Error getting other player {i+1} data for player {p.id_in_group}: {e}")
                         
                         # Assign values with fallbacks
-                        p.player_1_choice_one = choice_defaults[0]
-                        p.player_2_choice_one = choice_defaults[1]
-                        p.player_3_choice_one = choice_defaults[2]
-                        p.player_4_choice_one = choice_defaults[3]
+                        p.player1_choice_one = choice_defaults[0]
+                        p.player2_choice_one = choice_defaults[1]
+                        p.player3_choice_one = choice_defaults[2]
+                        p.player4_choice_one = choice_defaults[3]
                         
                         # Assign accuracy values
                         p.player1_choice1_accuracy = accuracy_defaults[0]
@@ -1478,10 +1487,10 @@ class MyPage(Page):
 
                 # Initialize default values
                 other_players = p.get_others_in_group()
-                p.player_1_choice_two = other_players[0].chosen_image_two_binary
-                p.player_2_choice_two = other_players[1].chosen_image_two_binary
-                p.player_3_choice_two = other_players[2].chosen_image_two_binary
-                p.player_4_choice_two = other_players[3].chosen_image_two_binary
+                p.player1_choice_two = other_players[0].chosen_image_two_binary
+                p.player2_choice_two = other_players[1].chosen_image_two_binary
+                p.player3_choice_two = other_players[2].chosen_image_two_binary
+                p.player4_choice_two = other_players[3].chosen_image_two_binary
 
                 # Set accuracy values for other players
                 p.player1_choice2_accuracy = other_players[0].choice2_accuracy
@@ -1545,10 +1554,27 @@ class MyPage(Page):
                 # Record gains/losses for other players
                 for p in players:
                     other_players = p.get_others_in_group()
-                    p.loss_or_gain_player1 = 0 if other_players[0].choice2_earnings < 0 else 1
-                    p.loss_or_gain_player2 = 0 if other_players[1].choice2_earnings < 0 else 1
-                    p.loss_or_gain_player3 = 0 if other_players[2].choice2_earnings < 0 else 1
-                    p.loss_or_gain_player4 = 0 if other_players[3].choice2_earnings < 0 else 1
+                    p.player1_loss_or_gain = 0 if other_players[0].choice2_earnings < 0 else 1
+                    p.player2_loss_or_gain = 0 if other_players[1].choice2_earnings < 0 else 1
+                    p.player3_loss_or_gain = 0 if other_players[2].choice2_earnings < 0 else 1
+                    p.player4_loss_or_gain = 0 if other_players[3].choice2_earnings < 0 else 1
+
+                # After calculating earnings but before intertrial interval generation
+                # Record computer vs manual choice/bet information for other players
+                for p in players:
+                    other_players = p.get_others_in_group()
+                    
+                    # Set computer choice/bet values for first choice phase
+                    p.player1_choice1_computer = 1 if other_players[0].computer_choice_one else 0
+                    p.player2_choice1_computer = 1 if other_players[1].computer_choice_one else 0
+                    p.player3_choice1_computer = 1 if other_players[2].computer_choice_one else 0
+                    p.player4_choice1_computer = 1 if other_players[3].computer_choice_one else 0
+                    
+                    # Set computer choice/bet values for second choice phase
+                    p.player1_choice2_computer = 1 if other_players[0].computer_choice_two else 0
+                    p.player2_choice2_computer = 1 if other_players[1].computer_choice_two else 0
+                    p.player3_choice2_computer = 1 if other_players[2].computer_choice_two else 0
+                    p.player4_choice2_computer = 1 if other_players[3].computer_choice_two else 0
 
                 # Generate random delay before next round
                 group.generate_intertrial_interval()
