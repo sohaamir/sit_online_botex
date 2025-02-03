@@ -199,11 +199,11 @@
 
         initGame();
 
-        // Add a persistent timer using localStorage
-        let startTime = localStorage.getItem('waitPage1StartTime');
+        // Add a persistent timer using sessionStorage
+        let startTime = sessionStorage.getItem('waitPage1StartTime');
         if (!startTime) {
             startTime = Date.now();
-            localStorage.setItem('waitPage1StartTime', startTime);
+            sessionStorage.setItem('waitPage1StartTime', startTime);
         }
 
         // Check time every second
@@ -211,15 +211,15 @@
             const currentTime = Date.now();
             const elapsedTime = (currentTime - startTime) / 1000; // Convert to seconds
             
-            if (elapsedTime >= 300) { // 10 minutes
-                localStorage.removeItem('waitPage1StartTime'); // Clean up
+            if (elapsedTime >= 300) { // 5 minutes
+                sessionStorage.removeItem('waitPage1StartTime'); // Clean up
                 window.location.href = js_vars.waitpagelink;
             }
         }, 1000);
 
-        // Clean up localStorage if they use the return button
+        // Clean up sessionStorage if they use the return button
         returnButton.addEventListener('click', () => {
-            localStorage.removeItem('waitPage1StartTime');
+            sessionStorage.removeItem('waitPage1StartTime');
             window.location.href = waitpagelink;
         });
     </script>
