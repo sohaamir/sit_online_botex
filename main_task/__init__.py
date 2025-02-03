@@ -79,7 +79,7 @@ def generate_trial_sequence():
 # ---- REWARD SEQUENCE: GENERATE A SEQUENCE OF REWARDS FOR THE EXPERIMENT BASED ON THE NUMBER OF ROUNDS ------ #
 
 # Define the core parameters of the experiment
-NUM_ROUNDS = 60  # Total number of rounds in the experiment
+NUM_ROUNDS = 20  # Total number of rounds in the experiment
 REWARD_PROBABILITY_A = 0.75  # 75% chance of reward for option A when it's the high-probability option
 REWARD_PROBABILITY_B = 0.25  # 25% chance of reward for option A when it's the low-probability option
 DECISION_TIME = 3.0 # Time limit for making choices and bets (3 seconds)
@@ -257,7 +257,7 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
 
 # Generate all sequences needed for the experiment when this module is first imported
 TRIAL_SEQUENCE, REVERSAL_ROUNDS = generate_trial_sequence()
-REWARD_SEQUENCE = generate_reward_sequence(60, REVERSAL_ROUNDS)
+REWARD_SEQUENCE = generate_reward_sequence(20, REVERSAL_ROUNDS)
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Base Constants: Used to define constants across all pages and subsessions in the game
