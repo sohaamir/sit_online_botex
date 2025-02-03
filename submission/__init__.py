@@ -14,8 +14,12 @@ class Group(BaseGroup):
     pass  # No group-level data needed
 
 class Player(BasePlayer):
+    # Store the bonus payment from the main task
+    main_task_bonus = models.CurrencyField()  # Store the bonus from main task
+
     # Survey questions using 0-100 scale
     task_understanding = models.IntegerField(min=0, max=100)  # Understanding of experiment
+    task_difficulty = models.IntegerField(min=0, max=100)  # Task difficulty rating
     engagement = models.IntegerField(min=0, max=100)          # Level of engagement
     influence = models.IntegerField(min=0, max=100)           # Perceived influence
     real_players = models.IntegerField(min=0, max=100)        # Belief about real players
@@ -47,7 +51,8 @@ class Feedback(Page):
     form_model = 'player'
     # Fields to collect in feedback form
     form_fields = [
-        'task_understanding', 
+        'task_understanding',
+        'task_difficulty', 
         'engagement', 
         'influence', 
         'real_players', 
@@ -64,6 +69,9 @@ class Feedback(Page):
         # Store main task IDs
         player.main_task_player_id = player.participant.vars.get('main_task_player_id')
         player.main_task_group_id = player.participant.vars.get('main_task_group_id')
+
+        # Store bonus from main task
+        player.main_task_bonus = player.participant.vars.get('bonus_payoff', cu(0))
 
     @staticmethod
     def vars_for_template(player):

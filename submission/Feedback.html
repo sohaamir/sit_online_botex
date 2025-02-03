@@ -115,6 +115,18 @@
     </div>
     <br>
     <div class="question">
+        <p>How difficult did you find the task?</p>
+        <div class="slider-container">
+            <input type="range" min="0" max="100" value="50" class="slider" id="task_difficulty" name="task_difficulty">
+            <div class="value-display" id="task_difficulty-value">50</div>
+        </div>
+        <div class="labels">
+            <span>Not at all</span>
+            <span>Extremely difficult</span>
+        </div>
+    </div>
+    <br>
+    <div class="question">
         <p>How engaged were you in the task?</p>
         <div class="slider-container">
             <input type="range" min="0" max="100" value="50" class="slider" id="engagement" name="engagement">
@@ -204,6 +216,7 @@
     }
 
     updateValue("task_understanding");
+    updateValue("task_difficulty");
     updateValue("engagement");
     updateValue("influence");
     updateValue("real_players");
