@@ -868,7 +868,7 @@ class WaitPage2(WaitPage):
     def vars_for_template(player):
         return {
             'title_text': 'Waiting for Other Players',
-            'timeout_seconds': 600  # 10 minutes
+            'timeout_seconds': 300  # 10 minutes
         }
     
     @staticmethod              
