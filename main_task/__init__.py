@@ -34,54 +34,12 @@ logging.basicConfig(
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- CONSTANTS: DEFINE CONSTANTS USED IN THE GAME INCLUDING NUMBER OF PLAYERS, ROUNDS AND TRIAL SEQUENCE------ #
 # -------------------------------------------------------------------------------------------------------------------- #
-
 # -------------------------------------------------------------------------------------------------------------------- #
-
-# Generate a trial sequence for the experiment based on the number of rounds and reversal rounds
-# The sequence is generated randomly with reversal rounds every 9-11 rounds, but remains the same for all groups
-
-def generate_trial_sequence():
-    # Using a fixed random seed ensures the same sequence is generated each time the experiment runs
-    # This is important for reproducibility and consistency across different groups
-    random.seed(40)  # You can change this number, but keep it constant
-
-    sequence = []
-    # Randomly select which image will start as the high-probability option
-    current_image = random.choice(['option1A.bmp', 'option1B.bmp'])
-    reversal_rounds = []
-    
-    # Create a list of rounds where reversals will occur
-    # Reversals happen every 9-11 rounds (randomly determined)
-    current_round = random.randint(9, 11)
-    while current_round <= NUM_ROUNDS:
-        reversal_rounds.append(current_round)
-        current_round += random.randint(9, 11)
-    
-    # Generate the full sequence of trials
-    # At each reversal round, the high-probability image switches
-    for round_number in range(1, NUM_ROUNDS + 1):
-        if round_number in reversal_rounds:
-            current_image = 'option1B.bmp' if current_image == 'option1A.bmp' else 'option1A.bmp'
-        sequence.append((round_number, current_image))
-
-    # Save sequence to CSV
-    file_path = os.path.join(os.getcwd(), 'reversal_sequence.csv')
-    with open(file_path, 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(['round', 'seventy_percent_image', 'is_reversal'])
-        for round_num, image in sequence:
-            writer.writerows([(round_num, image, round_num in reversal_rounds)])
-
-    print(f"Reversal rounds: {reversal_rounds}")
-    return sequence, reversal_rounds
-
-# -------------------------------------------------------------------------------------------------------------------- #
-# ---- REWARD SEQUENCE: GENERATE A SEQUENCE OF REWARDS FOR THE EXPERIMENT BASED ON THE NUMBER OF ROUNDS ------ #
 
 # Define the core parameters of the experiment
-NUM_ROUNDS = 60  # Total number of rounds in the experiment
-REWARD_PROBABILITY_A = 0.8  # 80% chance of reward for option A when it's the high-probability option
-REWARD_PROBABILITY_B = 0.2  # 20% chance of reward for option A when it's the low-probability option
+NUM_ROUNDS = 8  # Total number of rounds in the experiment
+REWARD_PROBABILITY_A = 0.75  # 75% chance of reward for option A when it's the high-probability option
+REWARD_PROBABILITY_B = 0.25  # 25% chance of reward for option A when it's the low-probability option
 DECISION_TIME = 3.0 # Time limit for making choices and bets (3 seconds)
 
 # This function generates the actual sequence of rewards that players will receive
@@ -121,55 +79,8 @@ def generate_trial_sequence():
     print(f"Reversal rounds: {reversal_rounds}")
     return sequence, reversal_rounds
 
-# Generate a reward sequence consisting the specified number of rounds and reversal rounds
-# Importantly, to get the specific reward contingency, we make two adjustments to the generated blocks:
-# 1. Swap blocks 2 and 6 (to make sure that blocks with only 2 1's aren't all clustered together) 
-# 2. Swap trials 31 and 32 (to ensure that the first trial of the reversal block for the high probability option is a 1 as should be the case)
-# The original trial sequence generator without these two additions is located within trial_sequence.py
-
-def generate_trial_sequence():
-    # Using a fixed random seed ensures the same sequence is generated each time the experiment runs
-    # This is important for reproducibility and consistency across different groups
-    random.seed(40)  # You can change this number, but keep it constant
-
-    sequence = []
-    # Randomly select which image will start as the high-probability option
-    current_image = random.choice(['option1A.bmp', 'option1B.bmp'])
-    reversal_rounds = []
-    
-    # Create a list of rounds where reversals will occur
-    # Reversals happen every 9-11 rounds (randomly determined)
-    current_round = random.randint(9, 11)
-    while current_round <= NUM_ROUNDS:
-        reversal_rounds.append(current_round)
-        current_round += random.randint(9, 11)
-    
-    # Generate the full sequence of trials
-    # At each reversal round, the high-probability image switches
-    for round_number in range(1, NUM_ROUNDS + 1):
-        if round_number in reversal_rounds:
-            current_image = 'option1B.bmp' if current_image == 'option1A.bmp' else 'option1A.bmp'
-        sequence.append((round_number, current_image))
-
-    # Save sequence to CSV
-    file_path = os.path.join(os.getcwd(), 'reversal_sequence.csv')
-    with open(file_path, 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(['round', 'seventy_percent_image', 'is_reversal'])
-        for round_num, image in sequence:
-            writer.writerows([(round_num, image, round_num in reversal_rounds)])
-
-    print(f"Reversal rounds: {reversal_rounds}")
-    return sequence, reversal_rounds
-
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- REWARD SEQUENCE: GENERATE A SEQUENCE OF REWARDS FOR THE EXPERIMENT BASED ON THE NUMBER OF ROUNDS ------ #
-
-# Define the core parameters of the experiment
-NUM_ROUNDS = 10  # Total number of rounds in the experiment
-REWARD_PROBABILITY_A = 0.8  # 75% chance of reward for option A when it's the high-probability option
-REWARD_PROBABILITY_B = 0.2  # 25% chance of reward for option A when it's the low-probability option
-DECISION_TIME = 3.0 # Time limit for making choices and bets (3 seconds)
 
 # This function generates the actual sequence of rewards that players will receive
 # It ensures a balanced distribution of rewards while maintaining the intended probabilities
@@ -178,8 +89,8 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
     current_high_prob_image = 'A'  # Start with image A as high probability
     high_prob_rewards = 0  # Counter for high probability rewards given
     low_prob_rewards = 0   # Counter for low probability rewards given
-    target_high_rewards = 48  # Target number of high probability rewards (75% of 60 rounds)
-    target_low_rewards = 12   # Target number of low probability rewards (25% of 60 rounds)
+    target_high_rewards = 45  # Target number of high probability rewards (75% of 60 rounds)
+    target_low_rewards = 15   # Target number of low probability rewards (25% of 60 rounds)
 
     # Prepare CSV file headers for logging the reward sequence
     csv_data = [['Round', 'High Prob', 'reward_A', 'reward_B']]
@@ -256,7 +167,7 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
 
 # Generate all sequences needed for the experiment when this module is first imported
 TRIAL_SEQUENCE, REVERSAL_ROUNDS = generate_trial_sequence()
-REWARD_SEQUENCE = generate_reward_sequence(10, REVERSAL_ROUNDS)
+REWARD_SEQUENCE = generate_reward_sequence(8, REVERSAL_ROUNDS)
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Base Constants: Used to define constants across all pages and subsessions in the game
