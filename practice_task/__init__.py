@@ -506,6 +506,11 @@ class WaitPage1(WaitPage):
             waitpagelink=player.subsession.session.config['waitpagelink']
         )
 
+    @staticmethod
+    def after_all_players_arrive(group):
+        for player in group.get_players():
+            pass
+
 class TransitionToPracticeTask(Page):
     @staticmethod 
     def is_displayed(player):

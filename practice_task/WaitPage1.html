@@ -200,29 +200,34 @@
         initGame();
 
         // Automatic redirect to Prolific after waiting for 10 minutes
-        // Add a persistent timer using sessionStorage - resets when new tabs are opened but isn't affected by oTree page refreshes
-        let startTime = sessionStorage.getItem('waitPage1StartTime');
-        if (!startTime) {
-            startTime = Date.now();
-            sessionStorage.setItem('waitPage1StartTime', startTime);
-        }
-
-        // Check time every second
-        setInterval(() => {
-            const currentTime = Date.now();
-            const elapsedTime = (currentTime - startTime) / 1000; // Convert to seconds
+        (() => {
+            // Clear any existing timers
+            sessionStorage.removeItem('waitPage2StartTime');
             
-            if (elapsedTime >= 600) { // 10 minutes
-                sessionStorage.removeItem('waitPage1StartTime'); // Clean up
-                window.location.href = js_vars.waitpagelink;
+            let startTime = sessionStorage.getItem('waitPage1StartTime');
+            if (!startTime) {
+                startTime = Date.now();
+                sessionStorage.setItem('waitPage1StartTime', startTime);
             }
-        }, 1000);
 
-        // Clean up sessionStorage if they use the return button
-        returnButton.addEventListener('click', () => {
-            sessionStorage.removeItem('waitPage1StartTime');
-            window.location.href = waitpagelink;
-        });
+            const checkTime = setInterval(() => {
+                const currentTime = Date.now();
+                const elapsedTime = (currentTime - startTime) / 1000; // Convert to seconds
+                
+                if (elapsedTime >= 600) { // 10 minutes
+                    clearInterval(checkTime);  // Clear the interval
+                    sessionStorage.removeItem('waitPage1StartTime'); // Clean up
+                    window.location.href = js_vars.waitpagelink;
+                }
+            }, 1000);
+
+            // Clean up sessionStorage if they use the return button
+            returnButton.addEventListener('click', () => {
+                clearInterval(checkTime);  // Clear the interval
+                sessionStorage.removeItem('waitPage1StartTime');
+                window.location.href = waitpagelink;
+            });
+        })();
     </script>
     <br>
     <br>

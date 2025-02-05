@@ -585,6 +585,10 @@ class Player(BasePlayer):
     choice1_accuracy = models.BooleanField()             # Whether first choice was optimal
     choice2_accuracy = models.BooleanField()             # Whether second choice was optimal
     switch_vs_stay = models.IntegerField()               # Whether player switched (1) or stayed (0) between choices
+
+    # Binary reward tracking
+    choice1_reward_binary = models.IntegerField()        # Whether first choice was rewarded (1) or not (0)
+    choice2_reward_binary = models.IntegerField()        # Whether second choice was rewarded (1) or not (0)
     
     # Timing variables
     my_page_load_time = models.FloatField()              # When page loaded for this player
@@ -798,6 +802,9 @@ class Player(BasePlayer):
 
         self.choice1_earnings = self.bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * self.bet1 * 20
 
+        # Binary reward calculation
+        self.choice1_reward_binary = 1 if self.choice1_earnings > 0 else 0
+
 # ---------------------------------------------------------------------------------------------------------------- #
 # --------------- WAIT AND TRANSITION PAGES: USED TO FORM GROUPS BY ARRIVAL TIME ON THE APP ----------------- #
 # ---------------------------------------------------------------------------------------------------------------- #
@@ -819,7 +826,7 @@ class WaitPage2(WaitPage):
     def vars_for_template(player):
         return {
             'title_text': 'Waiting for Other Players',
-            'timeout_seconds': 600  # 10 minutes for WaitPage timeout
+            'timeout_seconds': 600  # 10 minutes
         }
     
     @staticmethod              
@@ -827,6 +834,11 @@ class WaitPage2(WaitPage):
         return dict(
             waitpagelink=player.subsession.session.config['waitpagelink']
         )
+
+    @staticmethod
+    def after_all_players_arrive(group):
+        for player in group.get_players():
+            pass
 
 # We then define a transition page that moves players from the wait page to the main task page
 class TransitionToMainTask(Page):
@@ -1506,6 +1518,9 @@ class MyPage(Page):
                     p.choice2_earnings = p.bet2 * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2 * 20
                     p.choice2_sum_earnings = sum([prev_player.choice2_earnings for prev_player in p.in_previous_rounds()]) + p.choice2_earnings
                     p.loss_or_gain = -1 if p.choice2_earnings < 0 else 1
+
+                    # Binary reward calculation for choice 2
+                    p.choice2_reward_binary = 1 if p.choice2_earnings > 0 else 0
 
                 # Record gains/losses for other players
                 for p in players:
