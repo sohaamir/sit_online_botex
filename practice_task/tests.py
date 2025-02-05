@@ -1,5 +1,8 @@
 # practice_task/tests.py
 
+# Bot script for the practice task
+# We simply have the bot play each round making random choices and bets
+
 from otree.api import Bot, Submission, expect
 import random
 import time

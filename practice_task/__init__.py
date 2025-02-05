@@ -1,5 +1,14 @@
 # practice_task/__init__.py
 
+# The practice task could be made a lot simpler, but I just copied the infrastructure from the main task as it had
+# a lot of features that I wanted to keep (e.g., with players dropping out, phase timings etc.)
+#
+# The main differences are that:
+# 1. The practice task only has 5 rounds, and does not include reversals
+# 2. The reward probabilities are fixed at 90% for the high probability option and 10% for the low probability option
+# 3. A different set of images are used
+# 4. Players have 6 seconds to make their choices and bets instead of 3 seconds in the main task
+
 from otree.api import *
 from . import *
 import random

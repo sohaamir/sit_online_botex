@@ -1,3 +1,5 @@
+# This script helps with connection issues, but is probably not needed.
+
 import time
 from functools import wraps
 import logging

@@ -1,3 +1,5 @@
+# Simple bot script to complete the submission app
+
 from otree.api import Bot, expect
 from . import *
 import random

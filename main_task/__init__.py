@@ -1,16 +1,17 @@
 # -------------------------------------------------------------------------------------------------------------------- #
-# --------------- AUTHORSHIP INFORMATION: DEFINE THE AUTHOR AND DOCUMENTATION FOR THE GAME ----------------- #
+# ----------------------- AUTHORSHIP INFORMATION: DEFINE THE AUTHOR AND DOCUMENTATION ------------------------- #
 # -------------------------------------------------------------------------------------------------------------------- #
 
 author = 'Aamir Sohail'
 
 doc = """
 This is a multiplayer social influence task where players in groups of 5 make choices and bets to earn rewards in real time. 
-The task is the same as reported in (Zhang & Glascher, 2020) https://www.science.org/doi/full/10.1126/sciadv.abb4159
+The task similar as reported in (Zhang & Glascher, 2020) https://www.science.org/doi/full/10.1126/sciadv.abb4159 but with a
+few modifications, namely the removal of choice preferences, and a change to the reversal contingencies. 
 """
 
 # -------------------------------------------------------------------------------------------------------------------- #
-# --------------- IMPORTS: IMPORT ALL NECESSARY MODULES AND LIBRARIES REQUIRED FOR THE GAME ----------------- #
+# -------------------- IMPORTS: IMPORT ALL NECESSARY MODULES AND LIBRARIES REQUIRED ---------------------- #
 # -------------------------------------------------------------------------------------------------------------------- #
 
 from otree.api import *
@@ -32,7 +33,7 @@ logging.basicConfig(
 )
 
 # -------------------------------------------------------------------------------------------------------------------- #
-# ---- CONSTANTS: DEFINE CONSTANTS USED IN THE GAME INCLUDING NUMBER OF PLAYERS, ROUNDS AND TRIAL SEQUENCE------ #
+# ---------- CONSTANTS: DEFINE CONSTANTS USED INCLUDING NUMBER OF PLAYERS, ROUNDS AND TRIAL SEQUENCE ---------- #
 # -------------------------------------------------------------------------------------------------------------------- #
 # -------------------------------------------------------------------------------------------------------------------- #
 
@@ -80,7 +81,7 @@ def generate_trial_sequence():
     return sequence, reversal_rounds
 
 # -------------------------------------------------------------------------------------------------------------------- #
-# ---- REWARD SEQUENCE: GENERATE A SEQUENCE OF REWARDS FOR THE EXPERIMENT BASED ON THE NUMBER OF ROUNDS ------ #
+# ------- REWARD SEQUENCE: GENERATE A SEQUENCE OF REWARDS FOR THE EXPERIMENT BASED ON THE NUMBER OF ROUNDS --------- #
 
 # This function generates the actual sequence of rewards that players will receive
 # It ensures a balanced distribution of rewards while maintaining the intended probabilities
@@ -264,10 +265,11 @@ def generate_earnings_sequence(num_rounds):
 EARNINGS_SEQUENCE = generate_earnings_sequence(NUM_ROUNDS)
 
 # -------------------------------------------------------------------------------------------------------------------- #
-# ---- SUBSESSIONS: USED TO DEFINE THE ROUNDS FOR REVERSAL AND BOTS ------ #
+# ---------------------- SUBSESSIONS: USED TO DEFINE THE ROUNDS FOR REVERSAL AND BOTS ---------------------------- #
 # -------------------------------------------------------------------------------------------------------------------- #
 
-# A subsession represents one round of the game
+# A subsession represents one round of the game. Here we define the structure of each round and how players are grouped.
+# We also define methods to handle reversals, bot activation, and data collection for bot testing.
 
 class Subsession(BaseSubsession):
     # This method handles grouping players as they arrive
@@ -345,7 +347,8 @@ class Subsession(BaseSubsession):
 # ---- GROUP-LEVEL VARIABLES: USED TO TRACK ROUND REWARDS, REWARD PROBABILITIES AND INTERTRIAL INTERVALS ------ #
 # -------------------------------------------------------------------------------------------------------------------- #
 
-# This class defines variables and methods that affect the entire group of players simultaneously
+# The Group class defines variables and methods that affect the entire group of players simultaneously.
+# This includes tracking the current round, trial number, and reward probabilities for each option.
 
 class Group(BaseGroup):
     # Core tracking variables for the group
@@ -546,7 +549,7 @@ class Group(BaseGroup):
 # -------------------------------------------------------------------------------------------------------------------- #
 
 # The Player class is used to define the variables that are stored at the player level
-# The variables include choices, bets, rewards, and timings for each player
+# The variables include choices, bets, rewards, and timings for each player, and the perspective of other players's choices
 
 class Player(BasePlayer):
     # Choice and bet tracking variables
@@ -659,6 +662,7 @@ class Player(BasePlayer):
     last_check_time = models.FloatField(initial=0)
     consecutive_missed_checks = models.IntegerField(initial=0)
 
+    # Method to check if a player has disconnected from the game
     def check_connection(self, current_time, time_since_activity):
         # Only check every 10 seconds
         if current_time - self.last_check_time < 10:
@@ -794,9 +798,14 @@ class Player(BasePlayer):
 
         self.choice1_earnings = self.bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * self.bet1 * 20
 
-# -------------------------------------------------------------------------------------------------------------------- #
-# ---- WAIT AND TRANSITION PAGES: USED TO FORM GROUPS BY ARRIVAL TIME ON THE APP ------ #
-# -------------------------------------------------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------------------------------------------- #
+# --------------- WAIT AND TRANSITION PAGES: USED TO FORM GROUPS BY ARRIVAL TIME ON THE APP ----------------- #
+# ---------------------------------------------------------------------------------------------------------------- #
+
+# The WaitPage class is used to create a waiting room where players wait for others to arrive before starting the game
+# It is used to group players together based on their arrival time and to coordinate the start of the game
+# Here we explictly group players in 5 by their arrival time, but time out after 10 minutes, as sometimes ther may not
+# be enough players remaining.
 
 class WaitPage2(WaitPage):
     template_name = 'main_task/WaitPage2.html'
@@ -819,6 +828,7 @@ class WaitPage2(WaitPage):
             waitpagelink=player.subsession.session.config['waitpagelink']
         )
 
+# We then define a transition page that moves players from the wait page to the main task page
 class TransitionToMainTask(Page):
     @staticmethod
     def is_displayed(player):
@@ -830,8 +840,12 @@ class TransitionToMainTask(Page):
         }
     
 # -------------------------------------------------------------------------------------------------------------------- #
-# ---- MYPAGE: WHERE PLAYERS MAKE THEIR FIRST CHOICE, FIRST BET AND PREFERENCE CHOICES ------ #
+# ------------------- MYPAGE: WHERE PLAYERS MAKE THEIR CHOICES, BETS AND RECEIVE FEEDBACK ------------------ #
 # -------------------------------------------------------------------------------------------------------------------- #
+
+# The MyPage class is used to define the main task page where players make their choices and bets
+# It handles the feedback phase where players receive rewards based on their choices and includes methods to handle 
+# disconnections, timeouts, and bot activations
 
 class MyPage(Page):
     # Tell oTree which model to use and which fields to expect from the form
@@ -1017,7 +1031,7 @@ class MyPage(Page):
         }
 
 # -------------------------------------------------------------------------------------------------------------------- #
-# -------- The live_method: Used to handle real-time data from the players and progress them through the task--------- #
+# ------- The live_method: Used to handle real-time data from the players and progress them through the task --------- #
 # -------------------------------------------------------------------------------------------------------------------- #
 
 # ---- Handles real-time interactions for the first page of each round
@@ -1583,11 +1597,14 @@ class MyPage(Page):
         group.set_payoffs()
 
 # -------------------------------------------------------------------------------------------------------------------- #
-# ---- FINAL RESULTS PAGE: AFTER 80 ROUNDS, PLAYERS RECEIVE THEIR POINTS TALLY ------ #
+# -------------------- FINAL RESULTS PAGE: AFTER 60 ROUNDS, PLAYERS RECEIVE THEIR POINTS TALLY -------------------- #
 # -------------------------------------------------------------------------------------------------------------------- #
 
-class FinalResults(Page):
+# After the task is complete, players see their final results
+# This page displays the points total, and bonus payment earned by the player
+# We then redirect players to the submission app to complete the study
 
+class FinalResults(Page):
     # is_displayed method is used to determine when this page should be shown
     # In this case, FinalResults is only shown after the last round
     @staticmethod

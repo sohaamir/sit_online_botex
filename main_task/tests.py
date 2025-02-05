@@ -1,4 +1,7 @@
-# main_task/__init__.py:
+# main_task/__init__.py
+
+# Bot script for the main_task app, for bot testing
+# We simply have the bot play each round making random choices and bets
 
 from otree.api import Bot, Submission, expect
 import random

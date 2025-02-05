@@ -1,5 +1,10 @@
 # instructions/__init__.py
 
+# In this file, we define the structure of the instructions app.
+# There isn't much to do here, as the instructions app is mainly HTML
+# But we need to store the Prolific ID for each participant if they consent, 
+# and assign a link back to Prolific if they don't
+
 from otree.api import *
 
 # Constants class defining game-wide settings

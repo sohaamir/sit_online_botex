@@ -1,3 +1,11 @@
+# submission app for social-influence-task
+
+# This app collects feedback from participants after they complete the main task.
+# The feedback is used to assess the participant's understanding of the task and their engagement.
+# It also stores the bonus payment from the main task and the participant's ranking of other players.
+
+# We take the players Prolific ID from earlier and display it before submission, for the Qualtrics survey.
+
 from otree.api import *
 
 # Constants class defining game-wide settings
@@ -64,6 +72,7 @@ class Feedback(Page):
         'additional_feedback'
     ]
 
+    # Get the player and group IDs from the main task to map their rankings 
     @staticmethod
     def before_next_page(player, timeout_happened):
         # Store main task IDs
@@ -98,7 +107,9 @@ class Feedback(Page):
             'main_task_group_id': main_task_group_id,
             'player_mapping': player_mapping
         }
-    
+
+# Submission page with completion link
+# We take the Prolific ID from earlier and display it before submission, for the Qualtrics survey.    
 class Submit(Page):
     @staticmethod
     def js_vars(player):

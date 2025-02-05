@@ -1,4 +1,4 @@
-### Original trial sequence generator
+### Original trial sequence generator (60 trials, 75:25 reward contingency, reversals every 9-11 trials)
 
 # Define the core parameters of the experiment
 NUM_ROUNDS = 60  # Total number of rounds in the experiment
@@ -137,7 +137,12 @@ REWARD_SEQUENCE = generate_reward_sequence(60, REVERSAL_ROUNDS)
 # -------------------------------------------------------------------------------------------------------------------- #
 # -------------------------------------------------------------------------------------------------------------------- #
 
-### Trial sequence generator for longer blocks
+### Trial sequence generator for the specific reversal sequence used 
+# (60 trials, 75:25 but with longer blocks (13-17), w/ specific trial switches)
+
+# We first generate a sequence of trials similar to the implementation above, but with longer blocks (13-17)
+# We then switch the order of trials 48 and 49, and shift reward_A=1 trials up by one position in block 2 (trials 16-32)
+# This generates the specific reward sequence that meets our requirements
 
 # Define the core parameters of the experiment
 NUM_ROUNDS = 60  # Total number of rounds in the experiment

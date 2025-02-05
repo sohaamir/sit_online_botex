@@ -1,3 +1,5 @@
+# Script for the instructions app, for bot testing
+
 from otree.api import Bot, expect
 from . import *
 
