@@ -582,13 +582,17 @@ class Player(BasePlayer):
     chosen_image_computer_two = models.StringField(initial='')     # Image chosen by computer for second choice
     
     # Performance metrics
-    choice1_accuracy = models.BooleanField()             # Whether first choice was optimal
-    choice2_accuracy = models.BooleanField()             # Whether second choice was optimal
-    switch_vs_stay = models.IntegerField()               # Whether player switched (1) or stayed (0) between choices
+    choice1_accuracy = models.BooleanField(initial=0)             # Whether first choice was optimal
+    choice2_accuracy = models.BooleanField(initial=0)             # Whether second choice was optimal
+    choice1_accuracy_sum = models.IntegerField(initial=0)         # Sum choice1 accuracy over trials
+    choice2_accuracy_sum = models.IntegerField(initial=0)         # Sum choice2 accuracy over trials
+    switch_vs_stay = models.IntegerField()                        # Whether player switched (1) or stayed (0) between choices
 
     # Binary reward tracking
-    choice1_reward_binary = models.IntegerField()        # Whether first choice was rewarded (1) or not (0)
-    choice2_reward_binary = models.IntegerField()        # Whether second choice was rewarded (1) or not (0)
+    choice1_reward_binary = models.IntegerField(initial=0)     # Whether first choice was rewarded (1) or not (0)
+    choice2_reward_binary = models.IntegerField(initial=0)     # Whether second choice was rewarded (1) or not (0)
+    choice1_reward_binary_sum = models.IntegerField(initial=0)       # Sum of correct first choices
+    choice2_reward_binary_sum = models.IntegerField(initial=0)       # Sum of correct second choices
     
     # Timing variables
     my_page_load_time = models.FloatField()              # When page loaded for this player
@@ -774,8 +778,8 @@ class Player(BasePlayer):
     def calculate_payoffs(self):
         """
         Calculate final payment for the player
-        Includes base payment of £6 plus bonus based on points earned
-        Points are converted to bonus payment by dividing by 720
+        Includes base payment of £10 plus bonus based on points earned
+        Points are converted to bonus payment by dividing by 600
         """
         self.base_payoff = cu(6)  # Base payoff of £6
         
@@ -783,7 +787,7 @@ class Player(BasePlayer):
         if self.bonus_payment_score <= 0:
             self.bonus_payoff = cu(0)
         else:
-            self.bonus_payoff = cu(round(self.bonus_payment_score / 720, 2))
+            self.bonus_payoff = cu(round(self.bonus_payment_score / 600, 2))
         
         self.total_payoff = self.base_payoff + self.bonus_payoff
 
@@ -1304,6 +1308,14 @@ class MyPage(Page):
                             setattr(p, f'player_{i}_choice_one', 1)
                             setattr(p, f'player_{i}_computer_choice_one', 0)  # Default to 0 for manual choice
                             setattr(p, f'player{i}_choice1_accuracy', False)
+                
+                # Sum accuracy for all players after first choices are done
+                for p in players:
+                    if p.round_number == 1:
+                        p.choice1_accuracy_sum = int(p.choice1_accuracy)
+                    else:
+                        previous_player = p.in_round(p.round_number - 1)
+                        p.choice1_accuracy_sum = previous_player.choice1_accuracy_sum + int(p.choice1_accuracy)
 
                 # Move to betting phase
                 return {p.id_in_group: dict(
@@ -1515,12 +1527,30 @@ class MyPage(Page):
 
                 # Calculate earnings for all players
                 for p in players:
+                    # Calculate first choice reward binary
+                    if p.field_maybe_none('chosen_image_one') == 'option1A.bmp':
+                        choice1_reward = group.round_reward_A
+                    elif p.field_maybe_none('chosen_image_one') == 'option1B.bmp':
+                        choice1_reward = group.round_reward_B
+                    else:
+                        choice1_reward = 0
+                    p.choice1_reward_binary = 1 if choice1_reward == 1 else 0
+                    p.choice1_earnings = p.bet1 * 20 * choice1_reward if choice1_reward == 1 else -1 * p.bet1 * 20
+
+                    # Calculate second choice reward binary
+                    p.choice2_reward_binary = 1 if p.trial_reward == 1 else 0
                     p.choice2_earnings = p.bet2 * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2 * 20
                     p.choice2_sum_earnings = sum([prev_player.choice2_earnings for prev_player in p.in_previous_rounds()]) + p.choice2_earnings
                     p.loss_or_gain = -1 if p.choice2_earnings < 0 else 1
 
-                    # Binary reward calculation for choice 2
-                    p.choice2_reward_binary = 1 if p.choice2_earnings > 0 else 0
+                    # Now update the running sums for each player
+                    if p.round_number == 1:
+                        p.choice1_reward_binary_sum = p.choice1_reward_binary
+                        p.choice2_reward_binary_sum = p.choice2_reward_binary
+                    else:
+                        previous_player = p.in_round(p.round_number - 1)
+                        p.choice1_reward_binary_sum = previous_player.choice1_reward_binary_sum + p.choice1_reward_binary
+                        p.choice2_reward_binary_sum = previous_player.choice2_reward_binary_sum + p.choice2_reward_binary
 
                 # Record gains/losses for other players
                 for p in players:
@@ -1546,6 +1576,14 @@ class MyPage(Page):
                     p.player2_choice2_computer = 1 if other_players[1].computer_choice_two else 0
                     p.player3_choice2_computer = 1 if other_players[2].computer_choice_two else 0
                     p.player4_choice2_computer = 1 if other_players[3].computer_choice_two else 0
+                
+                # Calculate choice2 accuracy sums for all players
+                for p in players:
+                    if p.round_number == 1:
+                        p.choice2_accuracy_sum = int(p.choice2_accuracy)
+                    else:
+                        previous_player = p.in_round(p.round_number - 1)
+                        p.choice2_accuracy_sum = previous_player.choice2_accuracy_sum + int(p.choice2_accuracy)
 
                 # Generate random delay before next round
                 group.generate_intertrial_interval()
@@ -1651,6 +1689,18 @@ class FinalResults(Page):
 
         # Store bonus in participant vars
         player.participant.vars['bonus_payoff'] = player.bonus_payoff
+
+        # Calculate sums of correct choices across all rounds
+        player.choice1_reward_binary_sum = sum([p.choice1_reward_binary for p in player.in_all_rounds()])
+        player.choice2_reward_binary_sum = sum([p.choice2_reward_binary for p in player.in_all_rounds()])
+
+        # Store summed values (earnings, choice accuracy and reward) in participant.vars to access in submission app
+        player.participant.vars['choice1_sum_earnings'] = player.choice1_sum_earnings
+        player.participant.vars['choice2_sum_earnings'] = player.choice2_sum_earnings
+        player.participant.vars['choice1_accuracy_sum'] = player.choice1_accuracy_sum
+        player.participant.vars['choice2_accuracy_sum'] = player.choice2_accuracy_sum
+        player.participant.vars['choice1_reward_binary_sum'] = player.choice1_reward_binary_sum
+        player.participant.vars['choice2_reward_binary_sum'] = player.choice2_reward_binary_sum
 
     # vars_for_template method is used to pass variables to the template
     # This is used to calculate and display the final results to the player

@@ -22,8 +22,9 @@ class Group(BaseGroup):
     pass  # No group-level data needed
 
 class Player(BasePlayer):
-    # Store the bonus payment from the main task
+    # Store variables from previous apps to help with assigning bonuses (bonus payment, Prolific ID)
     main_task_bonus = models.CurrencyField()  # Store the bonus from main task
+    prolific_id = models.StringField()  # Store participant's Prolific ID
 
     # Survey questions using 0-100 scale
     task_understanding = models.IntegerField(min=0, max=100)  # Understanding of experiment
@@ -32,6 +33,8 @@ class Player(BasePlayer):
     influence = models.IntegerField(min=0, max=100)           # Perceived influence
     real_players = models.IntegerField(min=0, max=100)        # Belief about real players
     attention_focus = models.IntegerField(min=0, max=100)     # Attention level
+
+    additional_feedback = models.LongStringField(blank=True)  # Additional comments (optional)
     
     # Player ranking fields - storing participant codes
     ranking_first = models.StringField()     # Most influential player's participant code
@@ -43,7 +46,15 @@ class Player(BasePlayer):
     main_task_player_id = models.IntegerField()  # Player's ID from main task
     main_task_group_id = models.IntegerField()   # Group's ID from main task
 
-    additional_feedback = models.LongStringField(blank=True)  # Additional comments (optional)
+    # Choice earnings sums
+    choice1_sum_earnings = models.IntegerField()  # Sum of earnings from first choices
+    choice2_sum_earnings = models.IntegerField()  # Sum of earnings from second choices
+
+    # Choice accuracy and reward sums
+    choice1_accuracy_sum = models.IntegerField()  # Sum of accurate first choices
+    choice2_accuracy_sum = models.IntegerField()  # Sum of accurate second choices
+    choice1_reward_binary_sum = models.IntegerField()  # Sum of correct first choices
+    choice2_reward_binary_sum = models.IntegerField()  # Sum of correct second choices
 
     def get_prolific_id(self):
         # Retrieve stored Prolific ID from participant vars
@@ -81,6 +92,19 @@ class Feedback(Page):
 
         # Store bonus from main task
         player.main_task_bonus = player.participant.vars.get('bonus_payoff', cu(0))
+
+        # Store the prolific ID
+        player.prolific_id = player.get_prolific_id()
+
+        # Retrieve the earnings sums from participant.vars
+        player.choice1_sum_earnings = player.participant.vars.get('choice1_sum_earnings', 0)
+        player.choice2_sum_earnings = player.participant.vars.get('choice2_sum_earnings', 0)
+
+        # Retrieve the choice sums from participant.vars
+        player.choice1_accuracy_sum = player.participant.vars.get('choice1_accuracy_sum', 0)
+        player.choice2_accuracy_sum = player.participant.vars.get('choice2_accuracy_sum', 0)
+        player.choice1_reward_binary_sum = player.participant.vars.get('choice1_reward_binary_sum', 0)
+        player.choice2_reward_binary_sum = player.participant.vars.get('choice2_reward_binary_sum', 0)
 
     @staticmethod
     def vars_for_template(player):
