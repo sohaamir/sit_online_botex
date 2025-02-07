@@ -37,6 +37,22 @@ logging.basicConfig(
 # -------------------------------------------------------------------------------------------------------------------- #
 # -------------------------------------------------------------------------------------------------------------------- #
 
+# Specifically, we require:
+# 1) 75% of rewards to be given when the high probability image is chosen
+# 2) 25% of rewards to be given when the low probability image is chosen
+# 3) No more than 3 consecutive rewards of the high probability option
+# 4) No more than 3 consecutive losses of the low probability option
+# 5) The first trial of each new block to reward the high probability option
+# 6) Even distribution of low probability rewards across blocks (as much as possible)
+# 7) Different positions of wins and losses within the reversal window (± 3 trials relative to each reversal) in each block
+# 8) Reversals to occur every 13-17 rounds
+
+############# Compared to (Zhang & Glascher, 2020), we have made some changes to the reward sequence ################
+# 1) We lower the number of trials from 100 to 60 to make the experiment shorter
+# 2) We change the reversal contingencies from 70:30 to 75:25 to make the task less difficult
+# 3) We use a fixed trial sequence across groups (i.e., the same sequence and reward contingency for all groups)
+# 4) We change the reversal rounds to occur every 13-17 rounds instead of every 9-11 rounds to make the task easier
+
 # Define the core parameters of the experiment
 NUM_ROUNDS = 60  # Total number of rounds in the experiment
 REWARD_PROBABILITY_A = 0.75  # 75% chance of reward for option A when it's the high-probability option
@@ -85,6 +101,11 @@ def generate_trial_sequence():
 
 # This function generates the actual sequence of rewards that players will receive
 # It ensures a balanced distribution of rewards while maintaining the intended probabilities
+# The blocks also get slightly more 'difficult' as the experiment progresses, in terms of the reward sequences, but this is subtle
+
+# The original generate_reward_sequence function which works with any number of trials, reversal rounds and target rewards 
+# is located within trial_sequence.py
+
 def generate_reward_sequence(num_rounds, reversal_rounds):
     sequence = []
     current_high_prob_image = 'A'  # Start with image A as high probability
@@ -138,8 +159,21 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
 
         sequence.append((reward_A, reward_B))
 
-    # Swap trials 48 and 49
+    # We then swap various trials to get a specific trial structure. The trial generation sequence gives us a rough 
+    # distribution of rewards, but we need to adjust it to meet the specific requirements of the task.
+
+    # This is because we want: 
+    # Trials where the 25% option is rewarded to be evenly distributed across the blocks (as much as possible)
+    # The first trial on each new block to reward the 75% option
+    # There to be no more than 3 consecutive rewards of the 75% option throughout the experiment
+    # The position of the wins and losses within the reversal window (± 3 trials) to be different in each block
+
+    # So, we firstly shift around specific trials...
     sequence[47], sequence[48] = sequence[48], sequence[47]
+    sequence[34], sequence[35] = sequence[35], sequence[34]
+    sequence[37], sequence[38] = sequence[38], sequence[37]
+    sequence[40], sequence[41] = sequence[41], sequence[40]
+    sequence[44], sequence[45] = sequence[45], sequence[44]
 
     # Shift reward_A=1 trials up by one position in block 2 (trials 16-32)
     block_2_start = 15  # index for trial 16
