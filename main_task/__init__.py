@@ -45,16 +45,15 @@ logging.basicConfig(
 # 5) The first trial of each new block to reward the high probability option
 # 6) Even distribution of low probability rewards across blocks (as much as possible)
 # 7) Different positions of wins and losses within the reversal window (± 3 trials relative to each reversal) in each block
-# 8) Reversals to occur every 13-17 rounds
+# 8) Reversals to occur every 13-17 rounds (longer trial block to make the task easier)
 
 ############# Compared to (Zhang & Glascher, 2020), we have made some changes to the reward sequence ################
-# 1) We lower the number of trials from 100 to 60 to make the experiment shorter
-# 2) We change the reversal contingencies from 70:30 to 75:25 to make the task less difficult
+# 1) We lower the number of trials from 100 to 64 to make the experiment shorter
+# 2) We change the reversal contingencies from 70:30 to 75:25 and increase the block length to make the task easier
 # 3) We use a fixed trial sequence across groups (i.e., the same sequence and reward contingency for all groups)
-# 4) We change the reversal rounds to occur every 13-17 rounds instead of every 9-11 rounds to make the task easier
 
 # Define the core parameters of the experiment
-NUM_ROUNDS = 60  # Total number of rounds in the experiment
+NUM_ROUNDS = 64  # Total number of rounds in the experiment
 REWARD_PROBABILITY_A = 0.75  # 75% chance of reward for option A when it's the high-probability option
 REWARD_PROBABILITY_B = 0.25  # 25% chance of reward for option A when it's the low-probability option
 DECISION_TIME = 3.0 # Time limit for making choices and bets (3 seconds)
@@ -69,14 +68,7 @@ def generate_trial_sequence():
     sequence = []
     # Randomly select which image will start as the high-probability option
     current_image = random.choice(['option1A.bmp', 'option1B.bmp'])
-    reversal_rounds = []
-    
-    # Create a list of rounds where reversals will occur
-    # Reversals happen every 9-11 rounds (randomly determined)
-    current_round = random.randint(13, 17)
-    while current_round <= NUM_ROUNDS:
-        reversal_rounds.append(current_round)
-        current_round += random.randint(13, 17)
+    reversal_rounds = [16, 33, 48]  # Fixed reversal rounds
     
     # Generate the full sequence of trials
     # At each reversal round, the high-probability image switches
@@ -111,8 +103,8 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
     current_high_prob_image = 'A'  # Start with image A as high probability
     high_prob_rewards = 0  # Counter for high probability rewards given
     low_prob_rewards = 0   # Counter for low probability rewards given
-    target_high_rewards = 45  # Target number of high probability rewards (75% of 60 rounds)
-    target_low_rewards = 15   # Target number of low probability rewards (25% of 60 rounds)
+    target_high_rewards = 48  # Target number of high probability rewards (75% of 64 rounds)
+    target_low_rewards = 16   # Target number of low probability rewards (25% of 64 rounds)
 
     # Helper function to prevent too many consecutive high probability rewards
     def can_add_high_prob():
@@ -168,12 +160,8 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
     # There to be no more than 3 consecutive rewards of the 75% option throughout the experiment
     # The position of the wins and losses within the reversal window (± 3 trials) to be different in each block
 
-    # So, we firstly shift around specific trials...
+    # So, we firstly shift this pesky trial
     sequence[47], sequence[48] = sequence[48], sequence[47]
-    sequence[34], sequence[35] = sequence[35], sequence[34]
-    sequence[37], sequence[38] = sequence[38], sequence[37]
-    sequence[40], sequence[41] = sequence[41], sequence[40]
-    sequence[44], sequence[45] = sequence[45], sequence[44]
 
     # Shift reward_A=1 trials up by one position in block 2 (trials 16-32)
     block_2_start = 15  # index for trial 16
@@ -193,14 +181,31 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
     # Update the sequence
     sequence[block_2_start:block_2_end] = new_block_2
 
+    def modify_final_block(sequence):
+        # Define the exact pattern we want for trials 48-64
+        final_pattern = [
+            (0, 1), (1, 0), (0, 1), (0, 1),  # 48-51
+            (1, 0), (0, 1), (0, 1), (0, 1),  # 52-55
+            (1, 0), (0, 1), (0, 1), (0, 1),  # 56-59
+            (1, 0), (0, 1), (0, 1), (0, 1),  # 60-63
+            (1, 0)                            # 64
+        ]
+        
+        # Replace the final portion of the sequence
+        sequence[47:64] = final_pattern
+        return sequence
+
+    sequence = modify_final_block(sequence)
+
     # Print final sequence
     print("\nFinal Reward Sequence:")
     print("Round | High Prob | reward_A | reward_B")
     print("------|-----------|----------|----------")
     
     current_high_prob_image = 'A'
+    actual_reversals = [16, 33, 48]  # Explicitly define the only reversals we want
     for round_num in range(1, num_rounds + 1):
-        if round_num in reversal_rounds:
+        if round_num in actual_reversals:  # Only use our explicit reversals
             current_high_prob_image = 'B' if current_high_prob_image == 'A' else 'A'
             print("-------|-----------|----------|----------")
         
@@ -234,7 +239,7 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
 
 # Generate all sequences needed for the experiment when this module is first imported
 TRIAL_SEQUENCE, REVERSAL_ROUNDS = generate_trial_sequence()
-REWARD_SEQUENCE = generate_reward_sequence(60, REVERSAL_ROUNDS)
+REWARD_SEQUENCE = generate_reward_sequence(64, REVERSAL_ROUNDS)
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Base Constants: Used to define constants across all pages and subsessions in the game
@@ -247,7 +252,7 @@ class C(BaseConstants):
     # Number of players that form a group in the experiment
     PLAYERS_PER_GROUP = 5
     
-    # Total number of rounds in the experiment (defined earlier as 60)
+    # Total number of rounds in the experiment (defined earlier as 64)
     NUM_ROUNDS = NUM_ROUNDS
     
     # The reward probabilities for each option
@@ -1684,7 +1689,7 @@ class MyPage(Page):
         group.set_payoffs()
 
 # -------------------------------------------------------------------------------------------------------------------- #
-# -------------------- FINAL RESULTS PAGE: AFTER 60 ROUNDS, PLAYERS RECEIVE THEIR POINTS TALLY -------------------- #
+# -------------------- FINAL RESULTS PAGE: AFTER 64 ROUNDS, PLAYERS RECEIVE THEIR POINTS TALLY -------------------- #
 # -------------------------------------------------------------------------------------------------------------------- #
 
 # After the task is complete, players see their final results
