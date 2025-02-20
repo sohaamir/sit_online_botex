@@ -1,4 +1,0 @@
-Opening in existing browser session.
-WARNING: it looks like Chrome is already running. You should quit Chrome before running this command.
-main_task   3 participants......finished in 31.0 seconds
-Total: 31.0 seconds

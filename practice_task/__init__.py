@@ -495,11 +495,33 @@ class WaitPage1(WaitPage):
 
     @staticmethod
     def vars_for_template(player):
+        session = player.subsession.session
+        current_time = time.time()
+        
+        # Record this player's refresh time
+        player.participant.vars['last_refresh_time'] = current_time
+        
+        # Count only participants who have refreshed in the last 35 seconds
+        # (slightly more than the 30-second refresh interval)
+        waiting_participants = len([
+            p for p in session.get_participants()
+            if (p._current_page_name == 'WaitPage1' and 
+                p._current_app_name == 'practice_task' and
+                current_time - p.vars.get('last_refresh_time', 0) < 35) # 30 seconds (refresh time) plus buffer for edge cases
+        ])
+
+        players_needed = C.PLAYERS_PER_GROUP - waiting_participants
+        if players_needed < 0:
+            players_needed = 0
+
         return {
             'title_text': 'Waiting for Other Players',
-            'timeout_seconds': 600  # 10 minutes
+            'timeout_seconds': 600,  # 10 minutes
+            'players_needed': players_needed,
+            'waiting_participants': waiting_participants,
+            'players_per_group': C.PLAYERS_PER_GROUP
         }
-    
+
     @staticmethod              
     def js_vars(player):
         return dict(
@@ -508,8 +530,8 @@ class WaitPage1(WaitPage):
 
     @staticmethod
     def after_all_players_arrive(group):
-        for player in group.get_players():
-            pass
+        # Empty function - required by oTree
+        pass
 
 class TransitionToPracticeTask(Page):
     @staticmethod 

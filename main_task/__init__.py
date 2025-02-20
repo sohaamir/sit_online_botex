@@ -396,7 +396,7 @@ class Group(BaseGroup):
     my_page_load_time = models.FloatField()            # Records when the page loads for the group
     round_reward_A = models.IntegerField()             # Reward for option A in current round
     round_reward_B = models.IntegerField()             # Reward for option B in current round
-    intertrial_interval = models.IntegerField(initial=0)  # Time gap between trials (3000-4000ms)
+    intertrial_interval = models.IntegerField(initial=0)  # Time gap between trials (5000ms)
     
     # Control flags for timing and state management
     second_bet_timer_ended_executed = models.BooleanField(initial=False)  # Tracks if second betting phase has ended
@@ -864,12 +864,34 @@ class WaitPage2(WaitPage):
     @staticmethod
     def is_displayed(player):
         return player.round_number == 1
-
+    
     @staticmethod
     def vars_for_template(player):
+        session = player.subsession.session
+        current_time = time.time()
+        
+        # Record this player's refresh time
+        player.participant.vars['last_refresh_time'] = current_time
+        
+        # Count only participants who have refreshed in the last 35 seconds
+        # (slightly more than the 30-second refresh interval)
+        waiting_participants = len([
+            p for p in session.get_participants()
+            if (p._current_page_name == 'WaitPage2' and 
+                p._current_app_name == 'main_task' and
+                current_time - p.vars.get('last_refresh_time', 0) < 35) # 30 seconds (refresh time) plus buffer for edge cases
+        ])
+        
+        players_needed = C.PLAYERS_PER_GROUP - waiting_participants
+        if players_needed < 0:
+            players_needed = 0
+            
         return {
             'title_text': 'Waiting for Other Players',
-            'timeout_seconds': 600  # 10 minutes
+            'timeout_seconds': 600,  # 10 minutes
+            'players_needed': players_needed,
+            'waiting_participants': waiting_participants,
+            'players_per_group': C.PLAYERS_PER_GROUP
         }
     
     @staticmethod              
@@ -880,8 +902,8 @@ class WaitPage2(WaitPage):
 
     @staticmethod
     def after_all_players_arrive(group):
-        for player in group.get_players():
-            pass
+        # Empty function - required by oTree
+        pass
 
 # We then define a transition page that moves players from the wait page to the main task page
 class TransitionToMainTask(Page):
@@ -1769,7 +1791,7 @@ class FinalResults(Page):
         # Prepare the data row for this player
         data = [
             player.participant.vars.get('prolific_id', 'Unknown'),  # Get Prolific ID or mark as unknown
-            float(player.total_payoff)                             # Convert Currency to float
+            float(player.total_payoff)                              # Convert Currency to float
         ]
         
         # Check if the payoffs.csv file already exists
@@ -1786,7 +1808,7 @@ class FinalResults(Page):
         # Return variables needed for the final results template
         # These will be displayed to the player on the results page
         return {
-            'choice2_sum_earnings': player.choice2_sum_earnings,    # Total earnings from second choices
+            'choice2_sum_earnings': player.choice2_sum_earnings,   # Total earnings from second choices
             'bonus_payment_score': final_bonus_score,              # Final bonus points
             'choice1_sum_earnings': final_choice1_sum,             # Total earnings from first choices
             'player_id': player.id_in_group,                       # Player's ID in the group
