@@ -7,13 +7,13 @@ from otree.api import Bot, Submission, expect
 import random
 import time
 import logging
-from . import MyPage, FinalResults, WaitPage1, TransitionToPracticeTask, C, MainTaskInstructions
+from . import MyPage, FinalResults, TransitionToPracticeTask, C, MainTaskInstructions
 
 class PlayerBot(Bot):
     def play_round(self):
         logging.info(f"Bot starting round {self.round_number} for player {self.player.id_in_group}")
 
-        # Handle WaitPage1 and TransitionToPracticeTask only in round 1
+        # Handle TransitionToPracticeTask only in round 1
         if self.round_number == 1:
             yield Submission(TransitionToPracticeTask, check_html=False)
         

@@ -68,20 +68,22 @@
         <p>Each game is made up of <b>5 participants,</b> please wait to be matched.</p>
         <p><b>Please stay on this screen</b> so that you are ready to start as soon as your group is complete.</p>
         <br>
+        <p><b>If after 10 minutes you are still waiting to be matched, you will be automatically be re-directed to Prolific and the study will end.</b>
+        <br><br>
+            This is because we will assume that there are not enough players left in the study to form a group of 5, and we don't want you to be waiting around for too long. If this happens, you will still be paid appropriately for your time.</p>
+        <br>
         <p>The page will refresh every 30 seconds to update the number of players waiting, however this <b>does not</b> reset the 10 minute timer.</p>
         <p>If you would like to return to Prolific at any point, please press the button below.</p>
         <p>You will be paid approximately £2 for your time, and it will not affect your submission rate.</p>
         <button id="return-button" style="font-size: 18px; padding: 10px 20px; background-color: red; color: white; border: none; cursor: pointer;">Return to Prolific</button>
         <br><br>
-        <p><b>If after 10 minutes you are still waiting to be matched, you will be automatically be re-directed to Prolific and the study will end.</b> 
-            This is because we will assume that there are not enough players left in the study to form a group of 5. If this happens, you will still be paid appropriately for your time.</p>
         <img src="{% static 'instructions/button_diagram_main.png' %}" alt="Buttons">
     </div>
 
     <div style="text-align: center; margin-top: 30px;">
-        <h3>Back for more???</h3>
-        <p>Use WASD keys to control the snake.</p>
-        <p>Again, the page reloads will reset your score, sorry!</p>
+        <h3>Bored waiting for the others to catch up? Try this Snake game!</h3>
+        <p>Use WASD keys to control the snake. Eat the food to grow and score points.</p>
+        <p>Unfortunately the page refreshes will reset your progress, sorry!</p>
         <br>
         <p>Press 'W', 'A', 'S', or 'D' to begin!</p>
 
@@ -90,9 +92,6 @@
     </div>
 
     <script>
-        // Clear any existing timers
-        sessionStorage.removeItem('waitPage1StartTime');
-
         // Get the wait page exit link from js_vars
         var waitpagelink = js_vars.waitpagelink;
 

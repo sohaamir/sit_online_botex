@@ -5,18 +5,20 @@
 #
 # The main differences are that:
 # 1. The practice task only has 5 rounds, and does not include reversals
-# 2. The reward probabilities are fixed at 90% for the high probability option and 10% for the low probability option
+# 2. They play against computer agents who always make the same choices
 # 3. A different set of images are used
 # 4. Players have 6 seconds to make their choices and bets instead of 3 seconds in the main task
 
-from otree.api import *
-from . import *
-import random
-import time
-import csv
+
 from otree.api import Submission, WaitPage
+from otree.api import *
 import threading
 import logging
+from . import *
+import random
+import json
+import time
+import csv
 
 # Set up logging
 logging.basicConfig(
@@ -30,86 +32,41 @@ logging.basicConfig(
 author = 'Aamir Sohail'
 
 doc = """
-This is a multiplayer social influence task where players in groups of 5 make choices and bets to earn rewards in real time. 
-The task is the same as reported in (Zhang & Glascher, 2020) https://www.science.org/doi/full/10.1126/sciadv.abb4159
+This is the practice task for the experiment. Players will make choices and bets on two options in each round (five rounds total). 
+The reward contingencies are fixed as are the choices by the other players, represented by computer agents.
 """
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- CONSTANTS: DEFINE CONSTANTS USED IN THE GAME INCLUDING NUMBER OF PLAYERS, ROUNDS AND TRIAL SEQUENCE------ #
 # -------------------------------------------------------------------------------------------------------------------- #
 
-# -------------------------------------------------------------------------------------------------------------------- #
-
-# Generate a trial sequence for the experiment based on the number of rounds and reversal rounds
-# The sequence is generated randomly with reversal rounds every 8-12 rounds, but remains the same for all groups
-
-def generate_trial_sequence():
-    # Using a fixed random seed ensures the same sequence is generated each time the experiment runs
-    # This is important for reproducibility and consistency across different groups
-    random.seed(49)  # You can change this number, but keep it constant
-
-    sequence = []
-    # Randomly select which image will start as the high-probability option
-    current_image = random.choice(['option1A.bmp', 'option1B.bmp'])
-    reversal_rounds = []
-    
-    # Create a list of rounds where reversals will occur
-    # Reversals happen every 8-12 rounds (randomly determined)
-    current_round = random.randint(8, 12)
-    while current_round <= NUM_ROUNDS:
-        reversal_rounds.append(current_round)
-        current_round += random.randint(8, 12)
-
-    # Generate the full sequence of trials
-    # At each reversal round, the high-probability image switches
-    for round_number in range(1, NUM_ROUNDS + 1):
-        if round_number in reversal_rounds:
-            current_image = 'option1B.bmp' if current_image == 'option1A.bmp' else 'option1A.bmp'
-        sequence.append((round_number, current_image))
-
-    print(f"Reversal rounds: {reversal_rounds}")
-    return sequence, reversal_rounds
-
-# -------------------------------------------------------------------------------------------------------------------- #
 # ---- REWARD SEQUENCE: GENERATE A SEQUENCE OF REWARDS FOR THE EXPERIMENT BASED ON THE NUMBER OF ROUNDS ------ #
 
 # Define the core parameters of the experiment
 NUM_ROUNDS = 5  # Total number of rounds in the experiment
-REWARD_PROBABILITY_A = 0.9  # 90% chance of reward for option A when it's the high-probability option
-REWARD_PROBABILITY_B = 0.1  # 10% chance of reward for option A when it's the low-probability option
 
 # This function generates a win for the high probability image in each of the rounds (i.e., no reversals)
-def generate_reward_sequence(num_rounds, reversal_rounds):
+def generate_reward_sequence(num_rounds):
     sequence = []
-    current_high_prob_image = 'A'  # Start with image A as high probability
-    
-    # Prepare CSV file headers for logging the reward sequence
-    csv_data = [['Round', 'High Prob', 'reward_A', 'reward_B']]
-
     print("\nGenerated Reward Sequence:")
-    print("Round | High Prob | reward_A | reward_B")
-    print("------|-----------|----------|----------")
+    print("Round | reward_A | reward_B")
+    print("------|----------|----------")
 
-    # Generate rewards for each round
     for round_num in range(1, num_rounds + 1):
-        # Always set reward_A to 1 and reward_B to 0
-        reward_A = 1
-        reward_B = 0
-
+        if round_num <= 3:
+            reward_A = 1
+            reward_B = 0
+        else:
+            reward_A = 0
+            reward_B = 1
+        
         sequence.append((reward_A, reward_B))
-        print(f"{round_num:5d} | {current_high_prob_image:9s} | {reward_A:8d} | {reward_B:8d}")
-        csv_data.append([round_num, current_high_prob_image, reward_A, reward_B])
-
-    # Calculate and display statistics
-    print("\nReward Statistics:")
-    print(f"High probability rewards: {num_rounds}/{num_rounds} (100.00%)")
-    print(f"Low probability rewards: 0/{num_rounds} (0.00%)")
-
+        print(f"{round_num:5d} | {reward_A:8d} | {reward_B:8d}")
+    
     return sequence
 
 # Generate all sequences needed for the experiment when this module is first imported
-TRIAL_SEQUENCE, REVERSAL_ROUNDS = generate_trial_sequence()
-REWARD_SEQUENCE = generate_reward_sequence(5, REVERSAL_ROUNDS)
+REWARD_SEQUENCE = generate_reward_sequence(NUM_ROUNDS)
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Base Constants: Used to define constants across all pages and subsessions in the game
@@ -119,17 +76,12 @@ class C(BaseConstants):
     # URL path for accessing this task in the browser
     NAME_IN_URL = 'practice_task'
     
-    # Number of players that form a group in the experiment
-    PLAYERS_PER_GROUP = 5
+    # Groups of 1 player each 
+    # oTree throws up a warning that this is set to 1, but it's more of a 'best practice', the code works fine
+    PLAYERS_PER_GROUP = None
     
-    # Total number of rounds in the experiment (defined earlier as 4)
+    # Total number of rounds in the experiment (defined earlier as 5)
     NUM_ROUNDS = NUM_ROUNDS
-    
-    # The reward probabilities for each option
-    # When an option is in its "high probability" state, it has a 90% chance of giving a reward
-    # When an option is in its "low probability" state, it has a 10% chance of giving a reward
-    REWARD_PROBABILITY_A = REWARD_PROBABILITY_A
-    REWARD_PROBABILITY_B = REWARD_PROBABILITY_B
     
     # The image files that represent the two choice options players can select between
     IMAGES = ['option1A.bmp', 'option1B.bmp']
@@ -138,12 +90,13 @@ class C(BaseConstants):
     AVATAR_IMAGE = 'practice_task/avatar_male.png'
     
     # Dictionary mapping image names to their full file paths in the static directory
-    # Includes both regular images and transparent versions (with '_tr' suffix)
+    # Importantly, we do not have transparent images, since we are using computer agents who always make choices
+
     IMAGE_PATHS = {
         'option1A.bmp': '_static/practice_task/option1A.bmp',
         'option1B.bmp': '_static/practice_task/option1B.bmp',
-        'option1A_tr.bmp': '_static/practice_task/option1A_tr.bmp',
-        'option1B_tr.bmp': '_static/practice_task/option1B_tr.bmp',
+        'option1A_tr.bmp': '_static/practice_task/option1A.bmp',
+        'option1B_tr.bmp': '_static/practice_task/option1B.bmp',
         'avatar_male.png': '_static/practice_task/avatar_male.png',
     }
     
@@ -151,7 +104,7 @@ class C(BaseConstants):
     REWARD_SEQUENCE = REWARD_SEQUENCE
 
 # -------------------------------------------------------------------------------------------------------------------- #
-# ---- SUBSESSIONS: USED TO DEFINE THE ROUNDS FOR REVERSAL AND BOTS ------ #
+# ---- SUBSESSIONS: USED TO GROUP PLAYERS AND DEFINE THE BOTS ------ #
 # -------------------------------------------------------------------------------------------------------------------- #
 
 # A subsession represents one round of the game
@@ -160,8 +113,9 @@ class Subsession(BaseSubsession):
 
     # This method groups players together based on their arrival time
     def group_by_arrival_time_method(self, waiting_players):
-        if len(waiting_players) >= C.PLAYERS_PER_GROUP:
-            return waiting_players[:C.PLAYERS_PER_GROUP]
+        # Form a group as soon as one player arrives
+        if len(waiting_players) >= 1:
+            return [waiting_players[0]]
         return None
 
     def creating_session(self):
@@ -175,11 +129,6 @@ class Subsession(BaseSubsession):
                     time_since_connection = time.time() - player.last_connection_time
                     if time_since_connection > 10:
                         player.increment_disconnect_streak()
-
-    # Returns a list of all reversal rounds up to the current round
-    # This helps track when probability switches have occurred
-    def get_reversal_rounds(self):
-        return [round for round in REVERSAL_ROUNDS if round <= self.round_number]
 
     # Method to collect data from all players in a format suitable for bot testing
     # This is useful for debugging and testing the application
@@ -217,19 +166,9 @@ class Group(BaseGroup):
     second_bet_timer_ended_executed = models.BooleanField(initial=False)  # Tracks if second betting phase has ended
     next_round_transition_time = models.FloatField()    # When to transition to next round
     
-    # Probability settings for the two options
-    reward_probability_A = models.FloatField(initial=0.9)  # Starting probability for option A
-    reward_probability_B = models.FloatField(initial=0.1)  # Starting probability for option B
-    
-    # Track which image has which probability
-    seventy_percent_image = models.StringField(initial='option1A.bmp')  # Image with 90% reward chance
-    thirty_percent_image = models.StringField(initial='option1B.bmp')   # Image with 10% reward chance
-    
     # State tracking variables
-    reversal_rounds = models.StringField(initial='')    # Records when probability reversals occur
     bet_container_displayed = models.BooleanField(initial=False)  # Whether betting UI is shown
     remaining_images_displayed = models.BooleanField(initial=False)  # Whether all choices are displayed
-    reversal_happened = models.BooleanField(initial=False)  # If a probability reversal occurred this round
     round_reward_set = models.BooleanField(initial=False)  # If rewards have been set for this round
     
     # Page loading coordination
@@ -238,6 +177,57 @@ class Group(BaseGroup):
     disconnected_players = models.StringField(initial="")
     bot_players = models.StringField(initial="")
     active_bots = models.StringField(initial="")
+
+    # Add tracking for computer player choices
+    computer_player_choices = models.StringField(initial="")  # JSON string to store choices
+    computer_player_bets = models.StringField(initial="")  # JSON string to store bets
+
+#### ---------------- Define the computer choices ------------------------ ####
+# This method generates choices for the computer players
+# The computer players will make choices and bets simulating the other 4 players in the group
+
+    def generate_computer_choices(self):
+        """Generate choices for the computer players"""
+        
+        # Create 4 computer players with IDs 2-5
+        computer_players = {
+            str(i): {
+                'choice1': random.choice(['left', 'right']),
+                'bet1': random.randint(1, 3),
+                'choice2': random.choice(['left', 'right']),
+                'bet2': random.randint(1, 3),
+                'chosen_image_one': '',
+                'chosen_image_two': '',
+                'computer_choice_one': True,
+                'computer_choice_two': True,
+                'computer_bet_one': True,
+                'computer_bet_two': True,
+                'trial_reward': 0
+            } for i in range(2, 6)
+        }
+        
+        self.computer_player_choices = json.dumps(computer_players)
+        
+        # Calculate chosen images based on left/right choices
+        real_player = self.get_player_by_id(1)
+        for player_id, data in computer_players.items():
+            # For first choice
+            if data['choice1'] == 'left':
+                data['chosen_image_one'] = real_player.left_image
+                data['chosen_image_computer'] = real_player.left_image.replace('.bmp', '.bmp')
+            else:
+                data['chosen_image_one'] = real_player.right_image
+                data['chosen_image_computer'] = real_player.right_image.replace('.bmp', '.bmp')
+                
+            # For second choice
+            if data['choice2'] == 'left':
+                data['chosen_image_two'] = real_player.left_image
+                data['chosen_image_computer_two'] = real_player.left_image.replace('.bmp', '.bmp')
+            else:
+                data['chosen_image_two'] = real_player.right_image
+                data['chosen_image_computer_two'] = real_player.right_image.replace('.bmp', '.bmp')
+                
+        self.computer_player_choices = json.dumps(computer_players)
 
 #### ---------------- Define the bot ------------------------ ####
 # This method activates a bot for a player who has disconnected from the game 
@@ -286,27 +276,38 @@ class Group(BaseGroup):
 # Sets up the rewards for each option in the current round based on the pre-generated sequence
 
     def set_round_reward(self):
-        # Only set rewards once per round
         if not self.round_reward_set:
-            # Get rewards from the pre-generated sequence
             self.round_reward_A, self.round_reward_B = C.REWARD_SEQUENCE[self.round_number - 1]
             self.round_reward_set = True
             print(f"Round {self.round_number}: reward_A = {self.round_reward_A}, reward_B = {self.round_reward_B}")
 
     def calculate_player_rewards(self):
-        # Calculate rewards for each player based on their second choice
-        for p in self.get_players():
-            # Skip players who haven't made their second choice yet
-            if p.field_maybe_none('chosen_image_two') is None:
-                continue
-
-            # Determine reward based on which image was chosen and which has high probability
-            if p.chosen_image_two == self.seventy_percent_image:
-                potential_reward = self.round_reward_A if self.seventy_percent_image == 'option1A.bmp' else self.round_reward_B
+        # Get the real player
+        player = self.get_player_by_id(1)
+        
+        # Calculate reward for real player based on their second choice
+        if player.field_maybe_none('chosen_image_two') is not None:
+            if player.chosen_image_two == 'option1A.bmp':
+                player.trial_reward = self.round_reward_A
             else:
-                potential_reward = self.round_reward_B if self.seventy_percent_image == 'option1A.bmp' else self.round_reward_A
-
-            p.trial_reward = potential_reward
+                player.trial_reward = self.round_reward_B
+        
+        # For computer players, calculate in their separate storage
+        if self.field_maybe_none('computer_player_choices'):
+            computer_players = json.loads(self.computer_player_choices)
+            for player_id, data in computer_players.items():
+                # Skip if no second choice
+                if 'chosen_image_two' not in data or not data['chosen_image_two']:
+                    continue
+                    
+                # Calculate reward based on chosen image
+                if data['chosen_image_two'] == 'option1A.bmp':
+                    data['trial_reward'] = self.round_reward_A
+                else:
+                    data['trial_reward'] = self.round_reward_B
+                    
+            # Save updated computer players data
+            self.computer_player_choices = json.dumps(computer_players)
 
 #### ---------------- Define payoffs ------------------------ ####
 # Calculates earnings for each player based on their choices, bets, and the rewards
@@ -332,36 +333,6 @@ class Group(BaseGroup):
         # Generate random interval between 3 and 4 seconds
         self.intertrial_interval = random.randint(3000, 4000)
         print(f"Intertrial interval of {self.intertrial_interval}ms generated")
-
-#### ----------- Define and record the reversal learning rounds ------------------- ####
-# Manages the switching of reward probabilities between the two options
-
-    def reversal_learning(self):
-        # Find data for current round in the pre-generated sequence
-        current_round_data = next((item for item in TRIAL_SEQUENCE if item[0] == self.round_number), None)
-        
-        if current_round_data:
-            # Set which image has high probability for this round
-            self.seventy_percent_image = current_round_data[1]
-            self.thirty_percent_image = 'option1B.bmp' if self.seventy_percent_image == 'option1A.bmp' else 'option1A.bmp'
-            previous_round = self.in_round(self.round_number - 1) if self.round_number > 1 else None
-
-            # Mark if this is a reversal round
-            if self.round_number in REVERSAL_ROUNDS:
-                self.reversal_happened = True
-            else:
-                self.reversal_happened = False
-
-            # Set probabilities based on which image has high probability
-            if self.seventy_percent_image == 'option1A.bmp':
-                self.reward_probability_A = 0.9
-                self.reward_probability_B = 0.1
-            else:
-                self.reward_probability_A = 0.1
-                self.reward_probability_B = 0.9
-
-        print(f"Round {self.round_number}: 90% image is {self.seventy_percent_image}, 10% image is {self.thirty_percent_image}")
-        print(f"Current probabilities: option1A.bmp - {self.reward_probability_A}, option1B.bmp - {self.reward_probability_B}")
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # ---- PLAYER-LEVEL VARIABLES: USED TO TRACK CHOICES, BETS, EARNINGS AND A WHOLE LOT ELSE ------ #
@@ -485,54 +456,11 @@ class Player(BasePlayer):
 # ---- PAGES: DEFINE THE PAGES USED IN THE GAME INCLUDING WAITING ROOMS, TASKS AND RESULTS ------ #
 # -------------------------------------------------------------------------------------------------------------------- #
 
-class WaitPage1(WaitPage):
-    template_name = 'practice_task/WaitPage1.html'
+# Group players together in the WaitPage which they don't see because they are automatically grouped
+class GroupingWaitPage(WaitPage):
     group_by_arrival_time = True
 
-    @staticmethod
-    def is_displayed(player):
-        return player.round_number == 1
-
-    @staticmethod
-    def vars_for_template(player):
-        session = player.subsession.session
-        current_time = time.time()
-        
-        # Record this player's refresh time
-        player.participant.vars['last_refresh_time'] = current_time
-        
-        # Count only participants who have refreshed in the last 35 seconds
-        # (slightly more than the 30-second refresh interval)
-        waiting_participants = len([
-            p for p in session.get_participants()
-            if (p._current_page_name == 'WaitPage1' and 
-                p._current_app_name == 'practice_task' and
-                current_time - p.vars.get('last_refresh_time', 0) < 35) # 30 seconds (refresh time) plus buffer for edge cases
-        ])
-
-        players_needed = C.PLAYERS_PER_GROUP - waiting_participants
-        if players_needed < 0:
-            players_needed = 0
-
-        return {
-            'title_text': 'Waiting for Other Players',
-            'timeout_seconds': 600,  # 10 minutes
-            'players_needed': players_needed,
-            'waiting_participants': waiting_participants,
-            'players_per_group': C.PLAYERS_PER_GROUP
-        }
-
-    @staticmethod              
-    def js_vars(player):
-        return dict(
-            waitpagelink=player.subsession.session.config['waitpagelink']
-        )
-
-    @staticmethod
-    def after_all_players_arrive(group):
-        # Empty function - required by oTree
-        pass
-
+# Transition to the practice task
 class TransitionToPracticeTask(Page):
     @staticmethod 
     def is_displayed(player):
@@ -648,25 +576,14 @@ class MyPage(Page):
             previous_player = player.in_round(player.round_number - 1)
             player.choice2_sum_earnings = previous_player.choice2_sum_earnings + player.choice2_earnings
 
-    # vars_for_template method is used to pass variables to the template
-    # This is used to display information to the player in the interface
     @staticmethod
     def vars_for_template(player: Player):
         group = player.group
 
-        # At the start of each round, check all players' connection status
-        for p in group.get_players():
-            current_streak = p.field_maybe_none('disconnection_streak')
-            if current_streak is not None and current_streak > 0:
-                logging.info(f"Start of round {group.round_number}: Player {p.id_in_group} has streak of {current_streak}/5")
-                # If they're already at or past threshold, ensure bot is active
-                if current_streak >= 5 and not p.is_bot:
-                    p.increment_disconnect_streak()
-        
         # Initialize connection tracking for new rounds
         player.last_connection_time = time.time()
 
-        # Randomly determine which image appears on left/right for each player for each round
+        # Randomly determine which image appears on left/right for the player
         try:
             images = C.IMAGES.copy()
             random.shuffle(images)
@@ -684,16 +601,55 @@ class MyPage(Page):
             player.left_image = left_image 
             player.right_image = right_image
 
-        # Get other_players before using it
-        other_players = player.get_others_in_group()
+        # Create four virtual players with IDs 2-5
+        virtual_player_ids = list(range(2, 6))
+        
+        # Initialize computer choices if not already done
+        if not group.field_maybe_none('computer_player_choices'):
+            # Generate initial random choices for computer players
+            import json
+            computer_players = {
+                str(i): {
+                    'choice1': random.choice(['left', 'right']),
+                    'bet1': random.randint(1, 3),
+                    'choice2': random.choice(['left', 'right']),
+                    'bet2': random.randint(1, 3),
+                    'chosen_image_one': '',
+                    'chosen_image_computer': '',
+                    'chosen_image_two': '',
+                    'chosen_image_computer_two': '',
+                    'computer_choice_one': True,
+                    'computer_choice_two': True,
+                    'trial_reward': 0
+                } for i in virtual_player_ids
+            }
+            
+            # Determine chosen images based on choices and player's image assignment
+            for player_id, data in computer_players.items():
+                # First choice images
+                data['chosen_image_one'] = left_image if data['choice1'] == 'left' else right_image
+                data['chosen_image_computer'] = (left_image if data['choice1'] == 'left' else right_image).replace('.bmp', '.bmp')
+                
+                # Second choice images  
+                data['chosen_image_two'] = left_image if data['choice2'] == 'left' else right_image
+                data['chosen_image_computer_two'] = (left_image if data['choice2'] == 'left' else right_image).replace('.bmp', '.bmp')
+            
+            group.computer_player_choices = json.dumps(computer_players)
+        
+        # Create chosen_images dictionary (init with placeholder images)
+        chosen_images = {player.id_in_group: f"practice_task/{player.field_maybe_none('chosen_image_computer') or player.field_maybe_none('chosen_image_one') or 'default_image.png'}"}
+        
+        # Add placeholder images for virtual players
+        for virtual_id in virtual_player_ids:
+            chosen_images[virtual_id] = f"practice_task/default_image.png"
 
         return {
             'left_image': f'practice_task/{left_image}',
             'right_image': f'practice_task/{right_image}',
             'player_id': player.id_in_group,
             'avatar_image': C.AVATAR_IMAGE,
-            'other_player_ids': [p.id_in_group for p in other_players],
-            'chosen_images': {p.id_in_group: f"practice_task/{p.field_maybe_none('chosen_image_computer') or p.field_maybe_none('chosen_image_one') or 'default_image.png'}" for p in group.get_players()},
+            'other_player_ids': virtual_player_ids,
+            'chosen_images': chosen_images,
             'previous_choice': player.participant.vars.get('chosen_image_one'),
             'previous_bet': player.participant.vars.get('bet1'),
             'round_number': player.round_number,
@@ -714,19 +670,18 @@ class MyPage(Page):
 
     @staticmethod
     def live_method(player, data):
+        
         if player.field_maybe_none('is_bot'):
             # Ensure bot has valid image fields
             if player.field_maybe_none('left_image') is None:
                 player.left_image = C.IMAGES[0]
             if player.field_maybe_none('right_image') is None:
                 player.right_image = C.IMAGES[1]
-        # print(f"Received data: {data}") # Uncomment to print received data
-
-        # Initialize response dictionary and get references to group and all players
+        
+        # Initialize response dictionary and get reference to group
         group = player.group
-        players = group.get_players()
         response = {}
-
+        
         # Handle activity recording
         if 'record_activity' in data:
             try:
@@ -799,37 +754,61 @@ class MyPage(Page):
             return
 
         # ---- PAGE LOAD PHASE ----
-        # Handle initial page loading and synchronization between players
-
         if 'my_page_load_time' in data:
-            # Convert and record load times for individual player
+            # Convert and record load times for player
             player.my_page_load_time = round(data['my_page_load_time'] / 1000, 2)
             player.individual_page_load_time = round(data['individual_page_load_time'] / 1000, 2)
             
-            # Track number of players who have loaded the page
-            if not player.field_maybe_none('my_page_load_time'):
-                group.players_loaded_count += 1
+            # With single-player, we can immediately start
+            group.players_loaded_count = 1
+            group.my_page_load_time = player.my_page_load_time
             
             # Send acknowledgment to client
             response = {player.id_in_group: dict(acknowledged=True)}
             
-            # When all players are ready, start the game
-            if group.players_loaded_count == C.PLAYERS_PER_GROUP:
-                group.my_page_load_time = round(max(p.my_page_load_time for p in players), 2)
-                group.set_round_reward()  # Set up rewards for this round
-                group.reversal_learning()  # Handle probability reversals
-                return {p.id_in_group: dict(start_choice_phase_timer=True) for p in players}
+            # Set up the round
+            group.set_round_reward()  # Set up rewards for this round
             
-            return response
-
+            # If computer player choices haven't been generated yet, do it now
+            if not group.field_maybe_none('computer_player_choices'):
+                # Initialize computer players' choices
+                computer_players = {
+                    str(i): {
+                        'choice1': random.choice(['left', 'right']),
+                        'bet1': random.randint(1, 3),
+                        'choice2': random.choice(['left', 'right']),
+                        'bet2': random.randint(1, 3),
+                        'chosen_image_one': '',
+                        'chosen_image_computer': '',
+                        'chosen_image_two': '',
+                        'chosen_image_computer_two': '',
+                        'computer_choice_one': True,
+                        'computer_choice_two': True,
+                        'trial_reward': 0
+                    } for i in range(2, 6)
+                }
+                
+                # Calculate chosen images based on left/right choices
+                for player_id, data in computer_players.items():
+                    # First choice images
+                    data['chosen_image_one'] = player.left_image if data['choice1'] == 'left' else player.right_image
+                    data['chosen_image_computer'] = (player.left_image if data['choice1'] == 'left' else player.right_image).replace('.bmp', '.bmp')
+                    
+                    # Second choice images
+                    data['chosen_image_two'] = player.left_image if data['choice2'] == 'left' else player.right_image
+                    data['chosen_image_computer_two'] = (player.left_image if data['choice2'] == 'left' else player.right_image).replace('.bmp', '.bmp')
+                
+                group.computer_player_choices = json.dumps(computer_players)
+                
+            # Start the choice phase for the real player
+            return {player.id_in_group: dict(start_choice_phase_timer=True)}
+            
         # ---- FIRST CHOICE PHASE ----
-        # Handle player's first choice and timing
-
         if 'initial_choice_time' in data:
             # Calculate and record how long the player took to make their choice
             if data['initial_choice_time'] is not None:
                 actual_choice_time = round((data['initial_choice_time'] - player.individual_page_load_time) / 1000, 2)
-                player.initial_choice_time = min(actual_choice_time, 6.0)  # Cap at 3 seconds
+                player.initial_choice_time = min(actual_choice_time, 6.0)  # Cap at 6 seconds
             else:
                 player.initial_choice_time = 6.0
 
@@ -841,95 +820,61 @@ class MyPage(Page):
                 player.computer_choice_one = False  # Mark as manual choice
 
         # ---- CHOICE TIMER END PHASE ----
-        # Handle what happens when the choice timer expires
-
         if 'choice_phase_timer_ended' in data:
-            choices_to_process = False
-            
             try:
-                # Process choices for all players
-                for p in players:
-                    try:
-                        # If player hasn't made a choice, computer makes one
-                        if p.field_maybe_none('choice1') is None or p.choice1 == '':
-                            choices_to_process = True
-                            
-                            # Ensure valid image fields exist
-                            left_img = p.field_maybe_none('left_image')
-                            right_img = p.field_maybe_none('right_image')
-                            
-                            if left_img is None:
-                                left_img = C.IMAGES[0]
-                                p.left_image = left_img
-                            if right_img is None:
-                                right_img = C.IMAGES[1]
-                                p.right_image = right_img
-                                
-                            random_choice = random.choice(['left', 'right'])
-                            
-                            # Record computer's choice
-                            p.choice1 = random_choice
-                            p.computer_choice1 = random_choice
-                            p.chosen_image_one = left_img if random_choice == 'left' else right_img
-                            p.participant.vars['chosen_image_one'] = p.chosen_image_one
-                            p.initial_choice_time = 6.0
-                            
-                            # Handle binary coding and image selection
-                            try:
-                                p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
-                                p.computer_choice_one = True
-                                
-                                # Use transparent version of image for computer choices
-                                if p.chosen_image_one == 'option1A.bmp':
-                                    p.chosen_image_computer = 'option1A_tr.bmp'
-                                elif p.chosen_image_one == 'option1B.bmp':
-                                    p.chosen_image_computer = 'option1B_tr.bmp'
-                                    
-                            except Exception as e:
-                                logging.error(f"Error processing computer choice details for player {p.id_in_group}: {e}")
-                                # Set fallback values
-                                p.chosen_image_one_binary = 1
-                                p.computer_choice_one = True
-                                p.chosen_image_computer = 'option1A_tr.bmp'
-                                
-                        else:
-                            # Record binary coding for manual choices
-                            try:
-                                p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
-                            except Exception as e:
-                                logging.error(f"Error processing manual choice details for player {p.id_in_group}: {e}")
-                                p.chosen_image_one_binary = 1
-                            
-                    except Exception as e:
-                        logging.error(f"Error processing choice for player {p.id_in_group}: {e}")
-                        # Set safe fallback values
-                        p.choice1 = 'left'
-                        p.computer_choice1 = 'left'
-                        p.chosen_image_one = C.IMAGES[0]
-                        p.chosen_image_one_binary = 1
-                        p.computer_choice_one = True
-
+                # If player hasn't made a choice, computer makes one
+                if player.field_maybe_none('choice1') is None or player.choice1 == '':
+                    # Ensure valid image fields exist
+                    left_img = player.field_maybe_none('left_image')
+                    right_img = player.field_maybe_none('right_image')
+                    
+                    if left_img is None:
+                        left_img = C.IMAGES[0]
+                        player.left_image = left_img
+                    if right_img is None:
+                        right_img = C.IMAGES[1]
+                        player.right_image = right_img
+                        
+                    random_choice = random.choice(['left', 'right'])
+                    
+                    # Record computer's choice
+                    player.choice1 = random_choice
+                    player.computer_choice1 = random_choice
+                    player.chosen_image_one = left_img if random_choice == 'left' else right_img
+                    player.participant.vars['chosen_image_one'] = player.chosen_image_one
+                    player.initial_choice_time = 6.0
+                    
+                    # Handle binary coding and image selection
+                    player.chosen_image_one_binary = 1 if player.chosen_image_one == 'option1A.bmp' else 2
+                    player.computer_choice_one = True
+                    
+                    # Use transparent version of image for computer choices
+                    if player.chosen_image_one == 'option1A.bmp':
+                        player.chosen_image_computer = 'option1A.bmp'
+                    elif player.chosen_image_one == 'option1B.bmp':
+                        player.chosen_image_computer = 'option1B.bmp'
+                else:
+                    # Record binary coding for manual choices
+                    player.chosen_image_one_binary = 1 if player.chosen_image_one == 'option1A.bmp' else 2
+                    
                 # Move to betting phase
-                return {p.id_in_group: dict(
+                return {player.id_in_group: dict(
                     show_bet_container=True, 
                     start_bet_timer=True, 
-                    highlight_selected_choice=p.field_maybe_none('choice1') or 'left'
-                ) for p in players}
-                
+                    highlight_selected_choice=player.field_maybe_none('choice1') or 'left'
+                )}
+                    
             except Exception as e:
                 logging.error(f"Critical error in choice phase timer end: {e}")
                 # Provide safe fallback response to keep game running
-                return {p.id_in_group: dict(
+                return {player.id_in_group: dict(
                     show_bet_container=True,
                     start_bet_timer=True,
                     highlight_selected_choice='left'
-                ) for p in players}
+                )}
 
         # ---- FIRST BET PHASE ----
-        # Handle display of betting interface
-
         if 'show_bet_container' in data and data['show_bet_container']:
-
             player.participant.vars['bet_timer_started'] = True
             player.participant.vars['bet_phase_start_time'] = time.time()
             return {player.id_in_group: dict(start_bet_timer=True)}
@@ -945,33 +890,41 @@ class MyPage(Page):
         # Handle bet timer expiration
         if 'bet_timer_ended' in data:
             response = {}
-            for p in players:
-                # Assign computer bets if needed
-                if not p.field_maybe_none('bet1') and not p.computer_bet_one:
-                    random_bet = random.randint(1, 3)
-                    p.bet1 = random_bet
-                    p.participant.vars['bet1'] = p.bet1
-                    p.initial_bet_time = 6.0
-                    p.computer_bet_one = True
-                    response[p.id_in_group] = dict(highlight_computer_bet=p.bet1)
+            
+            # Assign computer bet if needed
+            if not player.field_maybe_none('bet1') and not player.computer_bet_one:
+                random_bet = random.randint(1, 3)
+                player.bet1 = random_bet
+                player.participant.vars['bet1'] = player.bet1
+                player.initial_bet_time = 6.0
+                player.computer_bet_one = True
+                response[player.id_in_group] = dict(highlight_computer_bet=player.bet1)
 
             # Display all players' choices if not already shown
             if not group.remaining_images_displayed:
                 group.remaining_images_displayed = True
-                display_response = MyPage.display_remaining_images(player, players)
-                for p in players:
-                    p.participant.vars['display_phase_end_time'] = time.time() + 4
-                for p_id, p_response in display_response.items():
-                    p_response['start_display_timer'] = True
-                    if p_id in response:
-                        p_response.update(response[p_id])
-                return display_response
+                
+                # Get computer player choices from storage
+                computer_players = json.loads(group.computer_player_choices)
+                
+                # Create a map of all players' chosen images
+                all_images = {}
+                for virtual_id, virtual_data in computer_players.items():
+                    all_images[int(virtual_id)] = f'practice_task/{virtual_data["chosen_image_computer"]}'
+                    
+                response[player.id_in_group] = {
+                    **response.get(player.id_in_group, {}),
+                    'display_all_images': True,
+                    'all_images': all_images,
+                    'start_display_timer': True
+                }
+                    
+                player.participant.vars['display_phase_end_time'] = time.time() + 4
+                return response
 
             return response
 
         # ---- SECOND CHOICE PHASE ----
-        # Handle manual second choices
-
         if 'second_choice' in data and data.get('manual_second_choice', False):
             print(f"Received manual second choice for player {player.id_in_group}")
             
@@ -990,42 +943,38 @@ class MyPage(Page):
 
         # Handle second choice timer expiration
         if 'second_choice_timer_ended' in data:
-            # Process computer choices for players who didn't respond
-            for p in players:
-                if not p.field_maybe_none('choice2'):
-                    p.computer_choice2 = random.choice(['left', 'right'])
-                    p.choice2 = p.computer_choice2
-                    p.chosen_image_two = p.left_image if p.computer_choice2 == 'left' else p.right_image
-                    
-                    # Use transparent images for computer choices
-                    if p.chosen_image_two == 'option1A.bmp':
-                        p.chosen_image_computer_two = 'option1A_tr.bmp'
-                    else:
-                        p.chosen_image_computer_two = 'option1B_tr.bmp'
+            # Process computer choice if real player didn't respond
+            if not player.field_maybe_none('choice2'):
+                player.computer_choice2 = random.choice(['left', 'right'])
+                player.choice2 = player.computer_choice2
+                player.chosen_image_two = player.left_image if player.computer_choice2 == 'left' else player.right_image
                 
-                # Calculate metrics for all choices
-                if p.field_maybe_none('chosen_image_two') is not None:
-                    p.chosen_image_two_binary = 1 if p.chosen_image_two == 'option1A.bmp' else 2
+                # Use transparent images for computer choices
+                if player.chosen_image_two == 'option1A.bmp':
+                    player.chosen_image_computer_two = 'option1A.bmp'
                 else:
-                    print(f"Warning: chosen_image_two is None for player {p.id_in_group}")
+                    player.chosen_image_computer_two = 'option1B.bmp'
+            
+            # Calculate metrics for choice
+            if player.field_maybe_none('chosen_image_two') is not None:
+                player.chosen_image_two_binary = 1 if player.chosen_image_two == 'option1A.bmp' else 2
+            else:
+                print(f"Warning: chosen_image_two is None for player {player.id_in_group}")
 
             # Move to second betting phase if not already there
             if not group.bet_container_displayed:
                 group.bet_container_displayed = True
-                return {p.id_in_group: dict(
+                return {player.id_in_group: dict(
                     second_choice_timer_ended=True,
                     show_bet_container=True, 
                     start_second_bet_timer=True, 
-                    highlight_selected_image=p.chosen_image_two,
-                    computer_second_choice=p.computer_choice2 if not p.field_maybe_none('choice2') else p.choice2
-                ) for p in players}
-    
-        # ---- SECOND BET PHASE ----
-        # Handle manual second bets
+                    highlight_selected_image=player.chosen_image_two,
+                    computer_second_choice=player.computer_choice2 if not player.field_maybe_none('choice2') else player.choice2
+                )}
 
+        # ---- SECOND BET PHASE ----
         if 'second_bet' in data:
             player.bet2 = int(data['second_bet'])
-            player.bet2 = player.bet2
             player.computer_bet_two = False
             player.second_bet_time = round(data['second_bet_time'] / 1000, 2)
 
@@ -1034,82 +983,101 @@ class MyPage(Page):
             if not group.second_bet_timer_ended_executed:
                 group.second_bet_timer_ended_executed = True
                 response = {}
-
-                # Assign computer bets if needed
-                for p in players:
-                    if p.bet2 == 0:
-                        random_bet = random.randint(1, 3)
-                        p.bet2 = random_bet
-                        p.bet2 = p.bet2
-                        p.computer_bet_two = True
-                        p.second_bet_time = 6.0
-                        response[p.id_in_group] = dict(highlight_computer_second_bet=p.bet2)
+                
+                # Assign computer bet if needed
+                if player.bet2 == 0:
+                    random_bet = random.randint(1, 3)
+                    player.bet2 = random_bet
+                    player.computer_bet_two = True
+                    player.second_bet_time = 6.0
+                    response[player.id_in_group] = dict(highlight_computer_second_bet=player.bet2)
 
                 # Calculate final results for the round
                 group.set_round_reward()
                 group.calculate_player_rewards()
 
-                # Calculate earnings for all players
-                for p in players:
-                    p.choice2_earnings = p.bet2 * 20 * p.trial_reward if p.trial_reward == 1 else -1 * p.bet2 * 20
-                    p.choice2_sum_earnings = sum([prev_player.choice2_earnings for prev_player in p.in_previous_rounds()]) + p.choice2_earnings
-                    p.loss_or_gain = -1 if p.choice2_earnings < 0 else 1
+                # Calculate earnings for real player
+                player.choice2_earnings = player.bet2 * 20 * player.trial_reward if player.trial_reward == 1 else -1 * player.bet2 * 20
+                player.choice2_sum_earnings = sum([prev_player.choice2_earnings for prev_player in player.in_previous_rounds()]) + player.choice2_earnings
+                player.loss_or_gain = -1 if player.choice2_earnings < 0 else 1
 
                 # Generate random delay before next round
                 group.generate_intertrial_interval()
                 group.next_round_transition_time = time.time() * 1000 + group.intertrial_interval
 
                 # Prepare final display information
-                # Create dictionaries mapping player IDs to their chosen images and win/loss status
+                # Calculate rewards for computer players and update their data
+                computer_players = json.loads(group.computer_player_choices)
+                for virtual_id, virtual_data in computer_players.items():
+                    # Calculate reward directly based on chosen image
+                    if virtual_data['chosen_image_two'] == 'option1A.bmp':
+                        virtual_data['trial_reward'] = group.round_reward_A
+                    else:
+                        virtual_data['trial_reward'] = group.round_reward_B
+                
+                # Save updated computer players data
+                group.computer_player_choices = json.dumps(computer_players)
+                
+                # Create dictionaries for chosen images and win/loss status
                 chosen_images_secondchoicepage = {
-                    p.id_in_group: f"practice_task/{p.chosen_image_computer_two if p.computer_choice_two else p.chosen_image_two}" 
-                    for p in players
+                    player.id_in_group: f"practice_task/{player.chosen_image_computer_two if player.computer_choice_two else player.chosen_image_two}"
                 }
-                win_loss_images = {p.id_in_group: f'practice_task/{"win" if p.trial_reward == 1 else "loss"}.png' for p in players}
+                win_loss_images = {
+                    player.id_in_group: f'practice_task/{"win" if player.trial_reward == 1 else "loss"}.png'
+                }
+                
+                # Add computer players to the results
+                for virtual_id, virtual_data in computer_players.items():
+                    int_id = int(virtual_id)
+                    chosen_images_secondchoicepage[int_id] = f"practice_task/{virtual_data['chosen_image_computer_two']}"
+                    win_loss_images[int_id] = f'practice_task/{"win" if virtual_data["trial_reward"] == 1 else "loss"}.png'
 
-                # Prepare final response for each player
-                for p in players:
-                    response[p.id_in_group] = {
-                        **response.get(p.id_in_group, {}),  # Preserve any existing response data
-                        **dict(
-                            show_results=True,              # Signal to show results screen
-                            second_bet_reward=p.choice2_earnings,  # Points earned/lost
-                            chosen_images=chosen_images_secondchoicepage,  # All players' final choices
-                            win_loss_images=win_loss_images,      # Win/loss indicators for all
-                            player_win_loss_image=win_loss_images[p.id_in_group],  # This player's result
-                            intertrial_interval=group.intertrial_interval,  # Time until next round
-                            round_number=player.round_number,     # Current round number
-                            num_rounds=C.NUM_ROUNDS,             # Total rounds in game
-                            selected_bet=p.bet2,                 # Final bet amount
-                            second_choice=p.choice2             # Final choice made
-                        )
-                    }
-
+                # Prepare final response
+                response[player.id_in_group] = {
+                    **response.get(player.id_in_group, {}),
+                    **dict(
+                        show_results=True,
+                        second_bet_reward=player.choice2_earnings,
+                        chosen_images=chosen_images_secondchoicepage,
+                        win_loss_images=win_loss_images,
+                        player_win_loss_image=win_loss_images[player.id_in_group],
+                        intertrial_interval=group.intertrial_interval,
+                        round_number=player.round_number,
+                        num_rounds=C.NUM_ROUNDS,
+                        selected_bet=player.bet2,
+                        second_choice=player.choice2
+                    )
+                }
+                
                 return response
 
-        # Default response - echo back any unhandled data to all players
-        return {p.id_in_group: data for p in group.get_players()}
+        # Default response - echo back any unhandled data
+        return {player.id_in_group: data}
 
     @staticmethod
     def display_remaining_images(player, players):
         """
         Helper method to prepare the display of other players' choices
         Creates a response showing what images each player chose
+        NOTE: This method is no longer used in single-player mode
+        but kept for compatibility
         """
-        response = {}
-        for p in players:
-            other_players = p.get_others_in_group()
-            all_images = {}
-            for op in other_players:
-                # Use transparent version for computer choices, regular for manual choices
-                chosen_image = op.chosen_image_computer if op.chosen_image_computer else op.chosen_image_one
-                all_images[op.id_in_group] = f'practice_task/{chosen_image}'
-            response[p.id_in_group] = dict(
-                display_all_images=True,
-                all_images=all_images
-            )
+        import json
         
-        return response
+        group = player.group
+        computer_players = {}
+        
+        if group.field_maybe_none('computer_player_choices'):
+            computer_players = json.loads(group.computer_player_choices)
+        
+        all_images = {}
+        for virtual_id, virtual_data in computer_players.items():
+            all_images[int(virtual_id)] = f'practice_task/{virtual_data["chosen_image_computer"]}'
+        
+        return {player.id_in_group: dict(
+            display_all_images=True,
+            all_images=all_images
+        )}
 
     @staticmethod
     def after_all_players_arrive(group: Group):
@@ -1150,6 +1118,6 @@ class MainTaskInstructions(Page):
 
 from .tests import PlayerBot
 
-page_sequence = [WaitPage1, TransitionToPracticeTask, MyPage, FinalResults, MainTaskInstructions]
+page_sequence = [GroupingWaitPage, TransitionToPracticeTask, MyPage, FinalResults, MainTaskInstructions]
 
 # -------------------------------------------------------------------------------------------------------------------- #
