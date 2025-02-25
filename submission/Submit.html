@@ -68,10 +68,22 @@
 
 <script>
     var completionlink = js_vars.completionlink;
-
+    var prolificId = "{{ prolific_id }}";
+    
     document.getElementById('completeButton').addEventListener('click', function(e) {
         e.preventDefault();
-        window.location.href = completionlink;
+        
+        // Append the prolific_id to the Qualtrics URL
+        var qualtricsUrl = completionlink;
+        
+        // Append the prolific_id to the Qualtrics URL
+        if (qualtricsUrl.includes('?')) {
+            qualtricsUrl += '&PROLIFIC_PID=' + encodeURIComponent(prolificId);
+        } else {
+            qualtricsUrl += '?PROLIFIC_PID=' + encodeURIComponent(prolificId);
+        }
+        
+        window.location.href = qualtricsUrl;
         return false;
     });
 </script>

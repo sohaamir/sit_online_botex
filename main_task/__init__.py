@@ -53,7 +53,7 @@ logging.basicConfig(
 # 3) We use a fixed trial sequence across groups (i.e., the same sequence and reward contingency for all groups)
 
 # Define the core parameters of the experiment
-NUM_ROUNDS = 64  # Total number of rounds in the experiment
+NUM_ROUNDS = 65  # Total number of rounds in the experiment (64 plus additional first round in case of lag)
 REWARD_PROBABILITY_A = 0.75  # 75% chance of reward for option A when it's the high-probability option
 REWARD_PROBABILITY_B = 0.25  # 25% chance of reward for option A when it's the low-probability option
 DECISION_TIME = 3.0 # Time limit for making choices and bets (3 seconds)
@@ -68,7 +68,7 @@ def generate_trial_sequence():
     sequence = []
     # Randomly select which image will start as the high-probability option
     current_image = random.choice(['option1A.bmp', 'option1B.bmp'])
-    reversal_rounds = [16, 33, 48]  # Fixed reversal rounds
+    reversal_rounds = [17, 34, 49]  # Fixed reversal rounds
     
     # Generate the full sequence of trials
     # At each reversal round, the high-probability image switches
@@ -103,7 +103,7 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
     current_high_prob_image = 'A'  # Start with image A as high probability
     high_prob_rewards = 0  # Counter for high probability rewards given
     low_prob_rewards = 0   # Counter for low probability rewards given
-    target_high_rewards = 48  # Target number of high probability rewards (75% of 64 rounds)
+    target_high_rewards = 49  # Target number of high probability rewards (75% of 64 rounds)
     target_low_rewards = 16   # Target number of low probability rewards (25% of 64 rounds)
 
     # Helper function to prevent too many consecutive high probability rewards
@@ -160,12 +160,14 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
     # There to be no more than 3 consecutive rewards of the 75% option throughout the experiment
     # The position of the wins and losses within the reversal window (± 3 trials) to be different in each block
 
+    sequence.insert(0, (1, 0))  # Insert as the first trial
+
     # So, we firstly shift this pesky trial
-    sequence[47], sequence[48] = sequence[48], sequence[47]
+    sequence[48], sequence[49] = sequence[49], sequence[48]
 
     # Shift reward_A=1 trials up by one position in block 2 (trials 16-32)
-    block_2_start = 15  # index for trial 16
-    block_2_end = 32    # index for trial 32
+    block_2_start = 16  # index for trial 16
+    block_2_end = 33    # index for trial 32
     block_2 = sequence[block_2_start:block_2_end]
     
     # Find positions of reward_A=1 trials
@@ -181,18 +183,34 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
     # Update the sequence
     sequence[block_2_start:block_2_end] = new_block_2
 
+    def modify_third_block(sequence):
+        # Define the exact pattern we want for trials 34-48
+        third_block_pattern = [
+            (1, 0), (1, 0), (1, 0), (0, 1),  # 34-37
+            (1, 0), (1, 0), (0, 1), (1, 0),  # 38-41
+            (1, 0), (0, 1), (1, 0), (1, 0),  # 42-45
+            (1, 0), (0, 1), (1, 0)           # 46-48
+        ]
+        
+        # Replace the third block portion of the sequence
+        sequence[33:48] = third_block_pattern
+        return sequence
+
+    # Add this line after block 2 manipulation and before final block modification:
+    sequence = modify_third_block(sequence)
+
     def modify_final_block(sequence):
-        # Define the exact pattern we want for trials 48-64
+        # Define the exact pattern we want for trials 49-65
         final_pattern = [
-            (0, 1), (1, 0), (0, 1), (0, 1),  # 48-51
-            (1, 0), (0, 1), (0, 1), (0, 1),  # 52-55
-            (1, 0), (0, 1), (0, 1), (0, 1),  # 56-59
-            (1, 0), (0, 1), (0, 1), (0, 1),  # 60-63
-            (1, 0)                            # 64
+            (0, 1), (1, 0), (0, 1), (0, 1),  # 49-52
+            (0, 1), (1, 0), (0, 1), (0, 1),  # 53-56
+            (1, 0), (0, 1), (0, 1), (0, 1),  # 57-60
+            (1, 0), (0, 1), (0, 1), (0, 1),  # 61-64
+            (1, 0)                            # 65
         ]
         
         # Replace the final portion of the sequence
-        sequence[47:64] = final_pattern
+        sequence[48:65] = final_pattern  # Changed from 47:64
         return sequence
 
     sequence = modify_final_block(sequence)
@@ -203,7 +221,7 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
     print("------|-----------|----------|----------")
     
     current_high_prob_image = 'A'
-    actual_reversals = [16, 33, 48]  # Explicitly define the only reversals we want
+    actual_reversals = [17, 34, 49]  # Explicitly define the only reversals we want
     for round_num in range(1, num_rounds + 1):
         if round_num in actual_reversals:  # Only use our explicit reversals
             current_high_prob_image = 'B' if current_high_prob_image == 'A' else 'A'
@@ -218,11 +236,11 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
         reward_A, reward_B = sequence[round_num - 1]
         
         # Determine which option is high probability for this round
-        if round_num < 16:  # Block 1: A is high prob
+        if round_num < 17:  # Block 1: A is high prob
             high_prob_rewards += reward_A
-        elif round_num < 33:  # Block 2: B is high prob
+        elif round_num < 34:  # Block 2: B is high prob
             high_prob_rewards += reward_B
-        elif round_num < 48:  # Block 3: A is high prob
+        elif round_num < 49:  # Block 3: A is high prob
             high_prob_rewards += reward_A
         else:  # Block 4: B is high prob
             high_prob_rewards += reward_B
@@ -239,7 +257,7 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
 
 # Generate all sequences needed for the experiment when this module is first imported
 TRIAL_SEQUENCE, REVERSAL_ROUNDS = generate_trial_sequence()
-REWARD_SEQUENCE = generate_reward_sequence(64, REVERSAL_ROUNDS)
+REWARD_SEQUENCE = generate_reward_sequence(65, REVERSAL_ROUNDS)
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Base Constants: Used to define constants across all pages and subsessions in the game
@@ -698,6 +716,9 @@ class Player(BasePlayer):
     player2_choice2_computer = models.IntegerField()
     player3_choice2_computer = models.IntegerField()
     player4_choice2_computer = models.IntegerField()
+
+    # Track the number of times the computer made choices for players
+    cumulative_computer_choice_count = models.IntegerField(initial=0)  # Track total computer choices across rounds
     
     # Track if second choice was made manually
     manual_second_choice = models.BooleanField(initial=False)
@@ -1260,6 +1281,13 @@ class MyPage(Page):
                         if p.field_maybe_none('choice1') is None or p.choice1 == '':
                             choices_to_process = True
                             
+                            # Get previous round's cumulative count and increment
+                            if p.round_number > 1:
+                                prev_player = p.in_round(p.round_number - 1)
+                                p.cumulative_computer_choice_count = prev_player.cumulative_computer_choice_count + 1
+                            else:
+                                p.cumulative_computer_choice_count = 1
+
                             # Ensure valid image fields exist
                             left_img = p.field_maybe_none('left_image')
                             right_img = p.field_maybe_none('right_image')
@@ -1285,11 +1313,14 @@ class MyPage(Page):
                                 p.chosen_image_one_binary = 1 if p.chosen_image_one == 'option1A.bmp' else 2
                                 p.computer_choice_one = True
                                 
-                                # Use transparent version of image for computer choices
-                                if p.chosen_image_one == 'option1A.bmp':
-                                    p.chosen_image_computer = 'option1A_tr.bmp'
-                                elif p.chosen_image_one == 'option1B.bmp':
-                                    p.chosen_image_computer = 'option1B_tr.bmp'
+                                # Use transparent version only for first 6 total computer choices
+                                if p.cumulative_computer_choice_count <= 6:
+                                    if p.chosen_image_one == 'option1A.bmp':
+                                        p.chosen_image_computer = 'option1A_tr.bmp'
+                                    elif p.chosen_image_one == 'option1B.bmp':
+                                        p.chosen_image_computer = 'option1B_tr.bmp'
+                                else:
+                                    p.chosen_image_computer = p.chosen_image_one
                                     
                                 # Check accuracy against group's high-probability image
                                 if group.field_maybe_none('seventy_percent_image'):
@@ -1496,24 +1527,27 @@ class MyPage(Page):
                 )
             }
 
-        # Handle second choice timer expiration
         if 'second_choice_timer_ended' in data:
             # Process computer choices for players who didn't respond
             for p in players:
                 if not p.field_maybe_none('choice2'):
+                    # Get previous count and increment
+                    current_count = p.cumulative_computer_choice_count
+                    p.cumulative_computer_choice_count = current_count + 1
 
-                    # Set time to 3 seconds if a manual choice was not made
                     p.second_choice_time = DECISION_TIME
-
                     p.computer_choice2 = random.choice(['left', 'right'])
                     p.choice2 = p.computer_choice2
                     p.chosen_image_two = p.left_image if p.computer_choice2 == 'left' else p.right_image
                     
-                    # Use transparent images for computer choices
-                    if p.chosen_image_two == 'option1A.bmp':
-                        p.chosen_image_computer_two = 'option1A_tr.bmp'
+                    # Use transparent images only for first 6 total computer choices
+                    if p.cumulative_computer_choice_count <= 6:
+                        if p.chosen_image_two == 'option1A.bmp':
+                            p.chosen_image_computer_two = 'option1A_tr.bmp'
+                        else:
+                            p.chosen_image_computer_two = 'option1B_tr.bmp'
                     else:
-                        p.chosen_image_computer_two = 'option1B_tr.bmp'
+                        p.chosen_image_computer_two = p.chosen_image_two
                 
                 # Calculate metrics for all choices
                 if p.field_maybe_none('chosen_image_two') is not None:

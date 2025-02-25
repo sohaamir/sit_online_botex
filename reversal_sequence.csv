@@ -14,8 +14,8 @@ round,seventy_percent_image,is_reversal
 13,option1A.bmp,False
 14,option1A.bmp,False
 15,option1A.bmp,False
-16,option1B.bmp,True
-17,option1B.bmp,False
+16,option1A.bmp,False
+17,option1B.bmp,True
 18,option1B.bmp,False
 19,option1B.bmp,False
 20,option1B.bmp,False
@@ -31,8 +31,8 @@ round,seventy_percent_image,is_reversal
 30,option1B.bmp,False
 31,option1B.bmp,False
 32,option1B.bmp,False
-33,option1A.bmp,True
-34,option1A.bmp,False
+33,option1B.bmp,False
+34,option1A.bmp,True
 35,option1A.bmp,False
 36,option1A.bmp,False
 37,option1A.bmp,False
@@ -46,8 +46,8 @@ round,seventy_percent_image,is_reversal
 45,option1A.bmp,False
 46,option1A.bmp,False
 47,option1A.bmp,False
-48,option1B.bmp,True
-49,option1B.bmp,False
+48,option1A.bmp,False
+49,option1B.bmp,True
 50,option1B.bmp,False
 51,option1B.bmp,False
 52,option1B.bmp,False
@@ -63,3 +63,4 @@ round,seventy_percent_image,is_reversal
 62,option1B.bmp,False
 63,option1B.bmp,False
 64,option1B.bmp,False
+65,option1B.bmp,False
