@@ -20,6 +20,30 @@
             margin-top: 20px;
         }
 
+        .image-container-caption {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 10px 0;
+            position: relative;
+            width: 100%;
+        }
+
+        .image-container-caption img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .image-container-caption .caption {
+            text-align: center;
+            margin-top: 5px;
+            font-size: 24px;
+            color: #777;  
+            font-style: italic; 
+            width: 100%;
+        }
+
         .dual-image-container {
             display: flex;
             justify-content: center;
@@ -71,11 +95,24 @@
         <br>
         <p>In each round, one image will reward you whilst the other will lower your score. <b>Which image does which is the same for all players in the group.</b></p>
         <br>
+        <div class="red-highlight-box">
+            <p>This is the case in all rounds,<b> except the very first one,</b> which will <b>reward you regardless of which image you choose.</b>
+                <p>After the first round, only one image will reward you, as per the rules on this page.</p>
+        </div>
+        <br>
+        <div class="image-container-caption">
+            <img src="{% static 'instructions/reward_trial_one.png' %}" alt="First Trial Reward" width="700" height="auto">
+            <div class="caption">
+                <span>Both images are rewarded in the first trial only, so you are guaranteed a win to start!</span>
+            </div>
+        </div>
+        <br>
         <p>In the game, the 60 rounds are split into a number of 'blocks'. Within each block, both images will give you wins and losses,<b> but one image will give you more wins than the other.</b>
-            <br>
+        <br>
+        <br>
             <div class="red-highlight-box">
                 <p><b>However, this will switch multiple times across the game, such that the 'better' image will become the 'worse' image and vice versa.</b></p>
-       </div>
+            </div>
        <br>
             <p>For example, whilst it may be better <b>overall</b> to choose the 'Green' image than the 'Blue' image in one block, in the next block it will be the other way round.</p>
         <br>

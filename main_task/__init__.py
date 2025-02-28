@@ -160,7 +160,7 @@ def generate_reward_sequence(num_rounds, reversal_rounds):
     # There to be no more than 3 consecutive rewards of the 75% option throughout the experiment
     # The position of the wins and losses within the reversal window (± 3 trials) to be different in each block
 
-    sequence.insert(0, (1, 0))  # Insert as the first trial
+    sequence.insert(0, (1, 1))  # Insert as the first trial, make both options win
 
     # So, we firstly shift this pesky trial
     sequence[48], sequence[49] = sequence[49], sequence[48]

@@ -55,7 +55,7 @@ def generate_reward_sequence(num_rounds):
     for round_num in range(1, num_rounds + 1):
         if round_num <= 3:
             reward_A = 1
-            reward_B = 0
+            reward_B = 1
         else:
             reward_A = 0
             reward_B = 1
