@@ -17,9 +17,9 @@
 
 This repository contains an implementation of a social influence task experiment using oTree, a Python framework for running behavioral experiments. The experiment is designed to investigate how people make decisions in social contexts, particularly how their choices are influenced by others in a group.
 
-The task is based on a reversal learning paradigm where participants must learn which of two images is more likely to give rewards, with the reward probabilities periodically switching. Participants make choices and place bets in a group of 5 players, with the ability to see other players' decisions. The experiment measures how social influence affects decision-making, confidence, and learning.
+The task is based on a reversal learning paradigm where participants must learn which of two images is more likely to give rewards, with the reward probabilities periodically switching. Participants make choices and place bets in a group of 5 players, with the ability to see other players' decisions after an initial choice and bet. The experiment measures how social influence affects decision-making, confidence, and learning.
 
-The experiment aligns with previous work in the field, specifically building on the methodology from Zhang & Glascher (2020) with some modifications to the reward contingencies and trial structure.
+The experiment is a partial replication, building on the methodology from Zhang & Glascher (2020) with some modifications to the reward contingencies and trial structure.
 
 ## Repository Structure
 
@@ -29,7 +29,7 @@ The repository is organized into several oTree apps, each handling a different p
 
 - **instructions**: Presents study information, consent form, and task instructions
 - **practice_task**: A shortened 5-round version of the task for participant training
-- **main_task**: The primary 60-round experimental task with real-time group interaction
+- **main_task**: The primary 64-round experimental task with real-time group interaction
 - **submission**: Handles participant feedback and redirects to external survey
 
 ### Key Files
@@ -39,6 +39,7 @@ The repository is organized into several oTree apps, each handling a different p
 - `requirements.txt`: Python dependencies
 - `heroku_cheatsheet.md`: Reference guide for Heroku commands
 - `reversal_sequence.csv`: Generated sequence of reward probabilities
+- `.python-version`: Specifies Python version for Heroku deployments (replaces `runtime.txt`)
 
 ### Static Assets
 
@@ -63,48 +64,29 @@ The repository is organized into several oTree apps, each handling a different p
 - SQLite (development)
 - PostgreSQL (production on Heroku)
 
-## Key Features
-
-### Experimental Design
-
-- **Reversal Learning**: Reward contingencies switch between images at predetermined points
-- **Real-time Group Interaction**: 5 players make choices simultaneously
-- **Two-stage Decision Process**: Initial choice/bet followed by opportunity to revise after seeing others' choices
-- **Confidence Measures**: Betting mechanism to measure confidence in decisions
-- **Automatic Backup Choices**: Computer-generated choices if participant fails to respond in time
-- **Robust Disconnection Handling**: Automatic bot activation for disconnected players
-
-### User Experience
-
-- **Comprehensive Instructions**: Detailed explanations with visual examples
-- **Practice Task**: 5-round practice with longer response windows (6 seconds vs. 3 seconds in main task)
-- **Responsive Timers**: Synchronized timed phases for each decision point
-- **Participant Matching**: Waiting room to form groups of 5 participants
-- **Snake Game**: Entertainment during waiting periods
-- **Detailed Feedback Collection**: Post-experiment questions about influence and strategy
-
 ## Installation
 
 ### Prerequisites
 
 - Python 3.11
 - Git
-- Heroku CLI (for deployment)
+- Python packages (see `requirements.txt`)
+- Heroku account and CLI (for deployment)
 
 ### Local Setup
 
 Clone the repository:
 
 ```bash
-git clone [repository-url]
-cd social-influence-task
+git clone sohaamir/sit_online
+cd sit_online
 ```
 
-Create and activate a virtual environment:
+Create and activate a virtual environment (on Mac):
 
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate
 ```
 
 Install dependencies:
@@ -185,12 +167,6 @@ Reset the database:
 heroku run "otree resetdb"
 ```
 
-Turn off maintenance mode:
-
-```bash
-heroku maintenance:off
-```
-
 ### Managing Your Deployment
 
 Refer to `heroku_cheatsheet.md` for a comprehensive list of commands for managing your Heroku deployment, including:
@@ -202,20 +178,13 @@ Refer to `heroku_cheatsheet.md` for a comprehensive list of commands for managin
 
 ## Local Development
 
-### Running Tests
-
-The repository includes bot scripts for automated testing:
-
-```bash
-otree test instructions
-otree test practice_task
-otree test main_task
-otree test submission
-```
+Run and test locally using `otree devserver`. It probably won't work in DEMO mode because the task requires 5 players, so create a Room.
 
 ### Testing with Browser Bots
 
 For automated testing of the full experimental flow:
+
+First close all Chrome tabs and windows and then run:
 
 ```bash
 otree browser_bots social_influence_task 5
@@ -227,33 +196,9 @@ otree browser_bots social_influence_task 5
 otree browser_bots social_influence_task 5 --server-url=https://your-app-name.herokuapp.com
 ```
 
-## Command Reference
+## Heroku Command Reference
 
-For a detailed list of useful commands for managing the application, refer to the `heroku_cheatsheet.md` file included in the repository. Key commands include:
-
-### Setting Up
-
-```bash
-heroku login
-heroku maintenance:off --app your-app-name
-```
-
-### Making Changes
-
-```bash
-git add .
-git commit -am "your message"
-git push heroku main
-heroku run "otree resetdb"
-```
-
-### Configuring
-
-```bash
-heroku config -a your-app-name
-heroku config:set WEBSOCKET_TIMEOUT=300 -a your-app-name
-heroku restart -a your-app-name
-```
+For a detailed list of useful commands for managing the application, refer to the `heroku_cheatsheet.md` file included in the repository.
 
 ## Contact
 
