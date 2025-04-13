@@ -29,7 +29,7 @@ DEBUG = True if os.environ.get('OTREE_PRODUCTION') != '1' else False # For bots
 
 # Allowed hosts for the application. This is a security measure to prevent HTTP Host header attacks.
 # In development, we allow localhost and 127.0.0.1. In production, add your domain name.
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.social-influence-task-e7974ebf1c60.herokuapp.com']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 # Admin credentials. The username is hardcoded, but the password should be an environment variable.
 # These credentials are used to access the oTree admin interface.
@@ -71,15 +71,9 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_CONFIGS = [
      dict(
          name='social_influence_task',  # Unique identifier for this session configuration
-         app_sequence=['instructions', 'practice_task', 'main_task', 'submission'],  # Order of apps in the experiment
-         num_demo_participants=5,  # Number of demo participants, useful for testing
+         app_sequence=['main_task'],  # Order of apps in the experiment
+         num_demo_participants=1,  # Number of demo participants, useful for testing
          # use_browser_bots=True,  # Uncomment to use bots for testing
-
-         # Prolific completion links for different scenarios
-         completionlink='https://bhampsychology.eu.qualtrics.com/jfe/form/SV_bgb9ixraKKEd1LU', # Send to Qualtrics survey if participant completes the task
-         noconsentlink='https://app.prolific.com/submissions/complete?cc=CDVJRJBR', # Send to Prolific if participant does not consent
-         playerleftlink='https://app.prolific.com/submissions/complete?cc=CXG9SKDC', # End the task and send to Prolific if a participant leaves mid-task
-         waitpagelink='https://app.prolific.com/submissions/complete?cc=C1J67YK4', # Send to Prolific if participant decides to leave the task
      ),
 ]
 
@@ -97,8 +91,8 @@ SESSION_CONFIG_DEFAULTS = dict(
 # Define rooms for your experiments. Rooms allow you to create persistent URLs for participants.
 ROOMS = [
     dict(
-        name='social_influence_task',  # Unique identifier for the room
-        display_name='Social Influence Task',  # Name displayed to participants
+        name='social_influence_task_botex',  # Unique identifier for the room
+        display_name='Social Influence Task (LLM Bots)',  # Name displayed to participants
         # participant_label_file='_rooms/social_influence_task.txt',  # Uncomment to use pre-set participant labels
         # use_secure_urls=True,  # Uncomment to use secure URLs
     ),

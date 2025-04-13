@@ -1,0 +1,74 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+Round {{ round_number }} - Other Players' Initial Choices and making you Second Choice and Bet
+{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h4>Instructions</h4>
+    </div>
+    <div class="card-body">
+        <p>You will now see what the other players chose. After reviewing their choices, you can make your second choice and bet.</p>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-secondary text-white">
+        <h4>Other Players' Choices</h4>
+    </div>
+    <div class="card-body">
+        <p>Here are the choices that the other players in your group made:</p>
+        <ul>
+            <li>Player 1: Option {{ player1_choice }}</li>
+            <li>Player 2: Option {{ player2_choice }}</li>
+            <li>Player 3: Option {{ player3_choice }}</li>
+            <li>Player 4: Option {{ player4_choice }}</li>
+        </ul>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-secondary text-white">
+        <h4>Your Initial Decision</h4>
+    </div>
+    <div class="card-body">
+        <p>Your initial choice was: Option {{ choice1 }}</p>
+        <p>Your initial bet was: {{ bet1 }}</p>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-secondary text-white">
+        <h4>Your Second Choice</h4>
+    </div>
+    <div class="card-body">
+        <p>Based on the other players' choices, you can now make a second choice.</p>
+        <p>Which option do you think is more likely to give you points?</p>
+        
+        {% formfield player.choice2 label="Select your choice:" %}
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-secondary text-white">
+        <h4>Your Second Bet</h4>
+    </div>
+    <div class="card-body">
+        <p>How confident are you in your second choice?</p>
+        <p>Higher bets mean higher potential rewards, but also higher potential losses:</p>
+        <ul>
+            <li>Bet 1: Win/lose 20 points (for Correct/Incorrect answer)</li>
+            <li>Bet 2: Win/lose 40 points (for Correct/Incorrect answer)</li>
+            <li>Bet 3: Win/lose 60 points (for Correct/Incorrect answer)</li>
+        </ul>
+        
+        {% formfield player.bet2 label="Select your bet:" %}
+    </div>
+</div>
+
+{% next_button %}
+
+{% endblock %}

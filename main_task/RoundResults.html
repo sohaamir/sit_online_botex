@@ -1,0 +1,76 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+Round {{ round_number }} - Results
+{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h4>Instructions</h4>
+    </div>
+    <div class="card-body">
+        <p>Please review the results for this round. When you're ready, click the Next button to continue to the next round.</p>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header {% if points_earned > 0 %}bg-success{% else %}bg-danger{% endif %} text-white">
+        <h4>Your Result</h4>
+    </div>
+    <div class="card-body">
+        <p>Your second choice was Option {{ choice2 }}.</p>
+        <p>This choice was <strong>{{ choice_outcome }}</strong>.</p>
+        
+        {% if points_earned > 0 %}
+        <p>You gained <strong>{{ points_display }}</strong> points in this round.</p>
+        {% else %}
+        <p>You lost <strong>{{ points_display }}</strong> points in this round.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-secondary text-white">
+        <h4>Other Players' Results</h4>
+    </div>
+    <div class="card-body">
+        <p>Here are the results for the other players in your group:</p>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Player</th>
+                    <th>Second Choice</th>
+                    <th>Outcome</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Player 1</td>
+                    <td>Option {{ player1_choice }}</td>
+                    <td>{{ player1_outcome }}</td>
+                </tr>
+                <tr>
+                    <td>Player 2</td>
+                    <td>Option {{ player2_choice }}</td>
+                    <td>{{ player2_outcome }}</td>
+                </tr>
+                <tr>
+                    <td>Player 3</td>
+                    <td>Option {{ player3_choice }}</td>
+                    <td>{{ player3_outcome }}</td>
+                </tr>
+                <tr>
+                    <td>Player 4</td>
+                    <td>Option {{ player4_choice }}</td>
+                    <td>{{ player4_outcome }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% next_button %}
+
+{% endblock %}

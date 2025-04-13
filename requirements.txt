@@ -10,3 +10,4 @@ ws4py
 redis>=4.0.0
 django-redis>=5.0.0
 ipykernel==6.29.5
+botex
