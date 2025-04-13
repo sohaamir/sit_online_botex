@@ -196,22 +196,24 @@ class Player(BasePlayer):
         self.player3_loss_or_gain = 1 if p3_rewarded else -1
         self.player4_loss_or_gain = 1 if p4_rewarded else -1
     
-    def calculate_social_influence(self):
-        """Calculate the percentage of others who made same/different choices"""
+    def calculate_first_choice_social_influence(self):
+        """Calculate the percentage of others who made same/different first choices"""
         # First choice agreement
         same_choice1 = 0
         for choice in [self.player1_choice_one, self.player2_choice_one,
-                      self.player3_choice_one, self.player4_choice_one]:
+                    self.player3_choice_one, self.player4_choice_one]:
             if choice == self.choice1:
                 same_choice1 += 1
         
         self.choice1_with = same_choice1 / C.VIRTUAL_PLAYERS
         self.choice1_against = 1 - self.choice1_with
-        
+
+    def calculate_second_choice_social_influence(self):
+        """Calculate the percentage of others who made same/different second choices"""
         # Second choice agreement
         same_choice2 = 0
         for choice in [self.player1_choice_two, self.player2_choice_two,
-                      self.player3_choice_two, self.player4_choice_two]:
+                    self.player3_choice_two, self.player4_choice_two]:
             if choice == self.choice2:
                 same_choice2 += 1
         
@@ -269,8 +271,8 @@ class FirstDecisions(Page):
     
     @staticmethod
     def before_next_page(player, timeout_happened):
-        # Calculate agreement with other players
-        player.calculate_social_influence()
+        # Calculate agreement with other players for first choice only
+        player.calculate_first_choice_social_influence()
 
 
 class SecondDecisions(Page):
@@ -329,8 +331,8 @@ class SecondDecisions(Page):
         # Record whether second choice was rewarded
         player.choice2_reward_binary = player.trial_reward
         
-        # Update social influence measures for second choice
-        player.calculate_social_influence()
+        # Calculate agreement with other players for second choice
+        player.calculate_second_choice_social_influence()
 
 
 class RoundResults(Page):

@@ -1,0 +1,6 @@
+2025-04-13 16:19:54,729 - INFO - Session 1: Output directory: botex_data/session_8glfk513
+2025-04-13 16:19:54,729 - INFO - Session 1: Log file: botex_data/session_8glfk513/experiment_log_20250413_161954.txt
+2025-04-13 16:19:54,730 - INFO - Session 1: Copied database to: botex_data/session_8glfk513/botex_8glfk513.sqlite3
+2025-04-13 16:19:54,730 - INFO - Session 1: Starting bots. You can monitor their progress at http://localhost:8000/SessionMonitor/8glfk513
+2025-04-13 16:21:01,044 - INFO - Session 1: Stopping oTree server...
+2025-04-13 16:21:01,045 - INFO - Session 1: oTree server stopped

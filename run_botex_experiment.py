@@ -15,13 +15,12 @@ import numpy as np
 import random
 import json
 import time
-import tqdm
 
 # Set up base output directory
 base_output_dir = "botex_data"
 makedirs(base_output_dir, exist_ok=True)
 
-# Set up logging to console initially
+# Set up logging to show detailed bot interactions
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -84,8 +83,8 @@ def run_session(session_number):
         # Initialize a session with the temporary database
         logger.info(f"Session {session_number}: Initializing social influence task session...")
         session = botex.init_otree_session(
-            config_name='social_influence_task_botex',  # Your task's config name
-            npart=1,  # Social influence task needs 1 participant
+            config_name='social_influence_task',  # Your task's config name
+            npart=5,  # Social influence task needs 5 participants
             otree_server_url="http://localhost:8000",
             botex_db=temp_db
         )
@@ -128,12 +127,13 @@ def run_session(session_number):
         print(f"\nSession {session_number}: Starting bots. You can monitor progress at {monitor_url}")
         
         # Run bots on the session with throttling
+        # The detailed bot interactions will be captured in the logs
         botex.run_bots_on_session(
             session_id=session_id,
             botex_db=botex_db,
             model=LLM_MODEL,
             api_key=LLM_API_KEY,
-            throttle=True  # Use throttling to avoid rate limits
+            throttle=True  # Set to False to see responses more quickly
         )
         
         # Export botex participant data
@@ -212,23 +212,7 @@ def run_session(session_number):
             f.write("\nSocial Influence Task Details:\n")
             f.write("- Each participant made choices between options A and B over 5 rounds\n")
             f.write("- Participants could see others' choices and adjust their decisions\n")
-            f.write("- Options had 75%/25% reward probabilities\n")
-            
-            # Analyze successful completion
-            try:
-                completed_players = 0
-                player_files = [f for f in normalized_files if "player" in f]
-                if player_files and os.path.exists(os.path.join(output_dir, player_files[0])):
-                    
-                    df = pd.read_csv(os.path.join(output_dir, player_files[0]))
-                    if not df.empty:
-                        completed_rounds = df['round'].max()
-                        completed_players = df['participant_code'].nunique()
-                        f.write(f"\nCompletion stats:\n")
-                        f.write(f"- Completed players: {completed_players}/5\n")
-                        f.write(f"- Completed rounds: {completed_rounds}/5\n")
-            except Exception as e:
-                f.write(f"\nFailed to analyze completion stats: {str(e)}\n")
+            f.write("- Options had different reward probabilities\n")
         
         logger.info(f"Session {session_number}: Experiment complete. All outputs saved to {output_dir} folder")
         
@@ -260,4 +244,6 @@ def run_session(session_number):
             except Exception as e:
                 logger.error(f"Session {session_number}: Error stopping oTree server: {str(e)}")
 
-print(f"\nAll {NUM_SESSIONS} sessions completed. Results are stored in the '{base_output_dir}' directory.")
+print(f"\nRunning {NUM_SESSIONS} session(s). Results will be stored in the '{base_output_dir}' directory.")
+for i in range(1, NUM_SESSIONS + 1):
+    run_session(i)
