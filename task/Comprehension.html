@@ -26,7 +26,7 @@ Comprehension Checks
     
     <div class="question-block">
         <h3>Question 2</h3>
-        <p>This is a catch question. Please select Option 3.</p>
+        <p>Please select Option 3.</p>
         
         {% formfield player.comprehension_q2 label="" %}
         
@@ -48,12 +48,12 @@ Comprehension Checks
     
     <div class="question-block">
         <h3>Question 4</h3>
-        <p>Which accurately describes how likely the images will give a reward/loss in each block?</p>
+        <p>Which accurately describes how likely each of the options will give a reward/loss in each block?</p>
         
         {% formfield player.comprehension_q4 label="" %}
         
         {% if form.comprehension_q4.errors %}
-        <p>Incorrect. The correct answer is: One image will give you a reward most of the time, and the other will give you a loss most of the time. Within each block, one image will be more likely to give you points (but will sometimes give a loss) whilst the other is more likely to give you a loss (but will sometimes reward you).</p>
+        <p>Incorrect. The correct answer is: One option will give you a reward most of the time, and the other will give you a loss most of the time.</p>
         {% endif %}
     </div>
     

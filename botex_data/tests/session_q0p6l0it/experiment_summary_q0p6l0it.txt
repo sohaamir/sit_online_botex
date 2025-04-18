@@ -1,0 +1,28 @@
+Social Influence Task Experiment Summary - 2025-04-18 11:40:02
+======================================================================
+
+Session ID: q0p6l0it
+Session Number: 1 of 1
+Model used: gemini/gemini-1.5-flash
+Number of participants: 5 (1 LLM bot, 4 automated)
+
+Files generated:
+- Log file: experiment_log_20250418_113638.txt
+- Bot actions log: bot_actions_20250418_113638.txt
+- Bot actions JSON: bot_actions_20250418_113638.json
+- Bot participants: botex_q0p6l0it_participants.csv
+- Bot responses: botex_q0p6l0it_responses.csv
+- oTree wide data: otree_q0p6l0it_wide.csv
+
+Normalized oTree data:
+- otree_q0p6l0it_wide.csv
+- otree_q0p6l0it_player.csv
+- otree_q0p6l0it_participant.csv
+- otree_q0p6l0it_session.csv
+- otree_q0p6l0it_group.csv
+
+Social Influence Task Details:
+- Each participant made choices between options A and B over 5 rounds
+- One LLM bot made decisions, while 4 other players had pre-determined choices
+- Participants could see others' choices and adjust their decisions
+- Options had different reward probabilities

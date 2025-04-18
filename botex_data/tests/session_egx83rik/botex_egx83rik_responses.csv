@@ -1,0 +1,9 @@
+session_id,participant_id,round,question_id,answer,reason
+egx83rik,4zp14yo0,1,id_choice1,A,I randomly select option A for my first choice
+egx83rik,4zp14yo0,1,id_bet1,1,I start with a low bet to minimize potential losses in the early rounds
+egx83rik,4zp14yo0,1,id_choice2,A,"Given that the majority of other players chose A initially, I'll stick with A for my second choice. This isn't a guarantee of success, but it follows the trend and might increase my chance of being in the majority, though I will not receive direct feedback about others' scores."
+egx83rik,4zp14yo0,1,id_bet2,2,"I will increase my bet slightly to 2.  While a bet of 3 maximizes potential points, it also increases potential losses, and I want to balance risk and reward."
+egx83rik,4zp14yo0,1,id_comprehension_q1,minus 60 points,"The question states that a bet of 3 was placed and the option was not rewarded. Therefore, the points lost are 3*20 = 60 points"
+egx83rik,4zp14yo0,1,id_comprehension_q2,Option 3,This is a catch question and I am instructed to select Option 3.
+egx83rik,4zp14yo0,1,id_comprehension_q3,From either the first and second choices/bets but randomly on each trial,The instructions explicitly state that the final score is randomly determined from either the first or second choice/bet.
+egx83rik,4zp14yo0,1,id_comprehension_q4,Randomly determined,The instructions do not specify any bias in the likelihood of rewards or losses for each option.

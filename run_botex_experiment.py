@@ -1,22 +1,18 @@
 # This script runs the social influence task experiment using the botex package.
 
-from dotenv import load_dotenv
 from os import environ, makedirs, path
-import logging
-import botex
-import os
-import datetime
-import sys
-import shutil
+from dotenv import load_dotenv
 import subprocess
-import glob
-import pandas as pd
-import numpy as np
-import random
-import json
-import time
-import csv
+import datetime
 import sqlite3
+import logging
+import shutil
+import botex
+import json
+import csv
+import sys
+import os
+import re
 
 # Set up base output directory
 base_output_dir = "botex_data"
@@ -67,7 +63,7 @@ if not LLM_API_KEY:
 
 # Custom function to export response data with specific ordering
 def export_ordered_response_data(csv_file, botex_db, session_id):
-    """Export botex response data with specific column order"""
+    """Export botex response data with comprehension questions at the top"""
     try:
         # Use botex's built-in function to get the raw responses
         responses = botex.read_responses_from_botex_db(botex_db=botex_db, session_id=session_id)
@@ -81,7 +77,30 @@ def export_ordered_response_data(csv_file, botex_db, session_id):
             
         logger.info(f"Found {len(responses)} responses for session {session_id}")
         
-        # Define the desired order of question_ids
+        # Separate comprehension questions from other responses
+        comprehension_responses = []
+        task_responses = []
+        
+        for response in responses:
+            question_id = response.get('question_id', '')
+            # Identify comprehension questions
+            if ('comprehension' in question_id.lower() or 
+                question_id.lower().startswith('q') or
+                re.search(r'q[1-4]$', question_id.lower())):
+                comprehension_responses.append(response)
+            else:
+                task_responses.append(response)
+        
+        # Sort comprehension questions numerically if possible
+        def get_question_number(response):
+            match = re.search(r'q(\d+)', response.get('question_id', '').lower())
+            if match:
+                return int(match.group(1))
+            return 999
+        
+        comprehension_responses.sort(key=get_question_number)
+        
+        # Define the desired order of task questions
         order_map = {
             'id_choice1': 1,
             'id_bet1': 2,
@@ -89,15 +108,19 @@ def export_ordered_response_data(csv_file, botex_db, session_id):
             'id_bet2': 4,
         }
         
-        # Sort responses by round and question_id order
-        responses.sort(key=lambda x: (x['round'], order_map.get(x['question_id'], 999)))
+        # Sort task responses by round and question_id order
+        task_responses.sort(key=lambda x: (int(x['round']), order_map.get(x['question_id'], 999)))
+        
+        # Combine with comprehension questions at the top
+        ordered_responses = comprehension_responses + task_responses
         
         # Write to CSV with the correct order
         with open(csv_file, 'w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=['session_id', 'participant_id', 'round', 'question_id', 'answer', 'reason'])
             writer.writeheader()
-            writer.writerows(responses)
-            logger.info(f"Successfully wrote {len(responses)} responses to {csv_file}")
+            writer.writerows(ordered_responses)
+            logger.info(f"Successfully wrote {len(ordered_responses)} responses to {csv_file}")
+            logger.info(f"Placed {len(comprehension_responses)} comprehension questions at the top")
             
     except Exception as e:
         logger.error(f"Error in export_ordered_response_data: {str(e)}", exc_info=True)
@@ -236,6 +259,12 @@ def run_session(session_number):
             )
         else:
             logger.warning(f"Session {session_number}: No bot URLs found")
+        
+        # Save bot actions to JSON
+        bot_actions_json = path.join(output_dir, f"bot_actions_{timestamp}.json")
+        with open(bot_actions_json, 'w') as f:
+            json.dump(bot_actions, f, indent=2)
+        logger.info(f"Session {session_number}: Bot actions saved to JSON: {bot_actions_json}")
         
         # Export botex participant data - only for this session
         logger.info(f"Session {session_number}: Exporting botex participant data...")

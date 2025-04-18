@@ -307,41 +307,60 @@ class Welcome(Page):
 
 class Instructions(Page):
     """Task instructions page"""
-    pass
+    @staticmethod
+    def is_displayed(player):
+        return player.round_number == 1
 
 class RewardStructure(Page):
     """Reward structure page"""
-    pass
+    @staticmethod
+    def is_displayed(player):
+        return player.round_number == 1
 
 class Comprehension(Page):
     form_model = 'player'
     form_fields = ['comprehension_q1', 'comprehension_q2', 'comprehension_q3', 'comprehension_q4']
     
-    def before_next_page(self, timeout_happened):
+    @staticmethod
+    def is_displayed(player):
+        return player.round_number == 1
+    
+    @staticmethod
+    def before_next_page(player, timeout_happened):
         # Check each answer and store correctness
-        self.player.q1_correct = self.player.comprehension_q1 == 'minus 60 points'
-        self.player.q2_correct = self.player.comprehension_q2 == 'Option 3'
-        self.player.q3_correct = self.player.comprehension_q3 == 'From either the first and second choices/bets but randomly on each trial'
-        self.player.q4_correct = self.player.comprehension_q4 == 'One option will give you a reward most of the time, and the other will give you a loss most of the time'
+        player.q1_correct = player.comprehension_q1 == 'minus 60 points'
+        player.q2_correct = player.comprehension_q2 == 'Option 3'
+        player.q3_correct = player.comprehension_q3 == 'From either the first and second choices/bets but randomly on each trial'
+        player.q4_correct = player.comprehension_q4 == 'One option will give you a reward most of the time, and the other will give you a loss most of the time'
     
     # We don't stop the bot from progressing regardless of answers
     def error_message(self, values):
         return None
         
-class Transition(Page):
-    def vars_for_template(self):
+class ComprehensionResults(Page):
+    @staticmethod
+    def is_displayed(player):
+        return player.round_number == 1
+        
+    @staticmethod
+    def vars_for_template(player):
         return {
-            'q1_correct': self.player.q1_correct,
-            'q2_correct': self.player.q2_correct,
-            'q3_correct': self.player.q3_correct,
-            'q4_correct': self.player.q4_correct,
-            'q1_answer': self.player.comprehension_q1,
-            'q2_answer': self.player.comprehension_q2,
-            'q3_answer': self.player.comprehension_q3,
-            'q4_answer': self.player.comprehension_q4,
-            'all_correct': self.player.q1_correct and self.player.q2_correct and 
-                          self.player.q3_correct and self.player.q4_correct
+            'q1_correct': player.q1_correct,
+            'q2_correct': player.q2_correct,
+            'q3_correct': player.q3_correct,
+            'q4_correct': player.q4_correct,
+            'q1_answer': player.comprehension_q1,
+            'q2_answer': player.comprehension_q2,
+            'q3_answer': player.comprehension_q3,
+            'q4_answer': player.comprehension_q4,
+            'all_correct': player.q1_correct and player.q2_correct and 
+                          player.q3_correct and player.q4_correct
         }
+
+class Transition(Page):
+    @staticmethod
+    def is_displayed(player):
+        return player.round_number == 1
 
 class FirstDecisions(Page):
     form_model = 'player'
@@ -470,4 +489,4 @@ class FinalResults(Page):
         }
 
 
-page_sequence = [Welcome, Instructions, Comprehension, Transition, FirstDecisions, SecondDecisions, RoundResults, FinalResults]
+page_sequence = [Welcome, Instructions, Comprehension, ComprehensionResults, Transition, FirstDecisions, SecondDecisions, RoundResults, FinalResults]

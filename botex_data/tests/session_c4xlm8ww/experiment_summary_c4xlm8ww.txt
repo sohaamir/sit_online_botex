@@ -1,0 +1,11 @@
+Social Influence Task Experiment Summary - 2025-04-18 13:39:03
+======================================================================
+
+Session ID: c4xlm8ww
+Session Number: 1 of 1
+Model used: gemini/gemini-1.5-flash
+Number of participants: 5 (1 LLM bot, 4 automated)
+
+Files generated:
+- Log file: experiment_log_20250418_133808.txt
+- Bot actions log: bot_actions_20250418_133808.txt

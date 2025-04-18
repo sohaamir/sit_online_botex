@@ -1,0 +1,7 @@
+session_name,session_id,participant_id,is_human,url,time_in,time_out
+social_influence_task,q0p6l0it,j9cas1rm,0,http://localhost:8000/InitializeParticipant/j9cas1rm,2025-04-18T10:36:38.700523+00:00,2025-04-18T10:39:59.607724+00:00
+social_influence_task,q0p6l0it,jn3rwgwv,0,http://localhost:8000/InitializeParticipant/jn3rwgwv,,
+social_influence_task,q0p6l0it,paw14eso,1,http://localhost:8000/InitializeParticipant/paw14eso,,
+social_influence_task,q0p6l0it,juxwmzcz,0,http://localhost:8000/InitializeParticipant/juxwmzcz,,
+social_influence_task,q0p6l0it,m8wd2mow,0,http://localhost:8000/InitializeParticipant/m8wd2mow,,
+q0p6l0it,q0p6l0it,j9cas1rm,0,http://localhost:8000/InitializeParticipant/j9cas1rm,2025-04-18T10:36:38.700523+00:00,2025-04-18T10:39:59.607724+00:00
