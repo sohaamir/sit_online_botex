@@ -1,6 +1,0 @@
-2025-04-13 16:12:56,836 - INFO - Session 1: Output directory: botex_data/session_4gg1gy8j
-2025-04-13 16:12:56,836 - INFO - Session 1: Log file: botex_data/session_4gg1gy8j/experiment_log_20250413_161256.txt
-2025-04-13 16:12:56,837 - INFO - Session 1: Copied database to: botex_data/session_4gg1gy8j/botex_4gg1gy8j.sqlite3
-2025-04-13 16:12:56,838 - INFO - Session 1: Starting bots. You can monitor their progress at http://localhost:8000/SessionMonitor/4gg1gy8j
-2025-04-13 16:13:55,445 - INFO - Session 1: Stopping oTree server...
-2025-04-13 16:13:55,445 - INFO - Session 1: oTree server stopped

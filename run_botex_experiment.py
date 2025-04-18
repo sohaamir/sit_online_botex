@@ -15,12 +15,23 @@ import numpy as np
 import random
 import json
 import time
+import csv
+import sqlite3
 
 # Set up base output directory
 base_output_dir = "botex_data"
 makedirs(base_output_dir, exist_ok=True)
 
-# Set up logging to show detailed bot interactions
+# Custom log filter to exclude HTTP request and throttling error logs
+class LogFilter(logging.Filter):
+    def filter(self, record):
+        message = record.getMessage()
+        # Filter out HTTP request logs and throttling errors
+        if "HTTP Request:" in message or "Throttling: Request error:" in message:
+            return False
+        return True
+
+# Set up logging to show detailed bot interactions, but filter out HTTP requests
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -29,7 +40,10 @@ logging.basicConfig(
     ]
 )
 
-logger = logging.getLogger(__name__)
+# Apply filter to all existing handlers
+logger = logging.getLogger()
+for handler in logger.handlers:
+    handler.addFilter(LogFilter())
 
 # Load environment variables from .env file
 if os.path.exists('.env'):
@@ -50,6 +64,58 @@ if not LLM_API_KEY:
     print("\nError: OTREE_GEMINI_API_KEY not found in environment variables")
     print("Make sure to set this in your .env file")
     sys.exit(1)
+
+# Custom function to export response data with specific ordering
+def export_ordered_response_data(csv_file, botex_db, session_id):
+    """Export botex response data with specific column order"""
+    try:
+        # Use botex's built-in function to get the raw responses
+        responses = botex.read_responses_from_botex_db(botex_db=botex_db, session_id=session_id)
+        
+        if not responses:
+            logger.warning(f"No responses found for session {session_id}")
+            with open(csv_file, 'w', newline='') as f:
+                f.write("session_id,participant_id,round,question_id,answer,reason\n")
+                f.write(f"# No responses found for session {session_id}\n")
+            return
+            
+        logger.info(f"Found {len(responses)} responses for session {session_id}")
+        
+        # Define the desired order of question_ids
+        order_map = {
+            'id_choice1': 1,
+            'id_bet1': 2,
+            'id_choice2': 3,
+            'id_bet2': 4,
+        }
+        
+        # Sort responses by round and question_id order
+        responses.sort(key=lambda x: (x['round'], order_map.get(x['question_id'], 999)))
+        
+        # Write to CSV with the correct order
+        with open(csv_file, 'w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=['session_id', 'participant_id', 'round', 'question_id', 'answer', 'reason'])
+            writer.writeheader()
+            writer.writerows(responses)
+            logger.info(f"Successfully wrote {len(responses)} responses to {csv_file}")
+            
+    except Exception as e:
+        logger.error(f"Error in export_ordered_response_data: {str(e)}", exc_info=True)
+        
+        # Fallback to standard export
+        try:
+            logger.info(f"Trying standard botex export function...")
+            botex.export_response_data(
+                csv_file,
+                botex_db=botex_db,
+                session_id=session_id
+            )
+            logger.info(f"Standard export successful")
+        except Exception as e2:
+            logger.warning(f"Standard export also failed: {str(e2)}")
+            with open(csv_file, 'w', newline='') as f:
+                f.write("session_id,participant_id,round,question_id,answer,reason\n")
+                f.write(f"# Error exporting responses: {str(e)}\n")
 
 # Function to run a single session
 def run_session(session_number):
@@ -75,18 +141,20 @@ def run_session(session_number):
             otree_server_url="http://localhost:8000"
         )
         
-        # Set up temporary database for session initialization
-        temp_db = os.path.join(base_output_dir, "temp_botex.sqlite3")
-        if os.path.exists(temp_db):
-            os.remove(temp_db)
+        # Create timestamp for this session
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         
-        # Initialize a session with the temporary database
+        # Create a temporary database for the session initialization
+        temp_db = os.path.join(base_output_dir, f"temp_botex_{timestamp}.sqlite3")
+        
+        # Initialize a session
         logger.info(f"Session {session_number}: Initializing social influence task session...")
         session = botex.init_otree_session(
             config_name='social_influence_task',  # Your task's config name
             npart=5,  # Social influence task needs 5 participants
+            nhumans=1,  # Only 1 bot will be controlled by LLM
             otree_server_url="http://localhost:8000",
-            botex_db=temp_db
+            botex_db=temp_db  # Use temporary database for initialization
         )
         
         session_id = session['session_id']
@@ -96,69 +164,102 @@ def run_session(session_number):
         output_dir = os.path.join(base_output_dir, f"session_{session_id}")
         makedirs(output_dir, exist_ok=True)
         
+        # Create session-specific database
+        botex_db = path.join(output_dir, f"botex_{session_id}.sqlite3")
+        
+        # Copy the temporary database to the session database
+        if os.path.exists(temp_db):
+            shutil.copy2(temp_db, botex_db)
+            os.remove(temp_db)  # Remove the temporary database
+            logger.info(f"Session {session_number}: Created session database: {botex_db}")
+        
         # Set up the log file in the session-specific directory
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         log_file = path.join(output_dir, f"experiment_log_{timestamp}.txt")
         
-        # Add file handler to logger
+        # Add file handler to logger with filter
         file_handler = logging.FileHandler(log_file)
         file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        file_handler.addFilter(LogFilter())
         logger.addHandler(file_handler)
+        
+        # Create a separate filtered log file just for bot actions
+        bot_actions_log = path.join(output_dir, f"bot_actions_{timestamp}.txt")
+        bot_actions_handler = logging.FileHandler(bot_actions_log)
+        bot_actions_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        bot_actions_handler.addFilter(LogFilter())
+        logger.addHandler(bot_actions_handler)
+        
+        # Dictionary to collect bot actions for JSON
+        bot_actions = []
+        
+        # Add a handler to capture actions for JSON
+        class JsonCaptureHandler(logging.Handler):
+            def emit(self, record):
+                message = self.format(record)
+                if "Bot's analysis of page" in message or "Bot has answered question" in message:
+                    bot_actions.append(message)
+        
+        json_handler = JsonCaptureHandler()
+        json_handler.setFormatter(logging.Formatter('%(message)s'))
+        logger.addHandler(json_handler)
         
         logger.info(f"Session {session_number}: Output directory: {output_dir}")
         logger.info(f"Session {session_number}: Log file: {log_file}")
-        
-        # Create final database in the session directory
-        botex_db = path.join(output_dir, f"botex_{session_id}.sqlite3")
-        
-        # Copy the temporary database to the session directory
-        if os.path.exists(temp_db):
-            shutil.copy2(temp_db, botex_db)
-            logger.info(f"Session {session_number}: Copied database to: {botex_db}")
+        logger.info(f"Session {session_number}: Bot actions log: {bot_actions_log}")
+        logger.info(f"Session {session_number}: Database: {botex_db}")
         
         # Define output filenames
         botex_responses_csv = path.join(output_dir, f"botex_{session_id}_responses.csv")
         botex_participants_csv = path.join(output_dir, f"botex_{session_id}_participants.csv")
         otree_wide_csv = path.join(output_dir, f"otree_{session_id}_wide.csv")
         
-        # Run the bots on the session
+        # Run the bot on the session
         monitor_url = f"http://localhost:8000/SessionMonitor/{session_id}"
-        logger.info(f"Session {session_number}: Starting bots. You can monitor their progress at {monitor_url}")
-        print(f"\nSession {session_number}: Starting bots. You can monitor progress at {monitor_url}")
+        logger.info(f"Session {session_number}: Starting bot. You can monitor progress at {monitor_url}")
+        print(f"\nSession {session_number}: Starting bot. You can monitor progress at {monitor_url}")
         
-        # Run bots on the session with throttling
-        # The detailed bot interactions will be captured in the logs
-        botex.run_bots_on_session(
-            session_id=session_id,
-            botex_db=botex_db,
-            model=LLM_MODEL,
-            api_key=LLM_API_KEY,
-            throttle=True  # Set to False to see responses more quickly
-        )
+        # Now we only run a single bot instead of all bots
+        if session['bot_urls']:
+            # There should be one bot URL in the list
+            logger.info(f"Session {session_number}: Running single bot")
+            botex.run_single_bot(
+                url=session['bot_urls'][0],
+                session_name=session_id,  # Set session name explicitly
+                session_id=session_id,    # Set session id explicitly  
+                participant_id=session['participant_code'][0],  # Set the participant code explicitly
+                botex_db=botex_db,        # Use session-specific database
+                model=LLM_MODEL,
+                api_key=LLM_API_KEY,
+                throttle=True,  # Enable throttling to avoid rate limits
+                # Add increased delays to avoid rate limits
+                **{"initial_delay": 2.0, "backoff_factor": 2.0}
+            )
+        else:
+            logger.warning(f"Session {session_number}: No bot URLs found")
         
-        # Export botex participant data
+        # Export botex participant data - only for this session
         logger.info(f"Session {session_number}: Exporting botex participant data...")
         try:
             botex.export_participant_data(
                 botex_participants_csv,
                 botex_db=botex_db,
-                session_id=session_id
+                session_id=session_id  # Filter by session ID
             )
             logger.info(f"Session {session_number}: Participant data successfully exported")
         except Exception as e:
             logger.warning(f"Session {session_number}: Could not export participant data: {str(e)}")
         
-        # Export botex response data
-        logger.info(f"Session {session_number}: Exporting botex response data...")
+        # Export botex response data with our custom ordered function
+        logger.info(f"Session {session_number}: Exporting botex response data with custom ordering...")
         try:
-            botex.export_response_data(
+            export_ordered_response_data(
                 botex_responses_csv,
                 botex_db=botex_db,
                 session_id=session_id
             )
-            logger.info(f"Session {session_number}: Bot responses successfully exported")
+            logger.info(f"Session {session_number}: Bot responses successfully exported with custom ordering")
         except Exception as e:
-            logger.warning(f"Session {session_number}: No bot responses could be exported: {str(e)}")
+            logger.warning(f"Session {session_number}: Error exporting ordered responses: {str(e)}")
             
             # Creating an empty response file with header
             with open(botex_responses_csv, 'w') as f:
@@ -194,9 +295,11 @@ def run_session(session_number):
             f.write(f"Session ID: {session_id}\n")
             f.write(f"Session Number: {session_number} of {NUM_SESSIONS}\n")
             f.write(f"Model used: {LLM_MODEL}\n")
-            f.write(f"Number of participants: 5\n\n")
+            f.write(f"Number of participants: 5 (1 LLM bot, 4 automated)\n\n")
             f.write("Files generated:\n")
             f.write(f"- Log file: {path.basename(log_file)}\n")
+            f.write(f"- Bot actions log: {path.basename(bot_actions_log)}\n")
+            f.write(f"- Bot actions JSON: {path.basename(bot_actions_json)}\n")
             f.write(f"- Bot participants: {path.basename(botex_participants_csv)}\n")
             f.write(f"- Bot responses: {path.basename(botex_responses_csv)}\n")
             f.write(f"- oTree wide data: {path.basename(otree_wide_csv)}\n")
@@ -211,14 +314,18 @@ def run_session(session_number):
             # Add specific information about the social influence task
             f.write("\nSocial Influence Task Details:\n")
             f.write("- Each participant made choices between options A and B over 5 rounds\n")
+            f.write("- One LLM bot made decisions, while 4 other players had pre-determined choices\n")
             f.write("- Participants could see others' choices and adjust their decisions\n")
             f.write("- Options had different reward probabilities\n")
         
         logger.info(f"Session {session_number}: Experiment complete. All outputs saved to {output_dir} folder")
         
-        # Remove file handler for this session
+        # Remove file handlers for this session
         logger.removeHandler(file_handler)
+        logger.removeHandler(bot_actions_handler)
+        logger.removeHandler(json_handler)
         file_handler.close()
+        bot_actions_handler.close()
         
         return True
 
@@ -228,13 +335,13 @@ def run_session(session_number):
         return False
 
     finally:
-        # Clean up temporary database
+        # Clean up temporary database if it exists
         if 'temp_db' in locals() and os.path.exists(temp_db):
             try:
                 os.remove(temp_db)
             except:
                 pass
-        
+                
         # Stop the oTree server
         if otree_process:
             try:

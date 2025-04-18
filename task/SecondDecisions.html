@@ -1,0 +1,68 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+Other Players' Initial Choices and making your Second Choice and Bet
+{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h4>Instructions</h4>
+    </div>
+    <div class="card-body">
+        <p>You will now see what the other players chose for their initial choice. 
+            <br>
+            <br>
+            After reviewing their choices, you can make your second choice and bet.</p>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-secondary text-white">
+        <h4>Other Players' Initial Choices</h4>
+    </div>
+    <div class="card-body">
+        <p>Here are the initial choices that the other players in your group made:</p>
+        <ul>
+            <li>Player 1: {{ player1_choice }}</li>
+            <li>Player 2: {{ player2_choice }}</li>
+            <li>Player 3: {{ player3_choice }}</li>
+            <li>Player 4: {{ player4_choice }}</li>
+        </ul>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-secondary text-white">
+        <h4>Your Initial Choice and Bet</h4>
+    </div>
+    <div class="card-body">
+        <p>Your initial choice was: {{ choice1 }}</p>
+        <p>Your initial bet was: {{ bet1 }}</p>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-secondary text-white">
+        <h4>Your Second Choice</h4>
+    </div>
+    <div class="card-body">
+        
+        {% formfield player.choice2 label="Select your second choice:" %}
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-secondary text-white">
+        <h4>Your Second Bet</h4>
+    </div>
+    <div class="card-body">
+        
+        {% formfield player.bet2 label="Select your second bet:" %}
+    </div>
+</div>
+
+{% next_button %}
+
+{% endblock %}

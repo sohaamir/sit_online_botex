@@ -1,0 +1,38 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+How Rewards Work
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>How do I know which option to choose?</h2>
+    
+    <p>In each round, one option will reward you whilst the other will lower your score. Which option does which is the same for all players in the group. 
+        For example, Option A will either be correct for all players in the group, or incorrect for all players in the group. 
+        It will not be correct or incorrect for some and not others.</p>
+    
+    <p>In the game, the 5 rounds are split into a number of 'blocks'. Within each block, both options will give you wins and losses, but one option will give you more wins than the other.</p>
+    
+    <p>However, this will switch multiple times across the game, such that the 'better' option will become the 'worse' option and vice versa.</p>
+    
+    <p>For example, whilst it may be better overall to choose 'Option A' than 'Option B' in one block, in the next block it will be the other way round.</p>
+    
+    <p>This is a very important aspect of the game, because if the option gave you the same outcome every time in each block, you would always know which one to pick and when exactly the reversals happen!</p>
+    
+    <p>However, in the first block, whether 'Option A' or 'Option B' is the more rewarding option will be selected at random. However, it will alternate from then onwards.</p>
+    
+    <p>For example, if 'Option A' was randomly selected to be the more rewarding option in the first block, 'Option B' will be more rewarding in the second block, 'Option A' in the third and so on. 
+        The same pattern applies for when 'Option B' is randomly selected to be the more rewarding option in the first block; 'Option A' will be more rewarding in the second block, Option B in the third and so on.
+        It will never be the case that 'Option A' or 'Option B' is the more rewarding option in two blocks in a row.</p>
+    
+    <p>The challenge of the game is that when and how often the switches take place are unknown to you. You should therefore pay attention to the feedback and adjust your choices accordingly.</p>
+    
+    <p>Over the course of the game, you may choose to either trust your own learning experience through trial and error and/or take decisions from others into consideration, as some of the other players might learn faster than others.</p>
+    
+    <p>When you are ready, please press the button below to move onto the first round of the experiment. Be ready to make your first choice and bet.</p>
+</div>
+
+{% next_button %}
+{% endblock %}
