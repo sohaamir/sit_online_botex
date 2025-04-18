@@ -1,7 +1,0 @@
-session_name,session_id,participant_id,is_human,url,time_in,time_out
-social_influence_task,naadp1mw,9xhpx7ll,0,http://localhost:8000/InitializeParticipant/9xhpx7ll,2025-04-18T14:26:25.020951+00:00,2025-04-18T14:29:18.306998+00:00
-social_influence_task,naadp1mw,iy94hloe,1,http://localhost:8000/InitializeParticipant/iy94hloe,,
-social_influence_task,naadp1mw,565nxx20,0,http://localhost:8000/InitializeParticipant/565nxx20,,
-social_influence_task,naadp1mw,i9ogxt0e,0,http://localhost:8000/InitializeParticipant/i9ogxt0e,,
-social_influence_task,naadp1mw,xkzjauzo,0,http://localhost:8000/InitializeParticipant/xkzjauzo,,
-naadp1mw,naadp1mw,9xhpx7ll,0,http://localhost:8000/InitializeParticipant/9xhpx7ll,2025-04-18T14:26:25.020951+00:00,2025-04-18T14:29:18.306998+00:00
