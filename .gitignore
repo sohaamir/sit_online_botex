@@ -13,3 +13,4 @@ __pycache__/
 .DS_Store
 *.otreezip
 heroku_cheatsheet.txt
+/botex_data
