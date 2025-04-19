@@ -7,26 +7,19 @@ Task Instructions
 
 {% block content %}
 <div class="container">
-    <h2>Task Overview</h2>
-    
-    <p>In this experiment, you will make a series of choices between two options, one of which will reward you by giving you points, whilst the other will reduce your score.</p>
-    
-    <p>You will be playing with four other players in real time, who will also make the same choices.</p>
-    
-    <p>However, there is no competition or cooperation with other players. Your aim is solely to maximize the amount of points that you score, which will be converted into a bonus payment at the end of the experiment. 
-        The more points you score, the higher your bonus payment will be!</p>
-    
     <h3>Initial Choice and Bet</h3>
     
     <p>At the beginning of each round, you will make your first choice for which option you think will give you points.</p>
     
     <p>You will then be asked to place a 'bet' as to how confident you are that the option selected is the option that will give you points. You cannot change your bet once it is made.</p>
     
-    <p>This should reflect your confidence: "1" (not confident), "2" (reasonably confident), or "3" (very confident)</p>
+    <p>This should reflect your confidence: "1" (not confident), "2" (reasonably confident), or "3" (very confident), specifically for the first choice.
+        Ultimately, you should make your initial bet based on how confident you are that the option selected for your initial choice is the option that will give you points, regardless of anything else.
+    </p>
 
-    <p>For example, if you bet '3' and win, you will receive 60 points, but if you bet '3' and lose, you will lose 60 points (as the bet is multiplied by 20).</p>
+    <p>For example, if you bet '3' and are correct, you will receive 60 points, but if you bet '3' and are incorrect, you will lose 60 points (as the bet is multiplied by 20).</p>
     
-    <p>Conversely, if you bet '1' and win, you will only receive 20 points, but if you bet '1' and lose, you will only lose 20 points.</p>
+    <p>Conversely, if you bet '1' and are correct, you will only receive 20 points, but if you bet '1' and lose, you will only lose 20 points.</p>
     
     <p>Whilst you do not receive feedback on the screen whether your first choice is 'correct', your score - which also corresponds to your bonus payment - will be randomly chosen from either your first choice and bet or from your second choice and bet. 
         It is therefore important to make your first choice and bet appropriately to maximize your bonus.</p>
@@ -41,7 +34,9 @@ Task Instructions
     
     <p>You will then be asked to make your second bet, which can be the same or different to your first bet.</p>
     
-    <p>Again this should reflect your confidence: "1" (not confident), "2" (reasonably confident), or "3" (very confident)</p>
+    <p>Again this should reflect your confidence: "1" (not confident), "2" (reasonably confident), or "3" (very confident) specifically for your second choice. 
+        Ultimately, you should make your second bet based on how confident you are that the option selected for your second choice is the option that will give you points, regardless of anything else.
+    </p>
     
     <p>For example, if you bet '3' and win, you will receive 60 points, but if you bet '3' and lose, you will lose 60 points (as the bet is multiplied by 20).</p>
     
@@ -61,9 +56,23 @@ Task Instructions
     
     <p>You will also see the second choice made for all the other players in the group (so you can determine whether they changed their choice) and whether they were correct or incorrect in that choice. However, you will not see how much they gained or lost.</p>
     
-    <p>After this, you will move onto the next round, where you will start again by making a new first choice. There are a total of 5 rounds.</p>
+    <p>After this, you will move onto the next round, where you will start again by making a new first choice.</p>
+
+    <h3>Summary</h3>
+
+    <p>So, just to re-iterate the key components of the task:
+        
+    <p>You make choices based on which option you think is the more rewarding option. This will switch between options across blocks, as the task is a reversal learning task with probabilistic reward contingencies.</p>
+    <br>
+    <p>You make corresponding bets based upon your confidence in your choices. The bets should not be part of some overall strategy, but should be made accordingly to maximise your points total. 
+        For example, if you are very confident in your choice, you should bet '3', but if you are not confident, you should bet '1'. If you are reasonably confident, you should bet '2'.
+        Betting '2' when you are extremely confident is not a good strategy, as you will not gain as many points as you could have done if you had bet '3'.
+        Conversely, betting '3' when you are not confident is also not a good strategy, as you will lose more points than you would have done if you had bet '1'.</p>
+    <br>
+    <p>You are free to use your own knowledge and experience, as well as the choices of others when making your choices and bets. 
+        This includes feedback for yourself and for others, and you may choose to integrate information both within the same round and from previous rounds.</p>
     
-    <p>When you are ready, please press the button below to move onto the next page of instructions which will describe the reward structure within the task.</p>
+    <p>When you are ready, please press the button below to move onto a comprehension check, to ensure that you understand the key components of the experiment.</p>
 </div>
 
 {% next_button %}

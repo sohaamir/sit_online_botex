@@ -6,50 +6,151 @@ import os
 author = 'Aamir Sohail'
 
 doc = """
-Variant of the online Social Influence Task (SIT) adapted to run LLM bots using the `botex` package.
+Script for running a variant of the online Social Influence Task (SIT) adapted to run LLM bots using the `botex` package.
+
+To run this experiment do the following: 
+
+1. Create and activate a virtual environment:
+
+    ```
+    python -m venv venv
+    source venv/bin/activate  # On Mac/Linux
+    ```
+
+2. Install the required packages:
+
+   ` pip install -r requirements.txt`
+
+3. Open a terminal and run an otree server:
+
+    `otree devserver`
+
+4. Open another terminal and run the bot:
+
+   ` python run_botex_experiment.py`
+
+
+The results will be saved to a folder called `botex_data` for further analysis.
 """
 
 # Constants for the experiment
 class C(BaseConstants):
     NAME_IN_URL = 'social_influence_task'
     PLAYERS_PER_GROUP = None  # Each participant is in their own group
-    NUM_ROUNDS = 5  # Limited to 5 rounds for testing
+    NUM_ROUNDS = 10  # 64 rounds as default (same as the original task)
     
     # Number of virtual players to simulate
     VIRTUAL_PLAYERS = 4
     
-    # Option A has high probability in all 5 test rounds for simplicity
-    HIGH_PROBABILITY_OPTION = ['A', 'A', 'A', 'A', 'A']
+    # High probability option for each round (based on your table)
+    HIGH_PROBABILITY_OPTION = [
+        'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',  # Rounds 1-16
+        'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',  # Rounds 17-33
+        'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',  # Rounds 34-48
+        'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B'  # Rounds 49-64
+    ]
 
 
 # Hardcoded reward sequence for each round: [(A_reward, B_reward), ...]
-# Ensuring one option is correct and one is incorrect in each round
 REWARD_SEQUENCE = [
-    (1, 0),  # Round 1: A rewarded, B not rewarded
-    (1, 0),  # Round 2: A rewarded, B not rewarded
-    (0, 1),  # Round 3: A not rewarded, B rewarded
-    (1, 0),  # Round 4: A rewarded, B not rewarded
-    (1, 0),  # Round 5: A rewarded, B not rewarded
+    (1, 0),  # Round 1
+    (1, 0),  # Round 2
+    (1, 0),  # Round 3
+    (1, 0),  # Round 4
+    (0, 1),  # Round 5
+    (1, 0),  # Round 6
+    (1, 0),  # Round 7
+    (1, 0),  # Round 8
+    (0, 1),  # Round 9
+    (1, 0),  # Round 10
+    (1, 0),  # Round 11
+    (1, 0),  # Round 12
+    (0, 1),  # Round 13
+    (1, 0),  # Round 14
+    (1, 0),  # Round 15
+    (1, 0),  # Round 16
+    (0, 1),  # Round 17
+    (0, 1),  # Round 18
+    (1, 0),  # Round 19
+    (0, 1),  # Round 20
+    (0, 1),  # Round 21
+    (0, 1),  # Round 22
+    (1, 0),  # Round 23
+    (0, 1),  # Round 24
+    (0, 1),  # Round 25
+    (0, 1),  # Round 26
+    (1, 0),  # Round 27
+    (0, 1),  # Round 28
+    (0, 1),  # Round 29
+    (0, 1),  # Round 30
+    (1, 0),  # Round 31
+    (0, 1),  # Round 32
+    (0, 1),  # Round 33
+    (1, 0),  # Round 34
+    (1, 0),  # Round 35
+    (1, 0),  # Round 36
+    (0, 1),  # Round 37
+    (1, 0),  # Round 38
+    (1, 0),  # Round 39
+    (0, 1),  # Round 40
+    (1, 0),  # Round 41
+    (1, 0),  # Round 42
+    (0, 1),  # Round 43
+    (1, 0),  # Round 44
+    (1, 0),  # Round 45
+    (1, 0),  # Round 46
+    (0, 1),  # Round 47
+    (1, 0),  # Round 48
+    (0, 1),  # Round 49
+    (1, 0),  # Round 50
+    (0, 1),  # Round 51
+    (0, 1),  # Round 52
+    (0, 1),  # Round 53
+    (1, 0),  # Round 54
+    (0, 1),  # Round 55
+    (0, 1),  # Round 56
+    (1, 0),  # Round 57
+    (0, 1),  # Round 58
+    (0, 1),  # Round 59
+    (0, 1),  # Round 60
+    (1, 0),  # Round 61
+    (0, 1),  # Round 62
+    (0, 1),  # Round 63
+    (0, 1),  # Round 64
 ]
+
+# Example responses for the virtual players (59.6% average correct, the actual values are 60.4%)
+# These sequences are based on the provided data from the human players, with examples at 20%, 40%, 60% and 80% quartile
+
+# Player 1 sequences (54.7% correct)
+p1_choice1 = "AAAABAABBABBABBBAABBBBBBAABABBBAABBBBBBABBAABBABABAAABBBBAAABAAA"
+p1_choice2 = "AAAABAABAABBAABBAAABAABBBABBBABBBAAAAAAAABABBAAAABABABBBBAAABABA"
+
+# Player 2 sequences (73.4% correct)
+p2_choice1 = "AAAABBAAAAAAAAAAABAABBBBBBBBBBABBAAAAAABAAAAAAAAAAABBBBBAAABBBBB"
+p2_choice2 = "AAAABBAAAAAAAAAAABAABBBBBBBBBBABBAAAAAABBAAAAAAAAAABBBBBAAABBBBB"
+
+# Player 3 sequences (47.7% correct)
+p3_choice1 = "BAABABAABBBBBAAABABBAAABBBAAAAAAABABBABABAAABBABBAAABABABABAABAB"
+p3_choice2 = "ABBAABAABBBABAAABABAABABBBAAAAABBBABAABABAAABAABBAAABABBAAABABBA"
+
+# Player 4 sequences (62.5% correct)
+p4_choice1 = "BAAABBAABAAABAAAAAABAAAABBBBBBBBBBBBABBBBBBBAABBBBBBBBBBBBBBBBBB"
+p4_choice2 = "AAAABABABAAABAAAAAAAAAAABBBBBBBBAAAABBBBBABBBBBBBBBBBBBBBBBBBBBB"
 
 # Pre-determined choices for virtual players
-# For each round: [player1_choice1, player2_choice1, player3_choice1, player4_choice1]
-VIRTUAL_PLAYERS_CHOICE1 = [
-    ['A', 'A', 'B', 'A'],  # Round 1
-    ['A', 'B', 'A', 'A'],  # Round 2
-    ['B', 'A', 'A', 'B'],  # Round 3
-    ['A', 'A', 'B', 'A'],  # Round 4
-    ['A', 'B', 'A', 'A'],  # Round 5
-]
+VIRTUAL_PLAYERS_CHOICE1 = []
+for i in range(64):  # 64 rounds
+    VIRTUAL_PLAYERS_CHOICE1.append([
+        p1_choice1[i], p2_choice1[i], p3_choice1[i], p4_choice1[i]
+    ])
 
-# For each round: [player1_choice2, player2_choice2, player3_choice2, player4_choice2]
-VIRTUAL_PLAYERS_CHOICE2 = [
-    ['A', 'A', 'A', 'A'],  # Round 1
-    ['A', 'A', 'B', 'A'],  # Round 2
-    ['B', 'B', 'A', 'B'],  # Round 3
-    ['A', 'A', 'A', 'B'],  # Round 4
-    ['A', 'A', 'A', 'A'],  # Round 5
-]
+# Pre-determined choices for virtual players - Second choice
+VIRTUAL_PLAYERS_CHOICE2 = []
+for i in range(64):  # 64 rounds
+    VIRTUAL_PLAYERS_CHOICE2.append([
+        p1_choice2[i], p2_choice2[i], p3_choice2[i], p4_choice2[i]
+    ])
 
 
 class Subsession(BaseSubsession):
@@ -78,7 +179,6 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
-
     # Comprehension check fields
     q1_correct = models.BooleanField(initial=False)
     q2_correct = models.BooleanField(initial=False)
@@ -305,14 +405,14 @@ class Welcome(Page):
     def is_displayed(player):
         return player.round_number == 1
 
-class Instructions(Page):
-    """Task instructions page"""
+class TaskStructure(Page):
+    """Reward structure page"""
     @staticmethod
     def is_displayed(player):
         return player.round_number == 1
 
-class RewardStructure(Page):
-    """Reward structure page"""
+class RoundStructure(Page):
+    """Task RoundStructure page"""
     @staticmethod
     def is_displayed(player):
         return player.round_number == 1
@@ -489,4 +589,4 @@ class FinalResults(Page):
         }
 
 
-page_sequence = [Welcome, Instructions, Comprehension, ComprehensionResults, Transition, FirstDecisions, SecondDecisions, RoundResults, FinalResults]
+page_sequence = [Welcome, TaskStructure, RoundStructure, Comprehension, ComprehensionResults, Transition, FirstDecisions, SecondDecisions, RoundResults, FinalResults]

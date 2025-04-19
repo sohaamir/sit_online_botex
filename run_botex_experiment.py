@@ -11,8 +11,8 @@ import botex
 import json
 import csv
 import sys
-import os
 import re
+import os
 
 # Set up base output directory
 base_output_dir = "botex_data"
@@ -236,6 +236,40 @@ def run_session(session_number):
         botex_participants_csv = path.join(output_dir, f"botex_{session_id}_participants.csv")
         otree_wide_csv = path.join(output_dir, f"otree_{session_id}_wide.csv")
         
+        # Define risk-taking prompts
+        risk_taking_prompts = {
+            "system": """You are participating in an economic experiment where your goal is to maximize points by making choices and placing bets. 
+            You should analyze each page carefully and respond with valid JSON.
+            IMPORTANT: You are a risk-taker who prefers high-risk, high-reward strategies. You should:
+            - Prefer higher bets (2-3) over lower bets (1)
+            - Be willing to go against the majority if you think it might lead to higher rewards 
+            - Be more inclined to switch to new options that might offer higher rewards
+            - Focus more on potential gains than potential losses
+            Remember that taking calculated risks often leads to higher payoffs in the long run.""",
+                        
+                        "analyze_page_q": """Based on the scraped webpage content, I'll analyze what's being asked and provide a thoughtful response.
+
+            Summary: {summary}
+
+            I see this is a page where I need to make decisions or answer questions. As a risk-taker, I'll consider bold choices that might lead to higher rewards.
+
+            The webpage contains: {page_content}
+
+            Looking at this content, I need to:
+            1. Understand what choices or bets are required
+            2. Consider making higher bets when I have some confidence
+            3. Be willing to take risks by potentially choosing differently from others
+            4. Be decisive rather than overly cautious
+
+            I'll answer each question with a rationale that explains my risk-taking approach. When betting, I'll generally prefer higher bets unless I have strong reasons not to.
+
+            For my decisions, I'll provide:
+            {response_json}
+
+            Rationale for my choices:
+            {rationale}"""
+                    }
+        
         # Run the bot on the session
         monitor_url = f"http://localhost:8000/SessionMonitor/{session_id}"
         logger.info(f"Session {session_number}: Starting bot. You can monitor progress at {monitor_url}")
@@ -244,7 +278,7 @@ def run_session(session_number):
         # Now we only run a single bot instead of all bots
         if session['bot_urls']:
             # There should be one bot URL in the list
-            logger.info(f"Session {session_number}: Running single bot")
+            logger.info(f"Session {session_number}: Running single bot with risk-taking prompts")
             botex.run_single_bot(
                 url=session['bot_urls'][0],
                 session_name=session_id,  # Set session name explicitly
@@ -254,6 +288,7 @@ def run_session(session_number):
                 model=LLM_MODEL,
                 api_key=LLM_API_KEY,
                 throttle=True,  # Enable throttling to avoid rate limits
+                user_prompts=risk_taking_prompts,  # Add custom risk-taking prompts
                 # Add increased delays to avoid rate limits
                 **{"initial_delay": 2.0, "backoff_factor": 2.0}
             )
@@ -324,7 +359,8 @@ def run_session(session_number):
             f.write(f"Session ID: {session_id}\n")
             f.write(f"Session Number: {session_number} of {NUM_SESSIONS}\n")
             f.write(f"Model used: {LLM_MODEL}\n")
-            f.write(f"Number of participants: 5 (1 LLM bot, 4 automated)\n\n")
+            f.write(f"Number of participants: 5 (1 LLM bot, 4 automated)\n")
+            f.write(f"Custom prompts: Risk-taking behavior\n\n")
             f.write("Files generated:\n")
             f.write(f"- Log file: {path.basename(log_file)}\n")
             f.write(f"- Bot actions log: {path.basename(bot_actions_log)}\n")
@@ -342,10 +378,11 @@ def run_session(session_number):
             
             # Add specific information about the social influence task
             f.write("\nSocial Influence Task Details:\n")
-            f.write("- Each participant made choices between options A and B over 5 rounds\n")
-            f.write("- One LLM bot made decisions, while 4 other players had pre-determined choices\n")
-            f.write("- Participants could see others' choices and adjust their decisions\n")
-            f.write("- Options had different reward probabilities\n")
+            f.write("- Each participant made choices between options A and B over 64 rounds\n")
+            f.write("- One LLM bot made decisions with a risk-taking strategy\n")
+            f.write("- Bot was prompted to prefer higher bets and be more willing to go against the majority\n")
+            f.write("- Other 4 players had pre-determined choices\n")
+            f.write("- Options had different reward probabilities that changed across blocks\n")
         
         logger.info(f"Session {session_number}: Experiment complete. All outputs saved to {output_dir} folder")
         
