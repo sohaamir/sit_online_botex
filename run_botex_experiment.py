@@ -1,8 +1,10 @@
-# This script runs the social influence task experiment using the botex package.
+# This script runs the social influence task experiment using the botex package with concurrent sessions.
 
+from concurrent.futures import ThreadPoolExecutor
 from os import environ, makedirs, path
 from dotenv import load_dotenv
 import subprocess
+import threading
 import datetime
 import sqlite3
 import logging
@@ -13,6 +15,7 @@ import csv
 import sys
 import re
 import os
+
 
 # Set up base output directory
 base_output_dir = "botex_data"
@@ -47,8 +50,8 @@ if os.path.exists('.env'):
     os.environ['OTREE_REST_KEY'] = environ.get('OTREE_REST_KEY', '')
     logger.info("Loaded environment variables from .env file")
 
-# Number of sessions to run
-NUM_SESSIONS = 1  # Change this to run more or fewer sessions
+# Number of sessions to run concurrently
+NUM_SESSIONS = 4  # Change this to run more or fewer concurrent sessions
 
 # LLM model vars - using Gemini by default
 LLM_MODEL = environ.get('LLM_MODEL', "gemini/gemini-1.5-flash")
@@ -60,6 +63,9 @@ if not LLM_API_KEY:
     print("\nError: OTREE_GEMINI_API_KEY not found in environment variables")
     print("Make sure to set this in your .env file")
     sys.exit(1)
+
+# Thread-local storage for session-specific resources
+thread_local = threading.local()
 
 # Custom function to export response data with specific ordering
 def export_ordered_response_data(csv_file, botex_db, session_id):
@@ -140,48 +146,79 @@ def export_ordered_response_data(csv_file, botex_db, session_id):
                 f.write("session_id,participant_id,round,question_id,answer,reason\n")
                 f.write(f"# Error exporting responses: {str(e)}\n")
 
-# Function to run a single session
-def run_session(session_number):
-    otree_process = None
+# Behaviour prompts for bots
+def get_behaviour_prompts():
+    """Returns the behavior prompts for the LLM bots"""
+    return {
+        "system": """You are participating in an economic experiment where your goal is to maximize points by making choices and placing bets. 
+        The experiment is a probabilistic reversal learning task, where you will make a choice between two options. 
+        As such, the reward contingencies will switch across blocks, but you will not know when or how often this will happen.
+        Making it more difficult is that the reward contingencies are probabilistic, meaning that the higher reward option will not always give you a reward, but it will give you a higher reward on average.
+        So, even if you select the higher reward option, you may not always get a reward, but it is still the best option to select OVERALL within a block. 
+        And the other way around, if you select the lower reward option, you may get a reward, but it is the worse option to select OVERALL within a block.
+
+        You will also make bets reflecting your confidence in your choice.
+        The higher the bet, the more points you can win, but also the more points you can lose if you are wrong.
+
+        You will be making choices and bets in a group of 5 participants, including yourself. You will be able to see the choices of other participants, which you can use to inform your own choices, both within a trial and across trials.
+        However, you may also use your own experience to inform your choices and bets. We are ultimately interested to see how participants flexibly integrate information from others and their own experience to make the best possible choice and bet.
+
+        Further instructions on the task and how you will complete it be provided during the experimen itselft.
+        
+        When interacting the the experiment, you should analyze each page carefully and respond with a valid JSON.
+
+        Here are some further instructions on how to behave when making your choices and bets:
+
+        CHOICE STRATEGY: During the task itself, you should aim to make choices by dynamically integrating information regarding the choices of others within the group with your own experience.
+        You should not adapt a fixed strategy (i.e., making the same choice repeatedly), but rather adapt your strategy to the current situation, by:
+        - Understanding that the task is a probabilistic reversal learning task, where the reward contingencies switch across blocks
+        - Within blocks, the higher reward option will not always give you a reward, but it will give you a higher reward on average
+        - Understanding that other players are also learning the task and that their choices may not be optimal
+        - Being flexible with interpreting the choices of others and be willing to go against the majority if you think that you are right and they are wrong
+        - Incorporating your own experience and the choices of others to make the best possible choice
+        Remember that dynamically integrating information from others and your own experience is key to maximizing your points in this task.
+
+        BETTING STRATEGY: During the task itself, you should adapt a dynamic betting strategy which changes bets according to the confidence level for each choice. 
+        You should not adapt a fixed strategy (i.e., making the same bet repeatedly), but rather adapt your strategy to the current situation, by:
+        - Being willing to take risks and make high bets (3) if you are confident that your choice is correct (high confidence)
+        - Being willing to bet moderately (2) if you think your choice is correct but not completely sure (moderate confidence)
+        - Being willing to play it safe and make low bets (1) if you are unsure that your choice is correct (low confidence)
+        - Being willing to go against the majority if you think that you are right and they are wrong
+        Remember that dynamically adapting your bets to reflect your confidence is key to maximizing your points in this task.
+        By increasing your bets when you are confident and decreasing them when you are not, you can maximize your points in this task. 
+        This is a more adaptive strategy than repeatedly selecting a conservative or moderate bet (i.e., repeatedly selecting 2). 
+        You should be willing to take risks and make high bets (3) if you are confident that your choice is correct, and play it safe and make low bets (1) if you are unsure about your choice.""",
+                    
+        "analyze_page_q": """Perfect. This is your summary of the survey/experiment so far: \n\n {summary} \n\n You have now proceeded to the next page. This is the body text of the web page: \n\n {body} \n\n 
+
+        I need you to do two things, but remember your adaptive choosing and betting strategy:
+
+        First, this page contains {nr_q} question(s) and I need you to answer all questions in the variable 'answers'. You should be willing to:
+        - Understand that other players are also learning the task and that their choices may not be optimal
+        - Be flexible with interpreting the choices of others and be willing to go against the majority if you think that you are right and they are wrong
+        - Incorporate your own experience and the choices of others to make the best possible choice
+        - Take risks and make high bets (3) if you are confident that your choice is correct
+        - Bet moderately (2) if you think your choice is correct but not completely sure
+        - Play it safe and make low bets (1) if you unsure about your choice
+        - Go against the majority if you think that you are right and they are wrong
+
+        Second, I need you to update the summary. The new summary should include a summary of the content of the page, the old summary given above, the questions asked and the answers you have given. 
+
+        The following JSON string contains the questions: {questions_json} 
+
+        For each identified question, you must provide two variables: 'reason' contains your reasoning or thought that leads you to a response or answer and 'answer' which contains your response.
+
+        Taken together, a correct answer to a text with two questions would have the form {{""answers"": {{""ID of first question"": {{""reason"": ""Your reasoning for how you want to answer the first question"", ""answer"":""Your final answer to the first question""}}, ""ID of the second question"": {{""reason"": ""Your reasoning for how you want to answer the second question"", ""answer"": ""Your final answer to the second question""}}}},""summary"": ""Your summary"", ""confused"": ""set to `true` if you are confused by any part of the instructions, otherwise set it to `false`""}}"""
+    }
+
+# Function to run a single session with session-specific resources
+def run_session(session_number, shared_otree_server=None):
+    """Run a single session with a unique database and logs"""
+    session_specific = {}
     try:
-        # Reset oTree database
-        logger.info(f"Session {session_number}: Resetting oTree database...")
-        try:
-            subprocess.run(["otree", "resetdb", "--noinput"], check=True)
-            logger.info(f"Session {session_number}: oTree database reset successful")
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Session {session_number}: Failed to reset oTree database: {e}")
-            print(f"Failed to reset oTree database: {e}")
-            return False
-        
-        # Start oTree server
-        logger.info(f"Session {session_number}: Starting oTree server...")
-        otree_process = botex.start_otree_server(project_path=".")
-        
-        # Get the available session configurations
-        logger.info(f"Session {session_number}: Getting session configurations...")
-        session_configs = botex.get_session_configs(
-            otree_server_url="http://localhost:8000"
-        )
-        
         # Create timestamp for this session
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-        # Create a temporary database for the session initialization
-        temp_db = os.path.join(base_output_dir, f"temp_botex_{timestamp}.sqlite3")
-        
-        # Initialize a session
-        logger.info(f"Session {session_number}: Initializing social influence task session...")
-        session = botex.init_otree_session(
-            config_name='social_influence_task',  # Your task's config name
-            npart=5,  # Social influence task needs 5 participants
-            nhumans=1,  # Only 1 bot will be controlled by LLM
-            otree_server_url="http://localhost:8000",
-            botex_db=temp_db  # Use temporary database for initialization
-        )
-        
-        session_id = session['session_id']
-        logger.info(f"Session {session_number}: Initialized with ID: {session_id}")
+        session_id = f"session_{session_number}_{timestamp}"
         
         # Create session-specific output directory
         output_dir = os.path.join(base_output_dir, f"session_{session_id}")
@@ -190,23 +227,16 @@ def run_session(session_number):
         # Create session-specific database
         botex_db = path.join(output_dir, f"botex_{session_id}.sqlite3")
         
-        # Copy the temporary database to the session database
-        if os.path.exists(temp_db):
-            shutil.copy2(temp_db, botex_db)
-            os.remove(temp_db)  # Remove the temporary database
-            logger.info(f"Session {session_number}: Created session database: {botex_db}")
-        
-        # Set up the log file in the session-specific directory
+        # Set up session-specific logging
         log_file = path.join(output_dir, f"experiment_log_{timestamp}.txt")
+        bot_actions_log = path.join(output_dir, f"bot_actions_{timestamp}.txt")
         
-        # Add file handler to logger with filter
+        # Add file handlers to logger with filter
         file_handler = logging.FileHandler(log_file)
         file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
         file_handler.addFilter(LogFilter())
         logger.addHandler(file_handler)
         
-        # Create a separate filtered log file just for bot actions
-        bot_actions_log = path.join(output_dir, f"bot_actions_{timestamp}.txt")
         bot_actions_handler = logging.FileHandler(bot_actions_log)
         bot_actions_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
         bot_actions_handler.addFilter(LogFilter())
@@ -226,85 +256,58 @@ def run_session(session_number):
         json_handler.setFormatter(logging.Formatter('%(message)s'))
         logger.addHandler(json_handler)
         
+        session_specific['handlers'] = [file_handler, bot_actions_handler, json_handler]
+        
         logger.info(f"Session {session_number}: Output directory: {output_dir}")
         logger.info(f"Session {session_number}: Log file: {log_file}")
         logger.info(f"Session {session_number}: Bot actions log: {bot_actions_log}")
         logger.info(f"Session {session_number}: Database: {botex_db}")
+        
+        # Start or use shared oTree server
+        if shared_otree_server is None:
+            # Reset oTree database (only if starting a new server)
+            logger.info(f"Session {session_number}: Resetting oTree database...")
+            try:
+                subprocess.run(["otree", "resetdb", "--noinput"], check=True)
+                logger.info(f"Session {session_number}: oTree database reset successful")
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Session {session_number}: Failed to reset oTree database: {e}")
+                print(f"Failed to reset oTree database: {e}")
+                return False
+            
+            # Start a new oTree server
+            logger.info(f"Session {session_number}: Starting oTree server...")
+            otree_process = botex.start_otree_server(project_path=".")
+            session_specific['otree_process'] = otree_process
+        else:
+            # Use the shared server
+            otree_process = shared_otree_server
+            logger.info(f"Session {session_number}: Using shared oTree server")
+        
+        # Initialize a session
+        logger.info(f"Session {session_number}: Initializing social influence task session...")
+        session = botex.init_otree_session(
+            config_name='social_influence_task',  # Your task's config name
+            npart=5,  # Social influence task needs 5 participants
+            nhumans=1,  # Only 1 bot will be controlled by LLM
+            otree_server_url="http://localhost:8000",
+            botex_db=botex_db  # Use session-specific database
+        )
+        
+        session_id = session['session_id']
+        logger.info(f"Session {session_number}: Initialized with ID: {session_id}")
         
         # Define output filenames
         botex_responses_csv = path.join(output_dir, f"botex_{session_id}_responses.csv")
         botex_participants_csv = path.join(output_dir, f"botex_{session_id}_participants.csv")
         otree_wide_csv = path.join(output_dir, f"otree_{session_id}_wide.csv")
         
-        # Define risk-taking prompts
-        behaviour_prompts = {
-            "system": """You are participating in an economic experiment where your goal is to maximize points by making choices and placing bets. 
-            The experiment is a probabilistic reversal learning task, where you will make a choice between two options. 
-            As such, the reward contingencies will switch across blocks, but you will not know when or how often this will happen.
-            Making it more difficult is that the reward contingencies are probabilistic, meaning that the higher reward option will not always give you a reward, but it will give you a higher reward on average.
-            So, even if you select the higher reward option, you may not always get a reward, but it is still the best option to select OVERALL within a block. 
-            And the other way around, if you select the lower reward option, you may get a reward, but it is the worse option to select OVERALL within a block.
-
-            You will also make bets reflecting your confidence in your choice.
-            The higher the bet, the more points you can win, but also the more points you can lose if you are wrong.
-
-            You will be making choices and bets in a group of 5 participants, including yourself. You will be able to see the choices of other participants, which you can use to inform your own choices, both within a trial and across trials.
-            However, you may also use your own experience to inform your choices and bets. We are ultimately interested to see how participants flexibly integrate information from others and their own experience to make the best possible choice and bet.
-
-            Further instructions on the task and how you will complete it be provided during the experimen itselft.
-            
-            When interacting the the experiment, you should analyze each page carefully and respond with a valid JSON.
-
-            Here are some further instructions on how to behave when making your choices and bets:
-
-            CHOICE STRATEGY: During the task itself, you should aim to make choices by dynamically integrating information regarding the choices of others within the group with your own experience.
-            You should not adapt a fixed strategy (i.e., making the same choice repeatedly), but rather adapt your strategy to the current situation, by:
-            - Understanding that the task is a probabilistic reversal learning task, where the reward contingencies switch across blocks
-            - Within blocks, the higher reward option will not always give you a reward, but it will give you a higher reward on average
-            - Understanding that other players are also learning the task and that their choices may not be optimal
-            - Being flexible with interpreting the choices of others and be willing to go against the majority if you think that you are right and they are wrong
-            - Incorporating your own experience and the choices of others to make the best possible choice
-            Remember that dynamically integrating information from others and your own experience is key to maximizing your points in this task.
-
-            BETTING STRATEGY: During the task itself, you should adapt a dynamic betting strategy which changes bets according to the confidence level for each choice. 
-            You should not adapt a fixed strategy (i.e., making the same bet repeatedly), but rather adapt your strategy to the current situation, by:
-            - Being willing to take risks and make high bets (3) if you are confident that your choice is correct (high confidence)
-            - Being willing to bet moderately (2) if you think your choice is correct but not completely sure (moderate confidence)
-            - Being willing to play it safe and make low bets (1) if you are unsure that your choice is correct (low confidence)
-            - Being willing to go against the majority if you think that you are right and they are wrong
-            Remember that dynamically adapting your bets to reflect your confidence is key to maximizing your points in this task.
-            By increasing your bets when you are confident and decreasing them when you are not, you can maximize your points in this task. 
-            This is a more adaptive strategy than repeatedly selecting a conservative or moderate bet (i.e., repeatedly selecting 2). 
-            You should be willing to take risks and make high bets (3) if you are confident that your choice is correct, and play it safe and make low bets (1) if you are unsure about your choice.""",
-                        
-            "analyze_page_q": """Perfect. This is your summary of the survey/experiment so far: \n\n {summary} \n\n You have now proceeded to the next page. This is the body text of the web page: \n\n {body} \n\n 
-
-            I need you to do two things, but remember your adaptive choosing and betting strategy:
-
-            First, this page contains {nr_q} question(s) and I need you to answer all questions in the variable 'answers'. You should be willing to:
-            - Understand that other players are also learning the task and that their choices may not be optimal
-            - Beflexible with interpreting the choices of others and be willing to go against the majority if you think that you are right and they are wrong
-            - Incorporate your own experience and the choices of others to make the best possible choice
-            - Take risks and make high bets (3) if you are confident that your choice is correct
-            - Bet moderately (2) if you think your choice is correct but not completely sure
-            - Play it safe and make low bets (1) if you unsure about your choice
-            - Go against the majority if you think that you are right and they are wrong
-
-            Second, I need you to update the summary. The new summary should include a summary of the content of the page, the old summary given above, the questions asked and the answers you have given. 
-
-            The following JSON string contains the questions: {questions_json} 
-
-            For each identified question, you must provide two variables: 'reason' contains your reasoning or thought that leads you to a response or answer and 'answer' which contains your response.
-
-            Taken together, a correct answer to a text with two questions would have the form {{""answers"": {{""ID of first question"": {{""reason"": ""Your reasoning for how you want to answer the first question"", ""answer"":""Your final answer to the first question""}}, ""ID of the second question"": {{""reason"": ""Your reasoning for how you want to answer the second question"", ""answer"": ""Your final answer to the second question""}}}},""summary"": ""Your summary"", ""confused"": ""set to `true` if you are confused by any part of the instructions, otherwise set it to `false`""}}"""
-        }
-        
         # Run the bot on the session
         monitor_url = f"http://localhost:8000/SessionMonitor/{session_id}"
         logger.info(f"Session {session_number}: Starting bot. You can monitor progress at {monitor_url}")
         print(f"\nSession {session_number}: Starting bot. You can monitor progress at {monitor_url}")
         
-        # Now we only run a single bot instead of all bots
+        # Now run a single bot
         if session['bot_urls']:
             # There should be one bot URL in the list
             logger.info(f"Session {session_number}: Running single bot with risk-taking prompts")
@@ -317,7 +320,7 @@ def run_session(session_number):
                 model=LLM_MODEL,
                 api_key=LLM_API_KEY,
                 throttle=True,  # Enable throttling to avoid rate limits
-                user_prompts=behaviour_prompts,  # Add custom behaviour prompts
+                user_prompts=get_behaviour_prompts(),  # Add custom behaviour prompts
                 # Add increased delays to avoid rate limits
                 **{"initial_delay": 2.0, "backoff_factor": 2.0}
             )
@@ -415,37 +418,93 @@ def run_session(session_number):
         
         logger.info(f"Session {session_number}: Experiment complete. All outputs saved to {output_dir} folder")
         
-        # Remove file handlers for this session
-        logger.removeHandler(file_handler)
-        logger.removeHandler(bot_actions_handler)
-        logger.removeHandler(json_handler)
-        file_handler.close()
-        bot_actions_handler.close()
+        # Record success status
+        session_specific['success'] = True
+        session_specific['session_id'] = session_id
+        session_specific['output_dir'] = output_dir
         
-        return True
-
+        return session_specific
+    
     except Exception as e:
         logger.error(f"Session {session_number}: Error running experiment: {str(e)}", exc_info=True)
         print(f"\nSession {session_number}: Error running experiment: {str(e)}")
-        return False
-
+        session_specific['success'] = False
+        session_specific['error'] = str(e)
+        return session_specific
+    
     finally:
-        # Clean up temporary database if it exists
-        if 'temp_db' in locals() and os.path.exists(temp_db):
-            try:
-                os.remove(temp_db)
-            except:
-                pass
+        # Remove handlers specific to this session
+        if 'handlers' in session_specific:
+            for handler in session_specific['handlers']:
+                logger.removeHandler(handler)
+                try:
+                    handler.close()
+                except:
+                    pass
                 
-        # Stop the oTree server
-        if otree_process:
+        # Stop the oTree server if we started it
+        if 'otree_process' in session_specific and shared_otree_server is None:
             try:
                 logger.info(f"Session {session_number}: Stopping oTree server...")
-                botex.stop_otree_server(otree_process)
+                botex.stop_otree_server(session_specific['otree_process'])
                 logger.info(f"Session {session_number}: oTree server stopped")
             except Exception as e:
                 logger.error(f"Session {session_number}: Error stopping oTree server: {str(e)}")
 
-print(f"\nRunning {NUM_SESSIONS} session(s). Results will be stored in the '{base_output_dir}' directory.")
-for i in range(1, NUM_SESSIONS + 1):
-    run_session(i)
+def main():
+    """Main function to run multiple concurrent sessions"""
+    print(f"\nRunning {NUM_SESSIONS} concurrent sessions. Results will be stored in the '{base_output_dir}' directory.")
+    
+    # Start a single shared oTree server for all sessions
+    try:
+        # Reset oTree database once
+        logger.info("Resetting oTree database...")
+        subprocess.run(["otree", "resetdb", "--noinput"], check=True)
+        logger.info("oTree database reset successful")
+        
+        # Start a single oTree server for all sessions
+        logger.info("Starting shared oTree server...")
+        shared_otree_server = botex.start_otree_server(project_path=".")
+        logger.info("Shared oTree server started successfully")
+        
+        # Run sessions concurrently using ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=NUM_SESSIONS) as executor:
+            # Submit all sessions and get futures
+            futures = []
+            for i in range(1, NUM_SESSIONS + 1):
+                future = executor.submit(run_session, i, shared_otree_server)
+                futures.append(future)
+            
+            # Wait for all to complete and get results
+            results = []
+            for i, future in enumerate(futures, 1):
+                try:
+                    result = future.result()
+                    results.append(result)
+                    if result['success']:
+                        print(f"Session {i} completed successfully: {result['session_id']}")
+                    else:
+                        print(f"Session {i} failed: {result.get('error', 'Unknown error')}")
+                except Exception as e:
+                    print(f"Session {i} failed with exception: {str(e)}")
+            
+            # Print summary
+            successes = sum(1 for r in results if r.get('success', False))
+            print(f"\nCompleted {successes} out of {NUM_SESSIONS} sessions successfully")
+            
+    except Exception as e:
+        logger.error(f"Error in main execution: {str(e)}", exc_info=True)
+        print(f"\nError in main execution: {str(e)}")
+    
+    finally:
+        # Stop the shared oTree server
+        if 'shared_otree_server' in locals():
+            try:
+                logger.info("Stopping shared oTree server...")
+                botex.stop_otree_server(shared_otree_server)
+                logger.info("Shared oTree server stopped")
+            except Exception as e:
+                logger.error(f"Error stopping shared oTree server: {str(e)}")
+
+if __name__ == "__main__":
+    main()
