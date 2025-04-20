@@ -1,0 +1,300 @@
+---
+title: "single_bot_analysis"
+author: "Aamir Sohail"
+date: "2025-04-20"
+output: html_document
+---
+
+```{r, message=FALSE, warning=FALSE}}
+# Install packages only if they are not already installed
+required_packages <- c("ggplot2", "tidyverse", "readr", "here")
+install_if_missing <- required_packages[!required_packages %in% installed.packages()]
+if (length(install_if_missing) > 0) {
+  install.packages(install_if_missing, quietly = TRUE)
+}
+
+# Load required libraries
+library(tidyverse)
+library(ggplot2)
+library(readr)
+library(here)
+library(zoo) # For rolling average calculations
+```
+
+```{r, message=FALSE, warning=FALSE}
+# Read data
+data <- read_csv(here("data", "otree", "otree_prolific_merged_filtered_2025-23-03.csv"))
+
+# Helper to identify valid trials
+data <- data %>%
+  mutate(
+    valid_trial1 = player.computer_choice_one != 1,
+    valid_trial2 = player.computer_choice_two != 1
+  )
+
+# Compute accuracy for each trial, considering only valid trials
+accuracy_data <- data %>%
+  group_by(subsession.round_number) %>%
+  summarise(
+    # For choice 1
+    correct_choice1 = sum(player.choice1_accuracy == 1 & valid_trial1, na.rm = TRUE),
+    total_valid_choice1 = sum(valid_trial1, na.rm = TRUE),
+    accuracy_choice1 = ifelse(total_valid_choice1 > 0, 
+                             correct_choice1 / total_valid_choice1, 
+                             NA),
+    
+    # For choice 2
+    correct_choice2 = sum(player.choice2_accuracy == 1 & valid_trial2, na.rm = TRUE),
+    total_valid_choice2 = sum(valid_trial2, na.rm = TRUE),
+    accuracy_choice2 = ifelse(total_valid_choice2 > 0, 
+                             correct_choice2 / total_valid_choice2, 
+                             NA)
+  ) %>%
+  arrange(subsession.round_number)
+
+# Create formatted text output
+output_lines <- c(
+  "Choice 1 Accuracy:",
+  "Trial\tAccuracy",
+  paste(accuracy_data$subsession.round_number, 
+        round(accuracy_data$accuracy_choice1 * 100, 1), 
+        sep = "\t"),
+  "",
+  "Choice 2 Accuracy:",
+  "Trial\tAccuracy",
+  paste(accuracy_data$subsession.round_number, 
+        round(accuracy_data$accuracy_choice2 * 100, 1), 
+        sep = "\t")
+)
+
+# Write to text file
+writeLines(output_lines, here("choice_accuracies.txt"))
+
+# Calculate 7-trial moving average for smoothed data
+accuracy_data <- accuracy_data %>%
+  mutate(
+    smoothed_choice1 = rollmean(accuracy_choice1, k = 7, fill = NA, align = "center"),
+    smoothed_choice2 = rollmean(accuracy_choice2, k = 7, fill = NA, align = "center")
+  )
+
+# Plot 1: Raw Accuracies
+raw_plot <- ggplot(accuracy_data, aes(x = subsession.round_number)) +
+  # Add light blue shaded area to mimic the example plot
+  geom_ribbon(aes(ymin = accuracy_choice1 - 0.15, ymax = accuracy_choice1 + 0.15), 
+              fill = "lightblue", alpha = 0.3) +
+  # Main data lines
+  geom_line(aes(y = accuracy_choice1), color = "blue", size = 1) +
+  geom_line(aes(y = accuracy_choice2), color = "red", size = 1) +
+  # Labels and formatting
+  labs(title = "Raw Choice Accuracies by Trial",
+       x = "Trial",
+       y = "Accuracy (proportion correct)") +
+  theme_minimal() +
+  scale_y_continuous(limits = c(0, 1)) +
+  # Legend as text annotations
+  annotate("text", x = max(accuracy_data$subsession.round_number) * 0.9, 
+           y = 0.9, label = "Choice 1", color = "blue", fontface = "bold") +
+  annotate("text", x = max(accuracy_data$subsession.round_number) * 0.9, 
+           y = 0.85, label = "Choice 2", color = "red", fontface = "bold")
+
+# Plot 2: Smoothed Accuracies (7-trial average)
+smoothed_plot <- ggplot(accuracy_data, aes(x = subsession.round_number)) +
+  # Add light blue shaded area for reference
+  geom_ribbon(aes(ymin = smoothed_choice1 - 0.1, ymax = smoothed_choice1 + 0.1), 
+              fill = "lightblue", alpha = 0.3) +
+  # Main smoothed data lines
+  geom_line(aes(y = smoothed_choice1), color = "blue", size = 1) +
+  geom_line(aes(y = smoothed_choice2), color = "red", size = 1) +
+  # Labels and formatting
+  labs(title = "Smoothed Choice Accuracies (7-trial average)",
+       x = "Trial",
+       y = "Accuracy (proportion correct)") +
+  theme_minimal() +
+  scale_y_continuous(limits = c(0, 1)) +
+  # Legend as text annotations
+  annotate("text", x = max(accuracy_data$subsession.round_number) * 0.9, 
+           y = 0.9, label = "Choice 1", color = "blue", fontface = "bold") +
+  annotate("text", x = max(accuracy_data$subsession.round_number) * 0.9, 
+           y = 0.85, label = "Choice 2", color = "red", fontface = "bold")
+
+# Save plots
+ggsave(here("output", "plots", "raw_choice_accuracy.png"), raw_plot, width = 10, height = 6)
+ggsave(here("output", "plots", "smoothed_choice_accuracy.png"), smoothed_plot, width = 10, height = 6)
+
+# Calculate participant-level accuracy rankings
+# Calculate overall accuracy for each participant
+participant_accuracy <- data %>%
+  # Group by participant ID
+  group_by(participant.id_in_session) %>%
+  summarise(
+    # Calculate accuracy for choice1
+    correct_choice1 = sum(player.choice1_accuracy == 1 & valid_trial1, na.rm = TRUE),
+    total_valid_choice1 = sum(valid_trial1, na.rm = TRUE),
+    accuracy_choice1 = ifelse(total_valid_choice1 > 0, 
+                             correct_choice1 / total_valid_choice1 * 100, 
+                             NA),
+    
+    # Calculate accuracy for choice2
+    correct_choice2 = sum(player.choice2_accuracy == 1 & valid_trial2, na.rm = TRUE),
+    total_valid_choice2 = sum(valid_trial2, na.rm = TRUE),
+    accuracy_choice2 = ifelse(total_valid_choice2 > 0, 
+                             correct_choice2 / total_valid_choice2 * 100, 
+                             NA),
+    
+    # Calculate overall accuracy
+    total_correct = correct_choice1 + correct_choice2,
+    total_valid = total_valid_choice1 + total_valid_choice2,
+    overall_accuracy = ifelse(total_valid > 0, 
+                             total_correct / total_valid * 100, 
+                             NA)
+  ) %>%
+  # Remove any participants with NA overall accuracy
+  filter(!is.na(overall_accuracy)) %>%
+  # Rank from highest to lowest
+  arrange(desc(overall_accuracy)) %>%
+  # Add rank column
+  mutate(rank = row_number())
+
+# Calculate quartiles
+quartiles <- quantile(participant_accuracy$overall_accuracy, probs = c(0.25, 0.5, 0.75), na.rm = TRUE)
+
+# Add quartile information
+participant_accuracy <- participant_accuracy %>%
+  mutate(
+    quartile = case_when(
+      overall_accuracy >= quartiles[3] ~ "Top Quartile (Q4)",
+      overall_accuracy >= quartiles[2] ~ "Third Quartile (Q3)",
+      overall_accuracy >= quartiles[1] ~ "Second Quartile (Q2)",
+      TRUE ~ "Bottom Quartile (Q1)"
+    )
+  )
+
+# Create the output text for participant rankings
+ranking_lines <- c(
+  "Quartile Boundaries:",
+  paste("Q1/Q2 boundary (25th percentile):", round(quartiles[1], 2), "%"),
+  paste("Q2/Q3 boundary (50th percentile/median):", round(quartiles[2], 2), "%"),
+  paste("Q3/Q4 boundary (75th percentile):", round(quartiles[3], 2), "%"),
+  "",
+  "Participant Rankings (Best to Worst):",
+  paste(
+    "Rank",
+    "Participant ID",
+    "Overall Accuracy (%)",
+    "Overall Correct",
+    "Overall Total",
+    "Choice1 Accuracy (%)",
+    "Choice1 Correct",
+    "Choice1 Total",
+    "Choice2 Accuracy (%)",
+    "Choice2 Correct",
+    "Choice2 Total",
+    "Quartile",
+    sep = "\t"
+  )
+)
+
+# Add each participant's data
+for(i in 1:nrow(participant_accuracy)) {
+  row <- participant_accuracy[i,]
+  line <- paste(
+    row$rank,
+    row$participant.id_in_session,
+    round(row$overall_accuracy, 2),
+    row$total_correct,
+    row$total_valid,
+    round(row$accuracy_choice1, 2),
+    row$correct_choice1,
+    row$total_valid_choice1,
+    round(row$accuracy_choice2, 2),
+    row$correct_choice2,
+    row$total_valid_choice2,
+    row$quartile,
+    sep = "\t"
+  )
+  ranking_lines <- c(ranking_lines, line)
+}
+
+# Write participant rankings to file
+writeLines(ranking_lines, here("output", "txt", "participant_accuracy_ranking.txt"))
+
+# Also create a summary file with basic statistics
+summary_stats <- c(
+  "Overall Accuracy Statistics:",
+  paste("Number of participants:", nrow(participant_accuracy)),
+  paste("Mean accuracy:", round(mean(participant_accuracy$overall_accuracy, na.rm = TRUE), 2), "%"),
+  paste("Median accuracy:", round(median(participant_accuracy$overall_accuracy, na.rm = TRUE), 2), "%"),
+  paste("Min accuracy:", round(min(participant_accuracy$overall_accuracy, na.rm = TRUE), 2), "%"),
+  paste("Max accuracy:", round(max(participant_accuracy$overall_accuracy, na.rm = TRUE), 2), "%"),
+  paste("Standard deviation:", round(sd(participant_accuracy$overall_accuracy, na.rm = TRUE), 2), "%"),
+  "",
+  "Choice1 Accuracy Statistics:",
+  paste("Mean accuracy:", round(mean(participant_accuracy$accuracy_choice1, na.rm = TRUE), 2), "%"),
+  paste("Median accuracy:", round(median(participant_accuracy$accuracy_choice1, na.rm = TRUE), 2), "%"),
+  "",
+  "Choice2 Accuracy Statistics:",
+  paste("Mean accuracy:", round(mean(participant_accuracy$accuracy_choice2, na.rm = TRUE), 2), "%"),
+  paste("Median accuracy:", round(median(participant_accuracy$accuracy_choice2, na.rm = TRUE), 2), "%"),
+  "",
+  "Average trials completed:",
+  paste("Choice1:", round(mean(participant_accuracy$total_valid_choice1, na.rm = TRUE), 1), "trials"),
+  paste("Choice2:", round(mean(participant_accuracy$total_valid_choice2, na.rm = TRUE), 1), "trials"),
+  paste("Total:", round(mean(participant_accuracy$total_valid, na.rm = TRUE), 1), "trials")
+)
+
+# Write summary statistics to file
+writeLines(summary_stats, here("output", "txt", "accuracy_summary_statistics.txt"))
+
+# Extract choice sequences for specific participants
+# List of participant IDs to extract
+participant_ids <- c(391, 268, 115, 476)
+
+# Function to convert 1/2 to A/B
+convert_to_letter <- function(number) {
+  ifelse(number == 1, "A", ifelse(number == 2, "B", NA_character_))
+}
+
+# Initialize the output text
+sequence_lines <- c("Example Human Group Sequences:")
+
+# Process each participant
+for(pid in participant_ids) {
+  # Extract data for this participant
+  participant_data <- data %>%
+    filter(participant.id_in_session == pid) %>%
+    arrange(subsession.round_number)
+  
+  # Extract and convert choice sequences
+  choice1_seq <- participant_data$player.chosen_image_one_binary
+  choice2_seq <- participant_data$player.chosen_image_two_binary
+  
+  # Convert to A/B
+  choice1_letters <- sapply(choice1_seq, convert_to_letter)
+  choice2_letters <- sapply(choice2_seq, convert_to_letter)
+  
+  # Combine into strings
+  choice1_string <- paste(choice1_letters, collapse = "")
+  choice2_string <- paste(choice2_letters, collapse = "")
+  
+  # Get participant performance metrics from the previously calculated data
+  participant_perf <- participant_accuracy %>%
+    filter(participant.id_in_session == pid)
+  
+  # Total manual choices made (out of 128)
+  total_choices_made <- participant_perf$total_valid
+  percentage_completed <- round((total_choices_made / 128) * 100, 1)
+  
+  # Add to output
+  sequence_lines <- c(
+    sequence_lines,
+    paste("Participant ID:", pid),
+    paste("Overall Accuracy:", round(participant_perf$overall_accuracy, 2), "%"),
+    paste("Choice 1 sequence:", choice1_string),
+    paste("Choice 2 sequence:", choice2_string),
+    "" # Add blank line between participants
+  )
+}
+
+# Write to file
+writeLines(sequence_lines, here("output", "txt", "example_human_group_sequences.txt"))
+```

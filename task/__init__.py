@@ -37,7 +37,7 @@ The results will be saved to a folder called `botex_data` for further analysis.
 class C(BaseConstants):
     NAME_IN_URL = 'social_influence_task'
     PLAYERS_PER_GROUP = None  # Each participant is in their own group
-    NUM_ROUNDS = 10  # 64 rounds as default (same as the original task)
+    NUM_ROUNDS = 64  # 64 rounds as default (same as the original task)
     
     # Number of virtual players to simulate
     VIRTUAL_PLAYERS = 4

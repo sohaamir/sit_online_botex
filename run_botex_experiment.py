@@ -237,38 +237,67 @@ def run_session(session_number):
         otree_wide_csv = path.join(output_dir, f"otree_{session_id}_wide.csv")
         
         # Define risk-taking prompts
-        risk_taking_prompts = {
+        behaviour_prompts = {
             "system": """You are participating in an economic experiment where your goal is to maximize points by making choices and placing bets. 
-            You should analyze each page carefully and respond with valid JSON.
-            IMPORTANT: You are a risk-taker who prefers high-risk, high-reward strategies. You should:
-            - Prefer higher bets (2-3) over lower bets (1)
-            - Be willing to go against the majority if you think it might lead to higher rewards 
-            - Be more inclined to switch to new options that might offer higher rewards
-            - Focus more on potential gains than potential losses
-            Remember that taking calculated risks often leads to higher payoffs in the long run.""",
+            The experiment is a probabilistic reversal learning task, where you will make a choice between two options. 
+            As such, the reward contingencies will switch across blocks, but you will not know when or how often this will happen.
+            Making it more difficult is that the reward contingencies are probabilistic, meaning that the higher reward option will not always give you a reward, but it will give you a higher reward on average.
+            So, even if you select the higher reward option, you may not always get a reward, but it is still the best option to select OVERALL within a block. 
+            And the other way around, if you select the lower reward option, you may get a reward, but it is the worse option to select OVERALL within a block.
+
+            You will also make bets reflecting your confidence in your choice.
+            The higher the bet, the more points you can win, but also the more points you can lose if you are wrong.
+
+            You will be making choices and bets in a group of 5 participants, including yourself. You will be able to see the choices of other participants, which you can use to inform your own choices, both within a trial and across trials.
+            However, you may also use your own experience to inform your choices and bets. We are ultimately interested to see how participants flexibly integrate information from others and their own experience to make the best possible choice and bet.
+
+            Further instructions on the task and how you will complete it be provided during the experimen itselft.
+            
+            When interacting the the experiment, you should analyze each page carefully and respond with a valid JSON.
+
+            Here are some further instructions on how to behave when making your choices and bets:
+
+            CHOICE STRATEGY: During the task itself, you should aim to make choices by dynamically integrating information regarding the choices of others within the group with your own experience.
+            You should not adapt a fixed strategy (i.e., making the same choice repeatedly), but rather adapt your strategy to the current situation, by:
+            - Understanding that the task is a probabilistic reversal learning task, where the reward contingencies switch across blocks
+            - Within blocks, the higher reward option will not always give you a reward, but it will give you a higher reward on average
+            - Understanding that other players are also learning the task and that their choices may not be optimal
+            - Being flexible with interpreting the choices of others and be willing to go against the majority if you think that you are right and they are wrong
+            - Incorporating your own experience and the choices of others to make the best possible choice
+            Remember that dynamically integrating information from others and your own experience is key to maximizing your points in this task.
+
+            BETTING STRATEGY: During the task itself, you should adapt a dynamic betting strategy which changes bets according to the confidence level for each choice. 
+            You should not adapt a fixed strategy (i.e., making the same bet repeatedly), but rather adapt your strategy to the current situation, by:
+            - Being willing to take risks and make high bets (3) if you are confident that your choice is correct (high confidence)
+            - Being willing to bet moderately (2) if you think your choice is correct but not completely sure (moderate confidence)
+            - Being willing to play it safe and make low bets (1) if you are unsure that your choice is correct (low confidence)
+            - Being willing to go against the majority if you think that you are right and they are wrong
+            Remember that dynamically adapting your bets to reflect your confidence is key to maximizing your points in this task.
+            By increasing your bets when you are confident and decreasing them when you are not, you can maximize your points in this task. 
+            This is a more adaptive strategy than repeatedly selecting a conservative or moderate bet (i.e., repeatedly selecting 2). 
+            You should be willing to take risks and make high bets (3) if you are confident that your choice is correct, and play it safe and make low bets (1) if you are unsure about your choice.""",
                         
-                        "analyze_page_q": """Based on the scraped webpage content, I'll analyze what's being asked and provide a thoughtful response.
+            "analyze_page_q": """Perfect. This is your summary of the survey/experiment so far: \n\n {summary} \n\n You have now proceeded to the next page. This is the body text of the web page: \n\n {body} \n\n 
 
-            Summary: {summary}
+            I need you to do two things, but remember your adaptive choosing and betting strategy:
 
-            I see this is a page where I need to make decisions or answer questions. As a risk-taker, I'll consider bold choices that might lead to higher rewards.
+            First, this page contains {nr_q} question(s) and I need you to answer all questions in the variable 'answers'. You should be willing to:
+            - Understand that other players are also learning the task and that their choices may not be optimal
+            - Beflexible with interpreting the choices of others and be willing to go against the majority if you think that you are right and they are wrong
+            - Incorporate your own experience and the choices of others to make the best possible choice
+            - Take risks and make high bets (3) if you are confident that your choice is correct
+            - Bet moderately (2) if you think your choice is correct but not completely sure
+            - Play it safe and make low bets (1) if you unsure about your choice
+            - Go against the majority if you think that you are right and they are wrong
 
-            The webpage contains: {page_content}
+            Second, I need you to update the summary. The new summary should include a summary of the content of the page, the old summary given above, the questions asked and the answers you have given. 
 
-            Looking at this content, I need to:
-            1. Understand what choices or bets are required
-            2. Consider making higher bets when I have some confidence
-            3. Be willing to take risks by potentially choosing differently from others
-            4. Be decisive rather than overly cautious
+            The following JSON string contains the questions: {questions_json} 
 
-            I'll answer each question with a rationale that explains my risk-taking approach. When betting, I'll generally prefer higher bets unless I have strong reasons not to.
+            For each identified question, you must provide two variables: 'reason' contains your reasoning or thought that leads you to a response or answer and 'answer' which contains your response.
 
-            For my decisions, I'll provide:
-            {response_json}
-
-            Rationale for my choices:
-            {rationale}"""
-                    }
+            Taken together, a correct answer to a text with two questions would have the form {{""answers"": {{""ID of first question"": {{""reason"": ""Your reasoning for how you want to answer the first question"", ""answer"":""Your final answer to the first question""}}, ""ID of the second question"": {{""reason"": ""Your reasoning for how you want to answer the second question"", ""answer"": ""Your final answer to the second question""}}}},""summary"": ""Your summary"", ""confused"": ""set to `true` if you are confused by any part of the instructions, otherwise set it to `false`""}}"""
+        }
         
         # Run the bot on the session
         monitor_url = f"http://localhost:8000/SessionMonitor/{session_id}"
@@ -288,7 +317,7 @@ def run_session(session_number):
                 model=LLM_MODEL,
                 api_key=LLM_API_KEY,
                 throttle=True,  # Enable throttling to avoid rate limits
-                user_prompts=risk_taking_prompts,  # Add custom risk-taking prompts
+                user_prompts=behaviour_prompts,  # Add custom behaviour prompts
                 # Add increased delays to avoid rate limits
                 **{"initial_delay": 2.0, "backoff_factor": 2.0}
             )
