@@ -1,18 +1,37 @@
+# Virtual Environment
 venv/
+
+# Environment Variables
 .env
+
+# Django Files
 staticfiles
 ./db.sqlite3
-.idea
-*~
 *.sqlite3
 _static_root
+
+# Bot and Temporary Files
 _bots*s
 __temp*
 __pycache__/
 *.py[cod]
-.DS_Store
-*.otreezip
-heroku_cheatsheet.txt
 botex_data/
 data/
-.Rproj.user
+
+# IDE and Editor Files
+.idea
+*~
+.DS_Store
+
+# oTree Specific
+*.otreezip
+heroku_cheatsheet.txt
+
+# R Related Files
+*.Rproj
+*.Rhistory
+*.Rproj.user
+
+# Data and scripts
+Rmd/
+data/
