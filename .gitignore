@@ -31,6 +31,9 @@ heroku_cheatsheet.txt
 *.Rproj
 *.Rhistory
 *.Rproj.user
+*.RData
+*.Ruserdata
+*.Rhistory
 
 # Data and scripts
 Rmd/
