@@ -50,6 +50,9 @@ class C(BaseConstants):
         'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B'  # Rounds 49-64
     ]
 
+    # Reversal points
+    REVERSAL_ROUNDS = [16, 33, 48]
+
 
 # Hardcoded reward sequence for each round: [(A_reward, B_reward), ...]
 REWARD_SEQUENCE = [
@@ -166,6 +169,9 @@ class Group(BaseGroup):
     # Probability settings for the two options
     high_probability_option = models.StringField()     # Which option ('A' or 'B') has high probability in this round
     
+    # Reversal indicator
+    reversal_happened = models.IntegerField(initial=0)  # 1 if a reversal happened in this round, 0 otherwise
+    
     def set_round_rewards(self):
         """Set the rewards for options A and B in the current round"""
         # Get rewards from the pre-generated sequence
@@ -174,8 +180,13 @@ class Group(BaseGroup):
         # Set which option has high probability in this round
         self.high_probability_option = C.HIGH_PROBABILITY_OPTION[self.round_number - 1]
         
+        # Check if this is a reversal round
+        self.reversal_happened = 1 if self.round_number in C.REVERSAL_ROUNDS else 0
+        
         print(f"Round {self.round_number}: Option {self.high_probability_option} has high probability")
         print(f"Rewards: A = {self.round_reward_A}, B = {self.round_reward_B}")
+        if self.reversal_happened:
+            print(f"REVERSAL occurred at round {self.round_number}")
 
 
 class Player(BasePlayer):
@@ -225,21 +236,19 @@ class Player(BasePlayer):
         ],
         widget=widgets.RadioSelect
     )
-    
-    # Fields to track correctness
-    q1_correct = models.BooleanField(initial=False)
-    q2_correct = models.BooleanField(initial=False)
-    q3_correct = models.BooleanField(initial=False)
-    q4_correct = models.BooleanField(initial=False)
 
     # Choice and bet tracking variables
     choice1 = models.StringField(widget=widgets.RadioSelect, choices=['A', 'B'])     # Player's first choice ('A' or 'B')
     choice2 = models.StringField(widget=widgets.RadioSelect, choices=['A', 'B'])     # Player's second choice ('A' or 'B')
     bet1 = models.IntegerField(widget=widgets.RadioSelect, choices=[1, 2, 3])       # Amount bet on first choice (1-3)
     bet2 = models.IntegerField(widget=widgets.RadioSelect, choices=[1, 2, 3])       # Amount bet on second choice (1-3)
+
+    # Choice tracking variables
+    switch_vs_stay = models.IntegerField()               # Whether player switched (1) or stayed (0) between choices
     trial_reward = models.IntegerField(initial=0)        # Reward received in current trial (1 or 0)
+    loss_or_gain = models.IntegerField()                  # Whether player gained (1) or lost (-1) points
     
-    # Social influence tracking - as percentages (decimals)
+    # Social influence tracking
     choice1_with = models.FloatField(initial=0)        # Percentage of others who made same first choice
     choice1_against = models.FloatField(initial=0)     # Percentage of others who made different first choice
     choice2_with = models.FloatField(initial=0)        # Percentage of others who made same second choice
@@ -248,21 +257,19 @@ class Player(BasePlayer):
     # Performance metrics
     choice1_accuracy = models.BooleanField(initial=0)    # Whether first choice was optimal
     choice2_accuracy = models.BooleanField(initial=0)    # Whether second choice was optimal
-    choice1_accuracy_sum = models.IntegerField(initial=0)# Sum choice1 accuracy over trials
-    choice2_accuracy_sum = models.IntegerField(initial=0)# Sum choice2 accuracy over trials
-    switch_vs_stay = models.IntegerField()               # Whether player switched (1) or stayed (0) between choices
-
-    # Binary reward tracking
+    choice1_accuracy_sum = models.IntegerField(initial=0)  # Sum choice1 accuracy over trials
+    choice2_accuracy_sum = models.IntegerField(initial=0)  # Sum choice2 accuracy over trials
     choice1_reward_binary = models.IntegerField(initial=0)  # Whether first choice was rewarded (1) or not (0)
     choice2_reward_binary = models.IntegerField(initial=0)  # Whether second choice was rewarded (1) or not (0)
-    
+    choice1_reward_binary_sum = models.IntegerField(initial=0)  # Sum of choice1_reward_binary over trials
+    choice2_reward_binary_sum = models.IntegerField(initial=0)  # Sum of choice2_reward_binary over trials
+
     # Earnings tracking
     choice1_earnings = models.IntegerField(initial=0)     # Points earned from first choice
     choice2_earnings = models.IntegerField(initial=0)     # Points earned from second choice
+    choice1_sum_earnings = models.IntegerField(initial=0)  # Sum of choice1_earnings over trials
+    choice2_sum_earnings = models.IntegerField(initial=0)  # Sum of choice2_earnings over trials
     bonus_payment_score = models.IntegerField(initial=0)  # Total bonus points earned
-    
-    # Outcome tracking
-    loss_or_gain = models.IntegerField()                  # Whether player gained (1) or lost (-1) points
     
     # Virtual players' choices - First choice
     player1_choice_one = models.StringField()
@@ -376,28 +383,41 @@ class Player(BasePlayer):
     
     def calculate_choice1_earnings(self):
         """Calculate earnings for first choice"""
-        # For choice1, we need to see if it would have been rewarded
+        # For choice1, see if it would have been rewarded
         if self.choice1 == 'A':
             choice1_reward = self.group.round_reward_A
         else:  # 'B'
             choice1_reward = self.group.round_reward_B
             
+        # Set binary reward outcome
+        self.choice1_reward_binary = choice1_reward
+        
+        # Calculate earnings
         if choice1_reward == 1:  # Would have been rewarded
             self.choice1_earnings = self.bet1 * 20  # Positive points
         else:  # Would not have been rewarded
             self.choice1_earnings = -1 * self.bet1 * 20  # Negative points
-            
-        self.choice1_reward_binary = choice1_reward
     
-    def update_accuracy_sums(self):
-        """Update the cumulative accuracy sums across rounds"""
+    def update_cumulative_sums(self):
+        """Update all cumulative sums across rounds"""
         if self.round_number == 1:
+            # First round - initialize all sums with current values
             self.choice1_accuracy_sum = int(self.choice1_accuracy)
             self.choice2_accuracy_sum = int(self.choice2_accuracy)
+            self.choice1_reward_binary_sum = self.choice1_reward_binary
+            self.choice2_reward_binary_sum = self.choice2_reward_binary
+            self.choice1_sum_earnings = self.choice1_earnings
+            self.choice2_sum_earnings = self.choice2_earnings
         else:
+            # Subsequent rounds - add current values to previous sums
             previous_player = self.in_round(self.round_number - 1)
             self.choice1_accuracy_sum = previous_player.choice1_accuracy_sum + int(self.choice1_accuracy)
             self.choice2_accuracy_sum = previous_player.choice2_accuracy_sum + int(self.choice2_accuracy)
+            self.choice1_reward_binary_sum = previous_player.choice1_reward_binary_sum + self.choice1_reward_binary
+            self.choice2_reward_binary_sum = previous_player.choice2_reward_binary_sum + self.choice2_reward_binary
+            self.choice1_sum_earnings = previous_player.choice1_sum_earnings + self.choice1_earnings
+            self.choice2_sum_earnings = previous_player.choice2_sum_earnings + self.choice2_earnings
+
 
 class Welcome(Page):
     """Initial page with study information and consent"""
@@ -511,13 +531,16 @@ class SecondDecisions(Page):
         else:  # 'B'
             player.trial_reward = player.group.round_reward_B
         
+        # Set binary reward outcome
+        player.choice2_reward_binary = player.trial_reward
+        
         # Calculate second choice earnings
         if player.trial_reward == 1:  # Option was rewarded
             player.choice2_earnings = player.bet2 * 20  # Positive points
         else:  # Option was not rewarded
             player.choice2_earnings = -1 * player.bet2 * 20  # Negative points
             
-        # Update cumulative score
+        # Update cumulative score for bonus payment
         if player.round_number == 1:
             player.bonus_payment_score = player.choice2_earnings
         else:
@@ -531,14 +554,11 @@ class SecondDecisions(Page):
         player.choice1_accuracy = (player.choice1 == player.group.high_probability_option)
         player.choice2_accuracy = (player.choice2 == player.group.high_probability_option)
         
-        # Update accuracy sums
-        player.update_accuracy_sums()
+        # Update all cumulative sums
+        player.update_cumulative_sums()
         
         # Calculate if player switched or stayed
         player.switch_vs_stay = 1 if player.choice1 != player.choice2 else 0
-        
-        # Record whether second choice was rewarded
-        player.choice2_reward_binary = player.trial_reward
         
         # Calculate agreement with other players for second choice
         player.calculate_second_choice_social_influence()
@@ -580,6 +600,17 @@ class FinalResults(Page):
     @staticmethod
     def is_displayed(player):
         return player.round_number == C.NUM_ROUNDS
+    
+    @staticmethod
+    def before_next_page(player, timeout_happened):
+        # Store cumulative data in participant vars for use in subsequent apps
+        player.participant.vars['choice1_sum_earnings'] = player.choice1_sum_earnings
+        player.participant.vars['choice2_sum_earnings'] = player.choice2_sum_earnings
+        player.participant.vars['choice1_accuracy_sum'] = player.choice1_accuracy_sum
+        player.participant.vars['choice2_accuracy_sum'] = player.choice2_accuracy_sum
+        player.participant.vars['choice1_reward_binary_sum'] = player.choice1_reward_binary_sum
+        player.participant.vars['choice2_reward_binary_sum'] = player.choice2_reward_binary_sum
+        player.participant.vars['bonus_payoff'] = cu(max(0, player.bonus_payment_score / 600))
     
     @staticmethod
     def vars_for_template(player):

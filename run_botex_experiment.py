@@ -51,7 +51,7 @@ if os.path.exists('.env'):
     logger.info("Loaded environment variables from .env file")
 
 # Number of sessions to run concurrently
-NUM_SESSIONS = 4  # Change this to run more or fewer concurrent sessions
+NUM_SESSIONS = 1  # Change this to run more or fewer concurrent sessions
 
 # LLM model vars - using Gemini by default
 LLM_MODEL = environ.get('LLM_MODEL', "gemini/gemini-1.5-flash")
@@ -150,32 +150,34 @@ def export_ordered_response_data(csv_file, botex_db, session_id):
 def get_behaviour_prompts():
     """Returns the behavior prompts for the LLM bots"""
     return {
-        "system": """You are participating in an economic experiment where your goal is to maximize points by making choices and placing bets. 
-        The experiment is a probabilistic reversal learning task, where you will make a choice between two options. 
+        "system": """You are participating in a social experiment where your goal is to maximize points by making choices and placing bets. 
+
+        EXPERIMENT OVERVIEW:
+        The experiment involves completing a probabilistic reversal learning task, where you will make a choice between two options. 
         As such, the reward contingencies will switch across blocks, but you will not know when or how often this will happen.
         Making it more difficult is that the reward contingencies are probabilistic, meaning that the higher reward option will not always give you a reward, but it will give you a higher reward on average.
         So, even if you select the higher reward option, you may not always get a reward, but it is still the best option to select OVERALL within a block. 
         And the other way around, if you select the lower reward option, you may get a reward, but it is the worse option to select OVERALL within a block.
 
-        You will also make bets reflecting your confidence in your choice.
-        The higher the bet, the more points you can win, but also the more points you can lose if you are wrong.
+        You will also make bets reflecting your confidence in your choice. The higher the bet, the more points you can win, but also the more points you can lose if you are wrong.
 
-        You will be making choices and bets in a group of 5 participants, including yourself. You will be able to see the choices of other participants, which you can use to inform your own choices, both within a trial and across trials.
-        However, you may also use your own experience to inform your choices and bets. We are ultimately interested to see how participants flexibly integrate information from others and their own experience to make the best possible choice and bet.
+        You will be making these choices and bets in a group of 5 participants, including yourself. 
+        You will be able to see the choices of other participants, which you can use to inform your own choices, both within a trial and across trials.
+        However, you may also use your own experience to inform your choices and bets. 
 
-        Further instructions on the task and how you will complete it be provided during the experimen itselft.
-        
-        When interacting the the experiment, you should analyze each page carefully and respond with a valid JSON.
+        We are ultimately interested to see how participants flexibly integrate information from others and their own experience to make the best possible choice and bet.
 
         Here are some further instructions on how to behave when making your choices and bets:
 
         CHOICE STRATEGY: During the task itself, you should aim to make choices by dynamically integrating information regarding the choices of others within the group with your own experience.
-        You should not adapt a fixed strategy (i.e., making the same choice repeatedly), but rather adapt your strategy to the current situation, by:
+        The extent to which you should do so is up to you, feel free to follow your judgement based on the information you have available.
+        However, you should not adapt a fixed strategy (i.e., making the same choice repeatedly), but rather adapt your strategy to the current situation, by:
         - Understanding that the task is a probabilistic reversal learning task, where the reward contingencies switch across blocks
         - Within blocks, the higher reward option will not always give you a reward, but it will give you a higher reward on average
-        - Understanding that other players are also learning the task and that their choices may not be optimal
+        - Understanding that other players are also learning the task at the same time as you, and that their choices may not be optimal
         - Being flexible with interpreting the choices of others and be willing to go against the majority if you think that you are right and they are wrong
-        - Incorporating your own experience and the choices of others to make the best possible choice
+        - Being willing to change your choice if you think that others are right and you are wrong
+        - Ultimately, incorporating your own experience and the choices of others to make the best possible choice
         Remember that dynamically integrating information from others and your own experience is key to maximizing your points in this task.
 
         BETTING STRATEGY: During the task itself, you should adapt a dynamic betting strategy which changes bets according to the confidence level for each choice. 
@@ -183,11 +185,12 @@ def get_behaviour_prompts():
         - Being willing to take risks and make high bets (3) if you are confident that your choice is correct (high confidence)
         - Being willing to bet moderately (2) if you think your choice is correct but not completely sure (moderate confidence)
         - Being willing to play it safe and make low bets (1) if you are unsure that your choice is correct (low confidence)
-        - Being willing to go against the majority if you think that you are right and they are wrong
         Remember that dynamically adapting your bets to reflect your confidence is key to maximizing your points in this task.
-        By increasing your bets when you are confident and decreasing them when you are not, you can maximize your points in this task. 
-        This is a more adaptive strategy than repeatedly selecting a conservative or moderate bet (i.e., repeatedly selecting 2). 
-        You should be willing to take risks and make high bets (3) if you are confident that your choice is correct, and play it safe and make low bets (1) if you are unsure about your choice.""",
+        This is often a better strategy for getting a higher points score - which is your goal for the experiment - than repeatedly selecting a conservative or moderate bet (i.e., repeatedly selecting 2).
+
+        Further instructions on the task and how you will complete it be provided during the experiment itself.
+        
+        When interacting the the experiment, you should analyze each page carefully and respond with a valid JSON.""",
                     
         "analyze_page_q": """Perfect. This is your summary of the survey/experiment so far: \n\n {summary} \n\n You have now proceeded to the next page. This is the body text of the web page: \n\n {body} \n\n 
 
@@ -196,11 +199,11 @@ def get_behaviour_prompts():
         First, this page contains {nr_q} question(s) and I need you to answer all questions in the variable 'answers'. You should be willing to:
         - Understand that other players are also learning the task and that their choices may not be optimal
         - Be flexible with interpreting the choices of others and be willing to go against the majority if you think that you are right and they are wrong
+        - Being willing to change your choice if you think that others are right and you are wrong
         - Incorporate your own experience and the choices of others to make the best possible choice
         - Take risks and make high bets (3) if you are confident that your choice is correct
         - Bet moderately (2) if you think your choice is correct but not completely sure
         - Play it safe and make low bets (1) if you unsure about your choice
-        - Go against the majority if you think that you are right and they are wrong
 
         Second, I need you to update the summary. The new summary should include a summary of the content of the page, the old summary given above, the questions asked and the answers you have given. 
 
