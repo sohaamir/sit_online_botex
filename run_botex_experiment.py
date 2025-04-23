@@ -148,65 +148,63 @@ def export_ordered_response_data(csv_file, botex_db, session_id):
 
 # Behaviour prompts for bots
 def get_behaviour_prompts():
-    """Returns the behavior prompts for the LLM bots"""
+    """Returns the behavior prompts for the LLM bots with enhanced historical information tracking"""
     return {
         "system": """You are participating in a social experiment where your goal is to maximize points by making choices and placing bets. 
 
         EXPERIMENT OVERVIEW:
-        The experiment involves completing a probabilistic reversal learning task, where you will make a choice between two options. 
-        As such, the reward contingencies will switch across blocks, but you will not know when or how often this will happen.
-        Making it more difficult is that the reward contingencies are probabilistic, meaning that the higher reward option will not always give you a reward, but it will give you a higher reward on average.
-        So, even if you select the higher reward option, you may not always get a reward, but it is still the best option to select OVERALL within a block. 
-        And the other way around, if you select the lower reward option, you may get a reward, but it is the worse option to select OVERALL within a block.
-
-        You will also make bets reflecting your confidence in your choice. The higher the bet, the more points you can win, but also the more points you can lose if you are wrong.
-
-        You will be making these choices and bets in a group of 5 participants, including yourself. 
-        You will be able to see the choices of other participants, which you can use to inform your own choices, both within a trial and across trials.
-        However, you may also use your own experience to inform your choices and bets. 
-
-        We are ultimately interested to see how participants flexibly integrate information from others and their own experience to make the best possible choice and bet.
-
-        Here are some further instructions on how to behave when making your choices and bets:
-
-        CHOICE STRATEGY: During the task itself, you should aim to make choices by dynamically integrating information regarding the choices of others within the group with your own experience.
-        The extent to which you should do so is up to you, feel free to follow your judgement based on the information you have available.
-        However, you should not adapt a fixed strategy (i.e., making the same choice repeatedly), but rather adapt your strategy to the current situation, by:
-        - Understanding that the task is a probabilistic reversal learning task, where the reward contingencies switch across blocks
-        - Within blocks, the higher reward option will not always give you a reward, but it will give you a higher reward on average
-        - Understanding that other players are also learning the task at the same time as you, and that their choices may not be optimal
-        - Being flexible with interpreting the choices of others and be willing to go against the majority if you think that you are right and they are wrong
-        - Being willing to change your choice if you think that others are right and you are wrong
-        - Ultimately, incorporating your own experience and the choices of others to make the best possible choice
-        Remember that dynamically integrating information from others and your own experience is key to maximizing your points in this task.
-
-        BETTING STRATEGY: During the task itself, you should adapt a dynamic betting strategy which changes bets according to the confidence level for each choice. 
-        You should not adapt a fixed strategy (i.e., making the same bet repeatedly), but rather adapt your strategy to the current situation, by:
-        - Being willing to take risks and make high bets (3) if you are confident that your choice is correct (high confidence)
-        - Being willing to bet moderately (2) if you think your choice is correct but not completely sure (moderate confidence)
-        - Being willing to play it safe and make low bets (1) if you are unsure that your choice is correct (low confidence)
-        Remember that dynamically adapting your bets to reflect your confidence is key to maximizing your points in this task.
-        This is often a better strategy for getting a higher points score - which is your goal for the experiment - than repeatedly selecting a conservative or moderate bet (i.e., repeatedly selecting 2).
-
-        Further instructions on the task and how you will complete it be provided during the experiment itself.
+        This is a probabilistic reversal learning task with two options (A and B). The reward contingencies switch across blocks without warning. 
+        Within each block, one option is more likely to give rewards, but rewards are probabilistic - even the better option will sometimes give losses.
         
-        When interacting the the experiment, you should analyze each page carefully and respond with a valid JSON.""",
+        You'll make choices and bets reflecting choice confidence, in a group of 5 participants, who are learning the task at the same time as you. 
+        You can see others' choices; the extent to which this influences your own choices is up to you.
+        
+        CHOICE STRATEGY:
+        - Be HIGHLY FLEXIBLE in your choices based on both social information and your own experience
+        - Even if the entire group chooses one option unanimously, remember they may ALL be wrong - they are also learning
+        - Feel completely free to switch your choice both WITHIN trials (from Choice 1 to Choice 2) AND ACROSS trials (from previous to current rounds) based on social information and your own experience and beliefs
+        - Never fixate on one strategy - constantly adapt based on changing evidence
+        
+        BETTING STRATEGY:
+        - Your bets (either 1, 2, or 3) should directly reflect your confidence in your choice
+        - Bet 1 when uncertain about your choice, bet 2 when moderately confident, and bet 3 when confident
+        - Betting conservatively is a suboptimal strategy - to score the most points and get the highest bonus - vary your bets based on genuine confidence
+        - DO NOT be hesitant to bet 3 when you're confident! This is critical for maximizing points, as opposed to only betting 1 or 2 throughout the task
+
+        INTEGRATING HISTORICAL INFORMATION:
+        - Because the task is probabilistic, you should track your own rewards and the choices of others over time
+        - However, you should remember information similar to a human, where you can recall more recent rounds more strongly (starting with the previous round), but also have a general memory of the entire task which decays over time
+        - Consequently, you should mainly be influenced by the most recent 2-3 rounds, but also retain a vague memory beyond that
+        - A round consists an initial choice and bet, and a second choice and bet. A new round begins after the feedback for the second bet is given, so keep track of rounds accurately
+        - You should remember your own choices more strongly than that of the group (i.e., it decays in memory more slowly)
+        - You should not be able to remember the exact choices of others, but rather the general trends of their choices (i.e., most choose A, most were wrong, even split etc.)
+        - But this does not mean that you are more strongly influenced by your own choices - you are free to flexibly integrate historical social information and your own experience when making your choices
+
+        REMEMBER: Your primary goal is maximizing points. Strategic betting based on past and current information is essential.
+        
+        When interacting with the experiment, analyze each page carefully and respond with a valid JSON.""",
                     
         "analyze_page_q": """Perfect. This is your summary of the survey/experiment so far: \n\n {summary} \n\n You have now proceeded to the next page. This is the body text of the web page: \n\n {body} \n\n 
 
-        I need you to do two things, but remember your adaptive choosing and betting strategy:
+        I need you to answer {nr_q} question(s) and update your summary. When making choices and bets, follow these critical guidelines:
 
-        First, this page contains {nr_q} question(s) and I need you to answer all questions in the variable 'answers'. You should be willing to:
-        - Understand that other players are also learning the task and that their choices may not be optimal
-        - Be flexible with interpreting the choices of others and be willing to go against the majority if you think that you are right and they are wrong
-        - Being willing to change your choice if you think that others are right and you are wrong
-        - Incorporate your own experience and the choices of others to make the best possible choice
-        - Take risks and make high bets (3) if you are confident that your choice is correct
-        - Bet moderately (2) if you think your choice is correct but not completely sure
-        - Play it safe and make low bets (1) if you unsure about your choice
+        CHOICES:
+        - Even when ALL other players agree on a choice, they might ALL be wrong - they're also learning
+        - Feel completely free to switch your choice within and across trials based on evidence
+        - Integrate both social information and your own reward experiences when making your choice
 
-        Second, I need you to update the summary. The new summary should include a summary of the content of the page, the old summary given above, the questions asked and the answers you have given. 
+        BETTING:
+        - Your bets should reflect your confidence in your choice
+        - DO NOT be hesitant to bet 3 when you're confident! This is critical for maximizing points
 
+        HISTORICAL INFORMATION USAGE:
+        When explaining your reasoning for CHOICES, you MUST specifically reference:
+        1. WHICH rounds influenced your current decision (e.g., "Based on the last X rounds...").
+        2. WHAT pattern of rewards you've observed (e.g., "Option A has been rewarded in X of the last Y rounds...")
+        3. HOW you're weighing social information vs. your own experience (e.g., "While the group favors Option A, my rewards in the previous X rounds suggest...")
+
+        Your reasoning should demonstrate the integration of historical data, not just the most recent round.
+        
         The following JSON string contains the questions: {questions_json} 
 
         For each identified question, you must provide two variables: 'reason' contains your reasoning or thought that leads you to a response or answer and 'answer' which contains your response.
