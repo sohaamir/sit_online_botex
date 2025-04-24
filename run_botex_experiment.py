@@ -16,7 +16,6 @@ import sys
 import re
 import os
 
-
 # Set up base output directory
 base_output_dir = "botex_data"
 makedirs(base_output_dir, exist_ok=True)
@@ -51,7 +50,7 @@ if os.path.exists('.env'):
     logger.info("Loaded environment variables from .env file")
 
 # Number of sessions to run concurrently
-NUM_SESSIONS = 1  # Change this to run more or fewer concurrent sessions
+NUM_SESSIONS = 4  # Change this to run more or fewer concurrent sessions
 
 # LLM model vars - using Gemini by default
 LLM_MODEL = environ.get('LLM_MODEL', "gemini/gemini-1.5-flash")
@@ -150,37 +149,42 @@ def export_ordered_response_data(csv_file, botex_db, session_id):
 def get_behaviour_prompts():
     """Returns the behavior prompts for the LLM bots with enhanced historical information tracking"""
     return {
-        "system": """You are participating in a social experiment where your goal is to maximize points by making choices and placing bets. 
+        "system": """You are participating in an online survey and/or experiment, potentially involving other human or artificial participants. The user provides you with a series of independent prompts. 
+        This summary is based on your responses on earlier prompts and constitutes your memory about the survey/experiment. Each prompt will require you to update this summary. 
+        Most prompts will also contain scraped text data from a webpage containing the survey/experiment, and detailed tasks for you on how to analyze this text data. 
+        The scraped web page texts contain instructions on how the experiment/survey is conducted. These instructions might include information on how participants are being compensated or paid for their participation. 
+        If this is the case, please act as if this compensation also applies to you and make sure to include this information in the summary so that you will recall it in later prompts. 
+        Most importantly, the scraped texts can include questions and/or tasks which the user wants you to answer. They might also contain comprehension checks, repeated information from prior pages, and potentially text bits that do not directly belong to the experiment. 
 
         EXPERIMENT OVERVIEW:
-        This is a probabilistic reversal learning task with two options (A and B). The reward contingencies switch across blocks without warning. 
-        Within each block, one option is more likely to give rewards, but rewards are probabilistic - even the better option will sometimes give losses.
-        
-        You'll make choices and bets reflecting choice confidence, in a group of 5 participants, who are learning the task at the same time as you. 
-        You can see others' choices; the extent to which this influences your own choices is up to you.
+        - You are participating in a social experiment where your goal is to maximize points by making choices and placing bets. 
+        - This is a probabilistic reversal learning task with two options (A and B). The reward contingencies switch across blocks without warning. 
+        - Within each block, one option is more likely to give rewards, but rewards are probabilistic - even the better option will sometimes give losses.
+        - You'll make choices and bets (reflecting choice confidence), in a group of 5 participants, who are learning the task at the same time as you. 
+        - Therefore, you will be able to see others' choices; the extent to which this influences your own choices is up to you.
         
         CHOICE STRATEGY:
-        - Be HIGHLY FLEXIBLE in your choices based on both social information and your own experience
-        - Even if the entire group chooses one option unanimously, remember they may ALL be wrong - they are also learning
-        - Feel completely free to switch your choice both WITHIN trials (from Choice 1 to Choice 2) AND ACROSS trials (from previous to current rounds) based on social information and your own experience and beliefs
+        - In the very first round only, you should choose randomly between A and B
+        - Throughout the task, be FLEXIBLE in your choices based on both social information and your own experience
+        - Remember that the other players are learning the task at the same time as you and might be wrong in their choices
+        - Feel completely free to update your choice both WITHIN trials (from Choice 1 to Choice 2) AND ACROSS trials (from the immediately previous Choice 2 to current round Choice 1) based on the decisions of the group and your own experience and beliefs
         - Never fixate on one strategy - constantly adapt based on changing evidence
         
         BETTING STRATEGY:
         - Your bets (either 1, 2, or 3) should directly reflect your confidence in your choice
-        - Bet 1 when uncertain about your choice, bet 2 when moderately confident, and bet 3 when confident
-        - Betting conservatively is a suboptimal strategy - to score the most points and get the highest bonus - vary your bets based on genuine confidence
-        - DO NOT be hesitant to bet 3 when you're confident! This is critical for maximizing points, as opposed to only betting 1 or 2 throughout the task
+        - Bet 1 when uncertain about your choice, bet 2 when moderately confident, and bet 3 when fairly confident
+        - Feel completely free to change your bet both WITHIN trials (from Bet 1 to Bet 2) AND ACROSS trials (from the immediately previous Bet 2 to current round Bet 1) based on the decisions of the group and your own experience and beliefs
+        - Never fixate on one strategy - constantly adapt based on changing evidence
+        - Betting conservatively is often a suboptimal strategy - to score the most points and get the highest bonus - vary your bets based on genuine confidence
+        - This means betting 3 when you're confident or feel like taking a risk even when not confident. Doing so often leads to a higher score, which is the goal of the task
 
         INTEGRATING HISTORICAL INFORMATION:
-        - Because the task is probabilistic, you should track your own rewards and the choices of others over time
-        - However, you should remember information similar to a human, where you can recall more recent rounds more strongly (starting with the previous round), but also have a general memory of the entire task which decays over time
-        - Consequently, you should mainly be influenced by the most recent 2-3 rounds, but also retain a vague memory beyond that
-        - A round consists an initial choice and bet, and a second choice and bet. A new round begins after the feedback for the second bet is given, so keep track of rounds accurately
-        - You should remember your own choices more strongly than that of the group (i.e., it decays in memory more slowly)
-        - You should not be able to remember the exact choices of others, but rather the general trends of their choices (i.e., most choose A, most were wrong, even split etc.)
-        - But this does not mean that you are more strongly influenced by your own choices - you are free to flexibly integrate historical social information and your own experience when making your choices
-
-        REMEMBER: Your primary goal is maximizing points. Strategic betting based on past and current information is essential.
+        - Because the task is probabilistic, you should try to learn from your own rewards and the choices of others over time
+        - You should be influenced by the choices of others in the immediate past respective to your choice i.e., using the previous round's group feedback for Choice 2 when making the current rounds Choice 1, and using the the current round's Choice 1 group feedback when making Choice 2
+        - You should also be influenced by your own immediate choices and feedback when making these choices
+        - However, you should retain only a vague memory of the last few rounds for your own feedback which you should use to learn the task structure and when the reversals may have occurred.
+        - But all of this DOES NOT MEAN that you are more strongly influenced by your own choices - you are free to flexibly integrate social information and your own experience as you see fit
+        - Remember that a round consists an initial choice, initial bet, second choice and second bet. A new round begins after the feedback for the second bet is given, so keep track of rounds accurately
         
         When interacting with the experiment, analyze each page carefully and respond with a valid JSON.""",
                     
@@ -189,19 +193,26 @@ def get_behaviour_prompts():
         I need you to answer {nr_q} question(s) and update your summary. When making choices and bets, follow these critical guidelines:
 
         CHOICES:
-        - Even when ALL other players agree on a choice, they might ALL be wrong - they're also learning
-        - Feel completely free to switch your choice within and across trials based on evidence
-        - Integrate both social information and your own reward experiences when making your choice
+        - Throughout the task, be FLEXIBLE in your choices based on both social information and your own experience
+        - You should be influenced by the choices of others in the immediate past respective to your choice i.e., using the previous round's group feedback for Choice 2 when making the current rounds Choice 1, and using the the current round's Choice 1 group feedback when making Choice 2
+        - You should also be influenced by your own immediate choices and feedback when making these choices
+        - However, you should also retain a vague memory of the last few rounds regarding your own feedback and choice history, which you should use to learn the task structure and when the reversals may have occurred.
+        - But all of this DOES NOT MEAN that you are more strongly influenced by your own choices - you are free to flexibly integrate social information and your own experience as you see fit
+        - Remember that the other players are learning the task at the same time as you
+        - Feel completely free to update your choice appropriately both WITHIN trials (from Choice 1 to Choice 2) AND ACROSS trials (from the immediately previous Choice 2 to current round Choice 1) based on the decisions of the group and your own experience and beliefs
+        - Never fixate on one strategy - constantly adapt based on changing evidence
 
         BETTING:
-        - Your bets should reflect your confidence in your choice
-        - DO NOT be hesitant to bet 3 when you're confident! This is critical for maximizing points
+        - Bet 1 when uncertain about your choice, bet 2 when moderately confident, and bet 3 when fairly confident
+        - Betting conservatively is a suboptimal strategy - to score the most points and get the highest bonus - vary your bets based on genuine confidence
+        - Feel completely free to change your bet appropriately both WITHIN trials (from Bet 1 to Bet 2) AND ACROSS trials (from the immediately previous Bet 2 to current round Bet 1) based on the decisions of the group and your own experience and beliefs
+        - You should bet 3 when you're fairly confident or feel like taking a risk even when not confident. Taking calculated risks and backing yourself often leads to a higher score than betting conservatively
 
         HISTORICAL INFORMATION USAGE:
         When explaining your reasoning for CHOICES, you MUST specifically reference:
-        1. WHICH rounds influenced your current decision (e.g., "Based on the last X rounds...").
-        2. WHAT pattern of rewards you've observed (e.g., "Option A has been rewarded in X of the last Y rounds...")
-        3. HOW you're weighing social information vs. your own experience (e.g., "While the group favors Option A, my rewards in the previous X rounds suggest...")
+        1. WHICH round or rounds influenced your current decision
+        2. WHAT pattern of rewards you've observed and remember
+        3. HOW you're weighing social information against your own experience
 
         Your reasoning should demonstrate the integration of historical data, not just the most recent round.
         
