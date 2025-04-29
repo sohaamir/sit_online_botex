@@ -122,7 +122,7 @@ REWARD_SEQUENCE = [
     (0, 1),  # Round 64
 ]
 
-# Example responses for the virtual players (59.6% average correct, the actual values are 60.4%)
+# Example responses for the virtual players (59.6% average correct, the actual average accuracy in the experiment (n=316) was 60.4%)
 # These sequences are based on the provided data from the human players, with examples at 20%, 40%, 60% and 80% quartile
 
 # Player 1 sequences (54.7% correct)
