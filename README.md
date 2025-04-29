@@ -54,6 +54,42 @@ Run the development server:
 otree devserver
 ```
 
+(optional) Download the TinyLLaMA model
+
+```bash
+chmod +x download_model.sh
+./download_model.sh
+```
+## Running experiments
+
+You can run experiments using the command line interface:
+
+'python run_experiment.py <name> <sessions> <llm>'
+
+Arguments:
+
+`name`: Name of the experiment (e.g., "social_influence_task")
+`sessions`: Number of concurrent sessions to run
+`llm`: LLM model to use (e.g., "`gemini/gemini-1.5-flash`" or "`tinyllama`")
+
+Optional arguments:
+
+`--model_path`: Path to local model file (for tinyllama)
+`--api_key`: API key for cloud models (if not set in .env)
+`--strategy`: Bot strategy to use (options: standard, risk_taking, social_follower)
+`--output_dir`: Directory to store output data
+
+### Examples
+
+Run with Gemini model:
+`python run_experiment.py social_influence_task 1 gemini/gemini-1.5-flash`
+
+Run with local TinyLLaMA model:
+`python run_experiment.py social_influence_task 1 tinyllama`
+
+Run with Gemini model using risk-taking strategy:
+`python run_experiment.py social_influence_task 2 gemini/gemini-1.5-flash --strategy risk_taking`
+
 ## Contact
 
 If you have questions or issues regarding this project, please reach out via:

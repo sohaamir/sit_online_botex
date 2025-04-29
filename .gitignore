@@ -40,3 +40,6 @@ Rmd/
 data/
 output/
 .Rproj.user
+
+# Models
+models/
