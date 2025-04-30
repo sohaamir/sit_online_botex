@@ -1,4 +1,4 @@
-# Save as run_experiment_simple.py
+# run_experiment.py
 #!/usr/bin/env python
 
 from dotenv import load_dotenv

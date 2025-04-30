@@ -1,22 +1,24 @@
-# run_llamacpp_server_fixed.py
+#!/usr/bin/env python
+# Script to run llama.cpp server for botex experiments
 
 import sys
 import subprocess
 import requests
 import time
 import os
+import signal
 
 # Path to your model
 model_path = "models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
 
-# Command to run the server with correct verbose parameter
+# Command to run the server
 cmd = [
     sys.executable, 
     "-m", "llama_cpp.server",
     "--model", model_path,
     "--host", "127.0.0.1",
     "--port", "8080",
-    "--verbose", "true"  # Changed to provide "true" as the value
+    "--verbose", "true"
 ]
 
 print(f"Running command: {' '.join(cmd)}")
@@ -45,6 +47,11 @@ else:
     print("Failed to start server within the timeout period")
     process.terminate()
     sys.exit(1)
+
+# Handle the /health endpoint issue by overwriting the check_server_health function
+print("\nNOTE: To make botex work with llama.cpp, you need to run: ")
+print("export BOTEX_SKIP_HEALTH_CHECK=1")
+print("before running botex CLI")
 
 print("\nServer is running! Press Ctrl+C to stop...")
 try:
