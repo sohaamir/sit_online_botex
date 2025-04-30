@@ -1,5 +1,7 @@
 # Virtual Environment
 venv/
+llm_env/
+otree_env/
 
 # Environment Variables
 .env

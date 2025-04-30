@@ -38,8 +38,8 @@ def run_server(model_path, port=8080):
         max_retries = 30
         for i in range(max_retries):
             try:
-                # Check if server is running
-                response = requests.get(f"http://localhost:{port}/health")
+                # Check if server is running using correct endpoint
+                response = requests.get(f"http://localhost:{port}/v1/models")
                 if response.status_code == 200:
                     print(f"Server started successfully at http://localhost:{port}")
                     return process

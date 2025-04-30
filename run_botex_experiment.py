@@ -232,7 +232,7 @@ def get_custom_behaviour_prompts(strategy_type="standard"):
     return base_prompts
 
 # Function to run a single session with session-specific resources
-def run_session(session_number, experiment_name, llm_model, api_key, shared_otree_server=None, output_dir="botex_data", strategy_type="standard"):
+def run_session(session_number, experiment_name, llm_model, api_key, api_base=None, shared_otree_server=None, output_dir="botex_data", strategy_type="standard"):
     """Run a single session with a unique database and logs"""
     session_specific = {}
     try:
@@ -349,6 +349,11 @@ def run_session(session_number, experiment_name, llm_model, api_key, shared_otre
         # Add API key if using cloud model
         if api_key and llm_model != "llamacpp":
             bot_kwargs["api_key"] = api_key
+            
+        # Add API base if provided (needed for llama.cpp)
+        if api_base:
+            bot_kwargs["api_base"] = api_base
+            logger.info(f"Session {session_number}: Using API base: {api_base}")
             
         # Now run a single bot
         if session['bot_urls']:
@@ -491,7 +496,7 @@ def run_session(session_number, experiment_name, llm_model, api_key, shared_otre
                 logger.error(f"Session {session_number}: Error stopping oTree server: {str(e)}")
 
 def main(experiment_name='social_influence_task', num_sessions=1, llm_model="gemini/gemini-1.5-flash", 
-         api_key=None, output_dir="botex_data", llm_server=None, strategy_type="standard"):
+         api_key=None, api_base=None, output_dir="botex_data", llm_server=None, strategy_type="standard"):
     """Main function to run multiple concurrent sessions"""
     print(f"\nRunning {num_sessions} concurrent sessions using {llm_model}.")
     print(f"Results will be stored in the '{output_dir}' directory.")
@@ -509,6 +514,11 @@ def main(experiment_name='social_influence_task', num_sessions=1, llm_model="gem
             print(f"\nError: API key not found for model {llm_model}")
             print("Make sure to set this in your .env file or provide it as an argument")
             return False
+    
+    # If using llamacpp and no api_base specified, use default
+    if llm_model == "llamacpp" and api_base is None:
+        api_base = "http://localhost:8080"
+        logger.info(f"Using default API base for llamacpp: {api_base}")
     
     # Start a single shared oTree server for all sessions
     try:
@@ -539,6 +549,7 @@ def main(experiment_name='social_influence_task', num_sessions=1, llm_model="gem
                     experiment_name,
                     llm_model,
                     api_key,
+                    api_base,
                     shared_otree_server,
                     output_dir,
                     strategy_type

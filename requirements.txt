@@ -1,20 +1,36 @@
+# === Core oTree requirements ===
 otree==5.11.1
-psycopg2==2.9.9
-python-dotenv==1.0.1
-sentry_sdk
-websockets==10.1
 asgiref==3.8.1
-asyncio==3.4.3
-requests
+websockets==10.1
 ws4py
+
+# === Database ===
+psycopg2==2.9.9
 redis>=4.0.0
 django-redis>=5.0.0
+
+# === Environment & Config ===
+python-dotenv==1.0.1
+
+# === Error Logging ===
+sentry_sdk
+
+# === Async / Web server ===
+fastapi
+sse_starlette
+starlette-context
+uvicorn
+
+# === Typing and validation ===
+pydantic
+typing-extensions
+
+# === Machine Learning / Tools (for botex) ===
 botex
 cmake
 scikit-build
 setuptools
 llama-cpp-python
-fastapi
-sse_starlette
-uvicorn
-typing-extensions
+
+# === HTTP requests ===
+requests
