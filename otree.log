@@ -1,4 +1,45 @@
-[Errno 48] error while attempting to bind on address ('127.0.0.1', 8000): address already in use
 Open your browser to http://localhost:8000/
 To quit the server, press Control+C.
 
+Traceback (most recent call last):
+  File "/Users/aamirsohail/University of Birmingham - ALPN Laboratory - Research - Projects/online_social_study/otree_projects/social-influence-task-botex/venv/bin/otree", line 10, in <module>
+    sys.exit(execute_from_command_line())
+  File "/Users/aamirsohail/University of Birmingham - ALPN Laboratory - Research - Projects/online_social_study/otree_projects/social-influence-task-botex/venv/lib/python3.10/site-packages/otree/main.py", line 112, in execute_from_command_line
+    call_command(cmd, *argv[2:])
+  File "/Users/aamirsohail/University of Birmingham - ALPN Laboratory - Research - Projects/online_social_study/otree_projects/social-influence-task-botex/venv/lib/python3.10/site-packages/otree/cli/base.py", line 32, in call_command
+    module.Command().outer_handle(args)
+  File "/Users/aamirsohail/University of Birmingham - ALPN Laboratory - Research - Projects/online_social_study/otree_projects/social-influence-task-botex/venv/lib/python3.10/site-packages/otree/cli/base.py", line 10, in outer_handle
+    return self.handle(**vars(options))
+  File "/Users/aamirsohail/University of Birmingham - ALPN Laboratory - Research - Projects/online_social_study/otree_projects/social-influence-task-botex/venv/lib/python3.10/site-packages/otree/cli/devserver_inner.py", line 56, in handle
+    run_asgi_server(addr, port, is_devserver=True)
+  File "/Users/aamirsohail/University of Birmingham - ALPN Laboratory - Research - Projects/online_social_study/otree_projects/social-influence-task-botex/venv/lib/python3.10/site-packages/otree/cli/prodserver1of2.py", line 13, in run_asgi_server
+    run_uvicorn(addr, port, is_devserver=is_devserver)
+  File "/Users/aamirsohail/University of Birmingham - ALPN Laboratory - Research - Projects/online_social_study/otree_projects/social-influence-task-botex/venv/lib/python3.10/site-packages/otree/cli/prodserver1of2.py", line 33, in run_uvicorn
+    server.run()
+  File "/Users/aamirsohail/University of Birmingham - ALPN Laboratory - Research - Projects/online_social_study/otree_projects/social-influence-task-botex/venv/lib/python3.10/site-packages/uvicorn/server.py", line 66, in run
+    return asyncio.run(self.serve(sockets=sockets))
+  File "/usr/local/Cellar/python@3.10/3.10.17/Frameworks/Python.framework/Versions/3.10/lib/python3.10/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/usr/local/Cellar/python@3.10/3.10.17/Frameworks/Python.framework/Versions/3.10/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/Users/aamirsohail/University of Birmingham - ALPN Laboratory - Research - Projects/online_social_study/otree_projects/social-influence-task-botex/venv/lib/python3.10/site-packages/uvicorn/server.py", line 70, in serve
+    await self._serve(sockets)
+  File "/Users/aamirsohail/University of Birmingham - ALPN Laboratory - Research - Projects/online_social_study/otree_projects/social-influence-task-botex/venv/lib/python3.10/site-packages/uvicorn/server.py", line 77, in _serve
+    config.load()
+  File "/Users/aamirsohail/University of Birmingham - ALPN Laboratory - Research - Projects/online_social_study/otree_projects/social-influence-task-botex/venv/lib/python3.10/site-packages/uvicorn/config.py", line 435, in load
+    self.loaded_app = import_from_string(self.app)
+  File "/Users/aamirsohail/University of Birmingham - ALPN Laboratory - Research - Projects/online_social_study/otree_projects/social-influence-task-botex/venv/lib/python3.10/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+  File "/usr/local/Cellar/python@3.10/3.10.17/Frameworks/Python.framework/Versions/3.10/lib/python3.10/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/Users/aamirsohail/University of Birmingham - ALPN Laboratory - Research - Projects/online_social_study/otree_projects/social-influence-task-botex/venv/lib/python3.10/site-packages/otree/asgi.py", line 11, in <module>
+    from .patch import ExceptionMiddleware
+  File "/Users/aamirsohail/University of Birmingham - ALPN Laboratory - Research - Projects/online_social_study/otree_projects/social-influence-task-botex/venv/lib/python3.10/site-packages/otree/patch.py", line 10, in <module>
+    class ExceptionMiddleware(starlette.exceptions.ExceptionMiddleware):
+AttributeError: module 'starlette.exceptions' has no attribute 'ExceptionMiddleware'
