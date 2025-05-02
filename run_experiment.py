@@ -1,11 +1,16 @@
 # run_experiment.py
 #!/usr/bin/env python
 
+import tinyllama_fix
+
+# Explicitly disable health checks at the very top of the file
+import os
+os.environ['BOTEX_SKIP_HEALTH_CHECK'] = '1'
+
 from dotenv import load_dotenv
 import argparse
 import logging
 import sys
-import os
 
 # Import the refactored run_botex_experiment module
 from run_botex_experiment import main as run_experiment_main

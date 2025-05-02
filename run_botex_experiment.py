@@ -1,8 +1,15 @@
 # This script runs the social influence task experiment using the botex package with concurrent sessions.
 
+# Explicitly disable health checks at the very top of the file
+import os
+os.environ['BOTEX_SKIP_HEALTH_CHECK'] = '1'
+
+from dotenv import load_dotenv
+load_dotenv('botex.env')
+
 from concurrent.futures import ThreadPoolExecutor
 from os import environ, makedirs, path
-from dotenv import load_dotenv
+
 import subprocess
 import threading
 import datetime
@@ -12,7 +19,6 @@ import json
 import csv
 import sys
 import re
-import os
 
 # Custom log filter to exclude HTTP request and throttling error logs
 class LogFilter(logging.Filter):
