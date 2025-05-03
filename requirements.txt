@@ -30,7 +30,6 @@ botex
 cmake
 scikit-build
 setuptools
-llama-cpp-python
 
 # === HTTP requests ===
 requests

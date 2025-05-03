@@ -45,3 +45,8 @@ output/
 
 # Models
 models/
+
+# Llama
+llama_cpp/
+llama.cpp/
+llama_server

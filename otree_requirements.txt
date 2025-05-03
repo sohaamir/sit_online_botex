@@ -1,2 +1,0 @@
-otree
-python-dotenv
