@@ -53,3 +53,5 @@ llama_server
 
 .env
 botex.env
+
+,cache*
