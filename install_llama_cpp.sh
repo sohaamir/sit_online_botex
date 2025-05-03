@@ -1,9 +1,9 @@
 #!/bin/bash
-# install_llama_cpp.sh - Script to install llama.cpp server binary
+# install_llama_cpp.sh - Script to install llama.cpp server binary without Metal
 
 set -e  # Exit immediately if a command fails
 
-echo "Installing llama.cpp server..."
+echo "Installing llama.cpp server without Metal (CPU-only)..."
 
 # Create a directory for llama.cpp
 mkdir -p llama_cpp
@@ -35,18 +35,13 @@ else
     git clone https://github.com/ggml-org/llama.cpp.git .
 fi
 
-# Build llama.cpp
-echo "Building llama.cpp..."
+# Build llama.cpp without Metal
+echo "Building llama.cpp without Metal support (CPU-only)..."
 mkdir -p build
 cd build
 
-# Configure build
-# Uncomment and modify appropriate lines for GPU acceleration if needed
-cmake .. -DBUILD_SHARED_LIBS=ON
-# For CUDA support:
-# cmake .. -DBUILD_SHARED_LIBS=ON -DLLAMA_CUBLAS=ON
-# For Metal support (Apple):
-# cmake .. -DBUILD_SHARED_LIBS=ON -DLLAMA_METAL=ON
+# Configure build with Metal explicitly disabled
+cmake .. -DBUILD_SHARED_LIBS=ON -DGGML_METAL=OFF
 
 # Build
 cmake --build . --config Release
@@ -61,7 +56,7 @@ else
     exit 1
 fi
 
-echo "llama.cpp server built successfully!"
+echo "llama.cpp server built successfully without Metal support!"
 echo "The server binary is located at: llama_cpp/build/$SERVER_BIN"
 
 # Return to the original directory

@@ -23,7 +23,7 @@ fi
 echo "Starting llama.cpp server with model: $MODEL_PATH"
 echo "Server will be available at http://$HOST:$PORT"
 
-# Run the server with the appropriate options
+# Run the server with CPU-only option
 $SERVER_PATH \
     --model $MODEL_PATH \
     --host $HOST \
@@ -34,5 +34,3 @@ $SERVER_PATH \
     --temp 0.7 \
     --threads 4 \
     --embedding
-
-# This command will keep running until stopped with Ctrl+C

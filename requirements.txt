@@ -22,7 +22,7 @@ starlette-context
 uvicorn
 
 # === Typing and validation ===
-pydantic
+pydantic>=2.0
 typing-extensions
 
 # === Machine Learning / Tools (for botex) ===
