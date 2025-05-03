@@ -50,3 +50,6 @@ models/
 llama_cpp/
 llama.cpp/
 llama_server
+
+.env
+botex.env
