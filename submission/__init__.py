@@ -134,6 +134,8 @@ class Feedback(Page):
 
 # Submission page with completion link
 # We take the Prolific ID from earlier and display it before submission, for the Qualtrics survey.    
+
+"""
 class Submit(Page):
     @staticmethod
     def js_vars(player):
@@ -153,6 +155,7 @@ class Submit(Page):
         return {
             'prolific_id': player.get_prolific_id()
         }
+"""
 
 # Define sequence of pages
-page_sequence = [Feedback, Submit]
+page_sequence = [Feedback]

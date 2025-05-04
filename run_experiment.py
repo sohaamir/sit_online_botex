@@ -10,6 +10,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables
+load_dotenv('.env')
 load_dotenv('botex.env')
 
 def main():
@@ -32,6 +33,12 @@ def main():
     os.environ['OTREE_NHUMANS'] = '0'
     os.environ['BOTEX_SKIP_HEALTH_CHECK'] = '1'  # Skip health check for llama.cpp
     os.environ['BOTEX_STRATEGY'] = args.strategy  # Set strategy
+    
+    # Make sure REST key is available if it exists
+    if 'OTREE_REST_KEY' in os.environ:
+        print(f"OTREE_REST_KEY is set")
+    else:
+        print("WARNING: OTREE_REST_KEY not found in environment")
     
     # Create output directory
     os.makedirs(args.output_dir, exist_ok=True)
