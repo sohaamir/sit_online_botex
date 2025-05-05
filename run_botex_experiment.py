@@ -44,10 +44,10 @@ for handler in logger.handlers:
     handler.addFilter(LogFilter())
 
 # Load environment variables from .env file
-if os.path.exists('.env'):
+if os.path.exists('botex.env'):
     load_dotenv()
     os.environ['OTREE_REST_KEY'] = environ.get('OTREE_REST_KEY', '')
-    logger.info("Loaded environment variables from .env file")
+    logger.info("Loaded environment variables from botex.env file")
 
 # Number of sessions to run concurrently
 NUM_SESSIONS = 1  # Change this to run more or fewer concurrent sessions
