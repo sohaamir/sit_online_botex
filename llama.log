@@ -305,3 +305,82 @@ prompt eval time =     707.24 ms /    27 tokens (   26.19 ms per token,    38.18
 srv  update_slots: all slots are idle
 srv  log_server_r: request: POST /v1/chat/completions ::1 200
 srv  log_server_r: request: GET /v1/models ::1 200
+srv  log_server_r: request: GET /health ::1 200
+srv  log_server_r: request: GET /health ::1 200
+srv  log_server_r: request: GET /props ::1 200
+srv  params_from_: Chat format: Content-only
+slot launch_slot_: id  0 | task 51 | processing task
+slot update_slots: id  0 | task 51 | new prompt, n_ctx_slot = 2048, n_keep = 0, n_prompt_tokens = 825
+slot update_slots: id  0 | task 51 | kv cache rm [0, end)
+slot update_slots: id  0 | task 51 | prompt processing progress, n_past = 825, n_tokens = 825, progress = 1.000000
+slot update_slots: id  0 | task 51 | prompt done, n_past = 825, n_tokens = 825
+slot      release: id  0 | task 51 | stop processing: n_past = 841, truncated = 0
+slot print_timing: id  0 | task 51 | 
+prompt eval time =    6032.55 ms /   825 tokens (    7.31 ms per token,   136.76 tokens per second)
+       eval time =     568.45 ms /    17 tokens (   33.44 ms per token,    29.91 tokens per second)
+      total time =    6601.00 ms /   842 tokens
+srv  update_slots: all slots are idle
+srv  log_server_r: request: POST /v1/chat/completions ::1 200
+srv  params_from_: Chat format: Content-only
+slot launch_slot_: id  0 | task 69 | processing task
+slot update_slots: id  0 | task 69 | new prompt, n_ctx_slot = 2048, n_keep = 0, n_prompt_tokens = 1162
+slot update_slots: id  0 | task 69 | kv cache rm [0, end)
+slot update_slots: id  0 | task 69 | prompt processing progress, n_past = 1162, n_tokens = 1162, progress = 1.000000
+slot update_slots: id  0 | task 69 | prompt done, n_past = 1162, n_tokens = 1162
+slot      release: id  0 | task 69 | stop processing: n_past = 1175, truncated = 0
+slot print_timing: id  0 | task 69 | 
+prompt eval time =   10282.49 ms /  1162 tokens (    8.85 ms per token,   113.01 tokens per second)
+       eval time =     604.64 ms /    14 tokens (   43.19 ms per token,    23.15 tokens per second)
+      total time =   10887.13 ms /  1176 tokens
+srv  update_slots: all slots are idle
+srv  log_server_r: request: POST /v1/chat/completions ::1 200
+srv  params_from_: Chat format: Content-only
+slot launch_slot_: id  0 | task 84 | processing task
+slot update_slots: id  0 | task 84 | new prompt, n_ctx_slot = 2048, n_keep = 0, n_prompt_tokens = 1233
+slot update_slots: id  0 | task 84 | kv cache rm [0, end)
+slot update_slots: id  0 | task 84 | prompt processing progress, n_past = 1233, n_tokens = 1233, progress = 1.000000
+slot update_slots: id  0 | task 84 | prompt done, n_past = 1233, n_tokens = 1233
+slot      release: id  0 | task 84 | stop processing: n_past = 1417, truncated = 0
+slot print_timing: id  0 | task 84 | 
+prompt eval time =   12175.67 ms /  1233 tokens (    9.87 ms per token,   101.27 tokens per second)
+       eval time =    7585.94 ms /   185 tokens (   41.01 ms per token,    24.39 tokens per second)
+      total time =   19761.60 ms /  1418 tokens
+srv  update_slots: all slots are idle
+srv  log_server_r: request: POST /v1/chat/completions ::1 200
+srv  params_from_: Chat format: Content-only
+slot launch_slot_: id  0 | task 270 | processing task
+slot update_slots: id  0 | task 270 | new prompt, n_ctx_slot = 2048, n_keep = 0, n_prompt_tokens = 2179
+slot update_slots: id  0 | task 270 | input truncated, n_ctx = 2048, n_keep = 0, n_left = 2048, n_prompt_tokens = 1155
+slot update_slots: id  0 | task 270 | kv cache rm [0, end)
+slot update_slots: id  0 | task 270 | prompt processing progress, n_past = 1155, n_tokens = 1155, progress = 1.000000
+slot update_slots: id  0 | task 270 | prompt done, n_past = 1155, n_tokens = 1155
+slot update_slots: id  0 | task 270 | slot context shift, n_keep = 1, n_left = 2046, n_discard = 1023
+slot update_slots: id  0 | task 270 | slot context shift, n_keep = 1, n_left = 2046, n_discard = 1023
+slot update_slots: id  0 | task 270 | slot context shift, n_keep = 1, n_left = 2046, n_discard = 1023
+slot update_slots: id  0 | task 270 | slot context shift, n_keep = 1, n_left = 2046, n_discard = 1023
+slot update_slots: id  0 | task 270 | slot context shift, n_keep = 1, n_left = 2046, n_discard = 1023
+slot update_slots: id  0 | task 270 | slot context shift, n_keep = 1, n_left = 2046, n_discard = 1023
+slot update_slots: id  0 | task 270 | slot context shift, n_keep = 1, n_left = 2046, n_discard = 1023
+slot update_slots: id  0 | task 270 | slot context shift, n_keep = 1, n_left = 2046, n_discard = 1023
+slot update_slots: id  0 | task 270 | slot context shift, n_keep = 1, n_left = 2046, n_discard = 1023
+slot      release: id  0 | task 270 | stop processing: n_past = 1947, truncated = 1
+slot print_timing: id  0 | task 270 | 
+prompt eval time =   10292.36 ms /  1155 tokens (    8.91 ms per token,   112.22 tokens per second)
+       eval time =  436702.75 ms / 10000 tokens (   43.67 ms per token,    22.90 tokens per second)
+      total time =  446995.11 ms / 11155 tokens
+srv  update_slots: all slots are idle
+srv  log_server_r: request: POST /v1/chat/completions ::1 200
+srv  params_from_: Chat format: Content-only
+slot launch_slot_: id  0 | task 10271 | processing task
+slot update_slots: id  0 | task 10271 | new prompt, n_ctx_slot = 2048, n_keep = 0, n_prompt_tokens = 12223
+slot update_slots: id  0 | task 10271 | input truncated, n_ctx = 2048, n_keep = 0, n_left = 2048, n_prompt_tokens = 1983
+slot update_slots: id  0 | task 10271 | kv cache rm [0, end)
+slot update_slots: id  0 | task 10271 | prompt processing progress, n_past = 1983, n_tokens = 1983, progress = 1.000000
+slot update_slots: id  0 | task 10271 | prompt done, n_past = 1983, n_tokens = 1983
+slot update_slots: id  0 | task 10271 | slot context shift, n_keep = 1, n_left = 2046, n_discard = 1023
+slot update_slots: id  0 | task 10271 | slot context shift, n_keep = 1, n_left = 2046, n_discard = 1023
+slot update_slots: id  0 | task 10271 | slot context shift, n_keep = 1, n_left = 2046, n_discard = 1023
+srv  cancel_tasks: cancel task, id_task = 10271
+srv  log_server_r: request: POST /v1/chat/completions ::1 200
+slot      release: id  0 | task 10271 | stop processing: n_past = 1294, truncated = 1
+srv  update_slots: all slots are idle
