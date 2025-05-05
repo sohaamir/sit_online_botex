@@ -92,18 +92,5 @@ echo "  Top-K: $TOP_K"
 echo "  Context Size: $CTX_SIZE"
 echo "  Threads: $THREADS"
 
-# Run the server with CPU-only option
-$SERVER_PATH \
-    --model $MODEL_PATH \
-    --host $HOST \
-    --port $PORT \
-    --ctx-size $CTX_SIZE \
-    --n-predict $MAX_TOKENS \
-    --temp $TEMPERATURE \
-    --top-p $TOP_P \
-    --top-k $TOP_K \
-    --repeat-penalty 1.1 \
-    --threads $THREADS \
-    --n-gpu-layers 0 \
-    --parallel 1 \
-    --embedding
+# Run the server with all parameters on a single line
+$SERVER_PATH --model $MODEL_PATH --host $HOST --port $PORT --ctx-size $CTX_SIZE --n-predict $MAX_TOKENS --temp $TEMPERATURE --top-p $TOP_P --top-k $TOP_K --repeat-penalty 1.1 --threads $THREADS --n-gpu-layers 0 --parallel 1 --embedding

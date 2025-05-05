@@ -14,18 +14,19 @@ Usage:
     Use --help to see all options
 """
 
-import os
-import sys
-import time
-import logging
-import argparse
-import subprocess
-import datetime
-import json
-from dotenv import load_dotenv
-import botex
-from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
+from dotenv import load_dotenv
+from pathlib import Path
+import subprocess
+import argparse
+import datetime
+import logging
+import openai
+import botex
+import time
+import json
+import sys
+import os
 
 # Set up logging
 logging.basicConfig(
@@ -423,14 +424,17 @@ def run_session(args, session_number):
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         session_id = f"session_{session_number}_{timestamp}"
         
-        # Create session-specific output directory
-        output_dir = os.path.join(args.output_dir, f"session_{session_id}")
+        # Create model-specific suffix for directories and filenames
+        model_suffix = f"_{args.model}"
+        
+        # Create session-specific output directory with model suffix
+        output_dir = os.path.join(args.output_dir, f"session_{session_id}{model_suffix}")
         os.makedirs(output_dir, exist_ok=True)
         
-        # Create session-specific database and log files
-        botex_db = os.path.join(output_dir, f"botex_{session_id}.sqlite3")
-        log_file = os.path.join(output_dir, f"experiment_log_{timestamp}.txt")
-        bot_actions_log = os.path.join(output_dir, f"bot_actions_{timestamp}.txt")
+        # Create session-specific database and log files with model suffix
+        botex_db = os.path.join(output_dir, f"botex_{session_id}{model_suffix}.sqlite3")
+        log_file = os.path.join(output_dir, f"experiment_log_{timestamp}{model_suffix}.txt")
+        bot_actions_log = os.path.join(output_dir, f"bot_actions_{timestamp}{model_suffix}.txt")
         
         # Set up session-specific logging
         file_handler = logging.FileHandler(log_file)
@@ -475,10 +479,10 @@ def run_session(args, session_number):
         otree_session_id = session['session_id']
         logger.info(f"Session {session_number}: Initialized oTree session with ID: {otree_session_id}")
         
-        # Define output filenames
-        botex_responses_csv = os.path.join(output_dir, f"botex_{otree_session_id}_responses.csv")
-        botex_participants_csv = os.path.join(output_dir, f"botex_{otree_session_id}_participants.csv")
-        otree_wide_csv = os.path.join(output_dir, f"otree_{otree_session_id}_wide.csv")
+        # Define output filenames with model suffix
+        botex_responses_csv = os.path.join(output_dir, f"botex_{otree_session_id}_responses{model_suffix}.csv")
+        botex_participants_csv = os.path.join(output_dir, f"botex_{otree_session_id}_participants{model_suffix}.csv")
+        otree_wide_csv = os.path.join(output_dir, f"otree_{otree_session_id}_wide{model_suffix}.csv")
         
         # Get the monitor URL for display
         monitor_url = f"{args.otree_url}/SessionMonitor/{otree_session_id}"
@@ -603,7 +607,7 @@ def run_session(args, session_number):
             logger.info(f"Session {session_number}: Bot completed")
             
             # Save bot actions to JSON
-            bot_actions_json = os.path.join(output_dir, f"bot_actions_{timestamp}.json")
+            bot_actions_json = os.path.join(output_dir, f"bot_actions_{timestamp}{model_suffix}.json")
             with open(bot_actions_json, 'w') as f:
                 json.dump(bot_actions, f, indent=2)
             logger.info(f"Session {session_number}: Bot actions saved to JSON: {bot_actions_json}")
@@ -649,14 +653,14 @@ def run_session(args, session_number):
                     otree_wide_csv, 
                     store_as_csv=True,
                     data_exp_path=output_dir,
-                    exp_prefix=f"otree_{otree_session_id}"
+                    exp_prefix=f"otree_{otree_session_id}{model_suffix}"
                 )
                 logger.info(f"Session {session_number}: oTree data normalized and exported")
             except Exception as e:
                 logger.error(f"Session {session_number}: Failed to export oTree data: {str(e)}")
             
             # Create a summary file
-            summary_file = os.path.join(output_dir, f"experiment_summary_{otree_session_id}.txt")
+            summary_file = os.path.join(output_dir, f"experiment_summary_{otree_session_id}{model_suffix}.txt")
             with open(summary_file, 'w') as f:
                 f.write(f"Social Influence Task Experiment Summary - {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                 f.write("="*70 + "\n\n")

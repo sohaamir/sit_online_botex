@@ -51,13 +51,16 @@ def main():
     # Get the simplified arguments
     simple_args = parse_simple_args()
     
+    # Add model name to output directory
+    model_specific_output_dir = f"{simple_args.output_dir}_{simple_args.llm}"
+    
     # Create a list of arguments to pass to the main run_botex_experiment script
     sys_args = [
         "--session-config", simple_args.name,
         "--sessions", str(simple_args.sessions),
         "--model", simple_args.llm,
         "--strategy", simple_args.strategy,
-        "--output-dir", simple_args.output_dir
+        "--output-dir", model_specific_output_dir
     ]
     
     # Add optional arguments if provided
