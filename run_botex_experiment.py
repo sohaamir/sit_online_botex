@@ -1,20 +1,24 @@
 # This script runs the social influence task experiment using the botex package with concurrent sessions.
 
-from dotenv import load_dotenv
-load_dotenv('.env')
-
 from concurrent.futures import ThreadPoolExecutor
 from os import environ, makedirs, path
+from dotenv import load_dotenv
 import subprocess
 import threading
 import datetime
+import sqlite3
 import logging
+import shutil
 import botex
 import json
 import csv
 import sys
-import os
 import re
+import os
+
+# Set up base output directory
+base_output_dir = "botex_data"
+makedirs(base_output_dir, exist_ok=True)
 
 # Custom log filter to exclude HTTP request and throttling error logs
 class LogFilter(logging.Filter):
@@ -44,6 +48,20 @@ if os.path.exists('.env'):
     load_dotenv()
     os.environ['OTREE_REST_KEY'] = environ.get('OTREE_REST_KEY', '')
     logger.info("Loaded environment variables from .env file")
+
+# Number of sessions to run concurrently
+NUM_SESSIONS = 1  # Change this to run more or fewer concurrent sessions
+
+# LLM model vars - using Gemini by default
+LLM_MODEL = environ.get('LLM_MODEL', "gemini/gemini-1.5-flash")
+LLM_API_KEY = environ.get('OTREE_GEMINI_API_KEY')
+
+# Verify API key exists
+if not LLM_API_KEY:
+    logger.error("OTREE_GEMINI_API_KEY not found in environment variables")
+    print("\nError: OTREE_GEMINI_API_KEY not found in environment variables")
+    print("Make sure to set this in your .env file")
+    sys.exit(1)
 
 # Thread-local storage for session-specific resources
 thread_local = threading.local()
@@ -204,37 +222,8 @@ def get_behaviour_prompts():
         Taken together, a correct answer to a text with two questions would have the form {{""answers"": {{""ID of first question"": {{""reason"": ""Your reasoning for how you want to answer the first question"", ""answer"":""Your final answer to the first question""}}, ""ID of the second question"": {{""reason"": ""Your reasoning for how you want to answer the second question"", ""answer"": ""Your final answer to the second question""}}}},""summary"": ""Your summary"", ""confused"": ""set to `true` if you are confused by any part of the instructions, otherwise set it to `false`""}}"""
     }
 
-# Add custom behavior prompts for different strategies
-def get_custom_behaviour_prompts(strategy_type="standard"):
-    """Returns behavior prompts with specific strategies"""
-    
-    base_prompts = get_behaviour_prompts()
-    
-    if strategy_type == "risk_taking":
-        # Modify prompts to encourage higher bets and risk-taking
-        base_prompts["system"] += """
-        ADDITIONAL STRATEGY GUIDELINES:
-        - You should be more willing to bet 3 even with moderate confidence
-        - Be more willing to go against the majority when you have a strong hunch
-        - Weight recent reward outcomes higher than social consensus
-        - Be less risk-averse and more willing to explore options that might be less popular
-        - When making a choice that differs from the majority, bet higher to maximize potential rewards
-        """
-    elif strategy_type == "social_follower":
-        # Modify prompts to follow social influence more closely
-        base_prompts["system"] += """
-        ADDITIONAL STRATEGY GUIDELINES:
-        - Prioritize social information from others above your own experience
-        - When the majority chooses a different option than you, strongly consider switching
-        - Be more conservative with bets when going against the group
-        - Pay special attention to players who seem to be performing well
-        - Update your choices more readily based on group consensus than on your own reward history
-        """
-    
-    return base_prompts
-
 # Function to run a single session with session-specific resources
-def run_session(session_number, experiment_name, llm_model, api_key, api_base=None, shared_otree_server=None, output_dir="botex_data", strategy_type="standard"):
+def run_session(session_number, shared_otree_server=None):
     """Run a single session with a unique database and logs"""
     session_specific = {}
     try:
@@ -243,7 +232,7 @@ def run_session(session_number, experiment_name, llm_model, api_key, api_base=No
         session_id = f"session_{session_number}_{timestamp}"
         
         # Create session-specific output directory
-        output_dir = os.path.join(output_dir, f"session_{session_id}")
+        output_dir = os.path.join(base_output_dir, f"session_{session_id}")
         makedirs(output_dir, exist_ok=True)
         
         # Create session-specific database
@@ -284,8 +273,6 @@ def run_session(session_number, experiment_name, llm_model, api_key, api_base=No
         logger.info(f"Session {session_number}: Log file: {log_file}")
         logger.info(f"Session {session_number}: Bot actions log: {bot_actions_log}")
         logger.info(f"Session {session_number}: Database: {botex_db}")
-        logger.info(f"Session {session_number}: Using model: {llm_model}")
-        logger.info(f"Session {session_number}: Strategy type: {strategy_type}")
         
         # Start or use shared oTree server
         if shared_otree_server is None:
@@ -309,9 +296,9 @@ def run_session(session_number, experiment_name, llm_model, api_key, api_base=No
             logger.info(f"Session {session_number}: Using shared oTree server")
         
         # Initialize a session
-        logger.info(f"Session {session_number}: Initializing {experiment_name} session...")
+        logger.info(f"Session {session_number}: Initializing social influence task session...")
         session = botex.init_otree_session(
-            config_name=experiment_name,  # Use the provided experiment name
+            config_name='social_influence_task',  # Your task's config name
             npart=5,  # Social influence task needs 5 participants
             nhumans=1,  # Only 1 bot will be controlled by LLM
             otree_server_url="http://localhost:8000",
@@ -331,39 +318,22 @@ def run_session(session_number, experiment_name, llm_model, api_key, api_base=No
         logger.info(f"Session {session_number}: Starting bot. You can monitor progress at {monitor_url}")
         print(f"\nSession {session_number}: Starting bot. You can monitor progress at {monitor_url}")
         
-        # Get behavior prompts based on strategy type
-        behavior_prompts = get_custom_behaviour_prompts(strategy_type)
-        
-        # Build bot parameters
-        bot_kwargs = {
-            "session_name": session_id,
-            "session_id": session_id,
-            "participant_id": session['participant_code'][0],
-            "botex_db": botex_db,
-            "model": llm_model,
-            "throttle": True,  # Enable throttling to avoid rate limits
-            "user_prompts": behavior_prompts,
-            # Add increased delays to avoid rate limits with smaller models
-            "initial_delay": 2.0,
-            "backoff_factor": 2.0
-        }
-        
-        # Add API key if using cloud model
-        if api_key and llm_model != "llamacpp":
-            bot_kwargs["api_key"] = api_key
-            
-        # Add API base if provided (needed for llama.cpp)
-        if api_base:
-            bot_kwargs["api_base"] = api_base
-            logger.info(f"Session {session_number}: Using API base: {api_base}")
-            
         # Now run a single bot
         if session['bot_urls']:
             # There should be one bot URL in the list
-            logger.info(f"Session {session_number}: Running single bot with {strategy_type} strategy using {llm_model}")
+            logger.info(f"Session {session_number}: Running single bot with risk-taking prompts")
             botex.run_single_bot(
                 url=session['bot_urls'][0],
-                **bot_kwargs
+                session_name=session_id,  # Set session name explicitly
+                session_id=session_id,    # Set session id explicitly  
+                participant_id=session['participant_code'][0],  # Set the participant code explicitly
+                botex_db=botex_db,        # Use session-specific database
+                model=LLM_MODEL,
+                api_key=LLM_API_KEY,
+                throttle=True,  # Enable throttling to avoid rate limits
+                user_prompts=get_behaviour_prompts(),  # Add custom behaviour prompts
+                # Add increased delays to avoid rate limits
+                **{"initial_delay": 2.0, "backoff_factor": 2.0}
             )
         else:
             logger.warning(f"Session {session_number}: No bot URLs found")
@@ -430,10 +400,10 @@ def run_session(session_number, experiment_name, llm_model, api_key, api_base=No
             f.write(f"Social Influence Task Experiment Summary - {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write("="*70 + "\n\n")
             f.write(f"Session ID: {session_id}\n")
-            f.write(f"Session Number: {session_number}\n")
-            f.write(f"Model used: {llm_model}\n")
-            f.write(f"Bot strategy: {strategy_type}\n")
-            f.write(f"Number of participants: 5 (1 LLM bot, 4 automated)\n\n")
+            f.write(f"Session Number: {session_number} of {NUM_SESSIONS}\n")
+            f.write(f"Model used: {LLM_MODEL}\n")
+            f.write(f"Number of participants: 5 (1 LLM bot, 4 automated)\n")
+            f.write(f"Custom prompts: Risk-taking behavior\n\n")
             f.write("Files generated:\n")
             f.write(f"- Log file: {path.basename(log_file)}\n")
             f.write(f"- Bot actions log: {path.basename(bot_actions_log)}\n")
@@ -452,13 +422,8 @@ def run_session(session_number, experiment_name, llm_model, api_key, api_base=No
             # Add specific information about the social influence task
             f.write("\nSocial Influence Task Details:\n")
             f.write("- Each participant made choices between options A and B over 64 rounds\n")
-            f.write(f"- One LLM bot ({llm_model}) made decisions with a {strategy_type} strategy\n")
-            if strategy_type == "risk_taking":
-                f.write("- Bot was prompted to prefer higher bets and be more willing to go against the majority\n")
-            elif strategy_type == "social_follower":
-                f.write("- Bot was prompted to prioritize social information and follow the group more closely\n")
-            else:
-                f.write("- Bot used standard balanced prompts for decision making\n")
+            f.write("- One LLM bot made decisions with a risk-taking strategy\n")
+            f.write("- Bot was prompted to prefer higher bets and be more willing to go against the majority\n")
             f.write("- Other 4 players had pre-determined choices\n")
             f.write("- Options had different reward probabilities that changed across blocks\n")
         
@@ -497,65 +462,28 @@ def run_session(session_number, experiment_name, llm_model, api_key, api_base=No
             except Exception as e:
                 logger.error(f"Session {session_number}: Error stopping oTree server: {str(e)}")
 
-def main(experiment_name='social_influence_task', num_sessions=1, llm_model="gemini/gemini-1.5-flash", 
-         api_key=None, api_base=None, output_dir="botex_data", llm_server=None, strategy_type="standard"):
+def main():
     """Main function to run multiple concurrent sessions"""
-    print(f"\nRunning {num_sessions} concurrent sessions using {llm_model}.")
-    print(f"Results will be stored in the '{output_dir}' directory.")
-    
-    # Get API key from environment if not provided and using cloud model
-    if api_key is None and llm_model != "llamacpp":
-        if llm_model.startswith("gemini"):
-            api_key = environ.get('OTREE_GEMINI_API_KEY')
-        elif llm_model.startswith("gpt"):
-            api_key = environ.get('OPENAI_API_KEY')
-            
-        # Verify API key exists for cloud models
-        if not api_key and llm_model != "llamacpp":
-            logger.error(f"API key not found for model {llm_model}")
-            print(f"\nError: API key not found for model {llm_model}")
-            print("Make sure to set this in your .env file or provide it as an argument")
-            return False
-    
-    # If using llamacpp and no api_base specified, use default
-    if llm_model == "llamacpp" and api_base is None:
-        api_base = "http://localhost:8080"
-        logger.info(f"Using default API base for llamacpp: {api_base}")
+    print(f"\nRunning {NUM_SESSIONS} concurrent sessions. Results will be stored in the '{base_output_dir}' directory.")
     
     # Start a single shared oTree server for all sessions
     try:
-        # We'll use the server provided or start our own
-        shared_otree_server = llm_server
-        local_otree_server = False
+        # Reset oTree database once
+        logger.info("Resetting oTree database...")
+        subprocess.run(["otree", "resetdb", "--noinput"], check=True)
+        logger.info("oTree database reset successful")
         
-        if shared_otree_server is None:
-            # Reset oTree database once
-            logger.info("Resetting oTree database...")
-            subprocess.run(["otree", "resetdb", "--noinput"], check=True)
-            logger.info("oTree database reset successful")
-            
-            # Start a single oTree server for all sessions
-            logger.info("Starting shared oTree server...")
-            shared_otree_server = botex.start_otree_server(project_path=".")
-            logger.info("Shared oTree server started successfully")
-            local_otree_server = True
+        # Start a single oTree server for all sessions
+        logger.info("Starting shared oTree server...")
+        shared_otree_server = botex.start_otree_server(project_path=".")
+        logger.info("Shared oTree server started successfully")
         
         # Run sessions concurrently using ThreadPoolExecutor
-        with ThreadPoolExecutor(max_workers=num_sessions) as executor:
+        with ThreadPoolExecutor(max_workers=NUM_SESSIONS) as executor:
             # Submit all sessions and get futures
             futures = []
-            for i in range(1, num_sessions + 1):
-                future = executor.submit(
-                    run_session, 
-                    i, 
-                    experiment_name,
-                    llm_model,
-                    api_key,
-                    api_base,
-                    shared_otree_server,
-                    output_dir,
-                    strategy_type
-                )
+            for i in range(1, NUM_SESSIONS + 1):
+                future = executor.submit(run_session, i, shared_otree_server)
                 futures.append(future)
             
             # Wait for all to complete and get results
@@ -564,7 +492,7 @@ def main(experiment_name='social_influence_task', num_sessions=1, llm_model="gem
                 try:
                     result = future.result()
                     results.append(result)
-                    if result.get('success', False):
+                    if result['success']:
                         print(f"Session {i} completed successfully: {result['session_id']}")
                     else:
                         print(f"Session {i} failed: {result.get('error', 'Unknown error')}")
@@ -573,18 +501,15 @@ def main(experiment_name='social_influence_task', num_sessions=1, llm_model="gem
             
             # Print summary
             successes = sum(1 for r in results if r.get('success', False))
-            print(f"\nCompleted {successes} out of {num_sessions} sessions successfully")
+            print(f"\nCompleted {successes} out of {NUM_SESSIONS} sessions successfully")
             
-        return successes == num_sessions  # Return True if all sessions completed successfully
-    
     except Exception as e:
         logger.error(f"Error in main execution: {str(e)}", exc_info=True)
         print(f"\nError in main execution: {str(e)}")
-        return False
     
     finally:
-        # Stop the shared oTree server only if we started it
-        if local_otree_server and 'shared_otree_server' in locals():
+        # Stop the shared oTree server
+        if 'shared_otree_server' in locals():
             try:
                 logger.info("Stopping shared oTree server...")
                 botex.stop_otree_server(shared_otree_server)
@@ -593,5 +518,4 @@ def main(experiment_name='social_influence_task', num_sessions=1, llm_model="gem
                 logger.error(f"Error stopping shared oTree server: {str(e)}")
 
 if __name__ == "__main__":
-    # When run directly, use default parameters
     main()

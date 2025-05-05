@@ -51,7 +51,8 @@ llama_cpp/
 llama.cpp/
 llama_server
 
+# Environment
 .env
 botex.env
-
+botexenv/
 ,cache*

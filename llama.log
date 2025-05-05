@@ -290,3 +290,18 @@ srv  update_slots: all slots are idle
 srv  log_server_r: request: GET /health ::1 200
 srv  log_server_r: request: GET /health ::1 200
 srv  log_server_r: request: GET /health ::1 200
+srv  log_server_r: request: GET /v1/models ::1 200
+srv  params_from_: Chat format: Content-only
+slot launch_slot_: id  0 | task 0 | processing task
+slot update_slots: id  0 | task 0 | new prompt, n_ctx_slot = 2048, n_keep = 0, n_prompt_tokens = 27
+slot update_slots: id  0 | task 0 | kv cache rm [0, end)
+slot update_slots: id  0 | task 0 | prompt processing progress, n_past = 27, n_tokens = 27, progress = 1.000000
+slot update_slots: id  0 | task 0 | prompt done, n_past = 27, n_tokens = 27
+slot      release: id  0 | task 0 | stop processing: n_past = 76, truncated = 0
+slot print_timing: id  0 | task 0 | 
+prompt eval time =     707.24 ms /    27 tokens (   26.19 ms per token,    38.18 tokens per second)
+       eval time =    1321.58 ms /    50 tokens (   26.43 ms per token,    37.83 tokens per second)
+      total time =    2028.82 ms /    77 tokens
+srv  update_slots: all slots are idle
+srv  log_server_r: request: POST /v1/chat/completions ::1 200
+srv  log_server_r: request: GET /v1/models ::1 200
