@@ -191,21 +191,7 @@ def get_bot_prompt_strategy(strategy="standard"):
         Most prompts will also contain scraped text data from a webpage containing the survey/experiment, and detailed tasks for you on how to analyze this text data. 
         The scraped web page texts contain instructions on how the experiment/survey is conducted. These instructions might include information on how participants are being compensated or paid for their participation. 
         If this is the case, please act as if this compensation also applies to you and make sure to include this information in the summary so that you will recall it in later prompts. 
-        Most importantly, the scraped texts can include questions and/or tasks which the user wants you to answer. They might also contain comprehension checks, repeated information from prior pages, and potentially text bits that do not directly belong to the experiment. 
-
-        EXPERIMENT OVERVIEW:
-        - You are participating in a social experiment where your goal is to maximize points by making choices and placing bets. 
-        - This is a probabilistic reversal learning task with two options (A and B). The reward contingencies switch across blocks without warning. 
-        - Within each block, one option is more likely to give rewards, but rewards are probabilistic - even the better option will sometimes give losses.
-        - You'll make choices and bets (reflecting choice confidence), in a group of 5 participants, who are learning the task at the same time as you. 
-        - Therefore, you will be able to see others' choices; the extent to which this influences your own choices is up to you.
-
-        HISTORICAL INFORMATION USAGE:
-        - Because the task is probabilistic, you should try to learn from your own rewards and the choices of others over time
-        - You should be influenced by the choices of others in the immediate past respective to your choice
-        - You should also be influenced by your own immediate choices and feedback
-        - However, you should retain only a vague memory of the last few rounds for your own feedback
-        - Remember that a round consists of an initial choice, initial bet, second choice and second bet
+        Most importantly, the scraped texts can include questions and/or tasks which the user wants you to answer. They might also contain comprehension checks, repeated information from prior pages, and potentially text bits that do not directly belong to the experiment.
         
         When interacting with the experiment, analyze each page carefully and respond with a valid JSON."""
     
@@ -216,18 +202,10 @@ def get_bot_prompt_strategy(strategy="standard"):
         CHOICE STRATEGY:
         - In the very first round only, you should choose randomly between B and A
         - Throughout the task, be FLEXIBLE and somewhat BOLD in your choices
-        - You should be willing to go against the majority opinion more often
-        - When you see a potential pattern, act on it more aggressively
-        - Feel completely free to update your choice both WITHIN trials and ACROSS trials
-        - Never fixate on one strategy - constantly adapt based on changing evidence
         
         BETTING STRATEGY:
         - Your bets should reflect a higher risk tolerance than average
         - Be more willing to place bet 3 (high confidence) even with moderate certainty
-        - Bet 1 only when genuinely uncertain, prefer bet 2 or 3 when you have any confidence
-        - You should prioritize higher rewards by placing higher bets more often
-        - Never bet 1 more than two rounds in a row - show more confidence!
-        - Betting conservatively is often suboptimal - to maximize your score, TAKE RISKS
         """
     elif strategy == "social_follower":
         # More socially influenced strategy
@@ -235,34 +213,20 @@ def get_bot_prompt_strategy(strategy="standard"):
         CHOICE STRATEGY:
         - In the very first round only, you should choose randomly between B and A
         - Throughout the task, prioritize SOCIAL INFORMATION over your own experiences
-        - When the majority of other players choose an option, strongly consider following them
-        - Be more likely to switch your choice if you see others choosing differently
-        - Still be flexible in your choices, but weight social information more heavily
-        - Never fixate on one strategy - constantly adapt based on changing evidence
         
         BETTING STRATEGY:
         - Your bets should directly reflect your confidence in your choice
         - Bet 1 when uncertain about your choice, bet 2 when moderately confident, and bet 3 when fairly confident
-        - When following the majority, bet higher (more confidently)
-        - When going against the majority, bet lower (less confidently)
-        - Adjust your bet based on how unanimous the other players are
-        - Betting conservatively when uncertain is your preferred approach
         """
     else:  # standard strategy
         strategy_prompt = """
         CHOICE STRATEGY:
         - In the very first round only, you should choose randomly between B and A
         - Throughout the task, be FLEXIBLE in your choices based on both social information and your own experience
-        - Remember that the other players are learning the task at the same time as you
-        - Feel completely free to update your choice both WITHIN trials and ACROSS trials
-        - Never fixate on one strategy - constantly adapt based on changing evidence
         
         BETTING STRATEGY:
         - Your bets should directly reflect your confidence in your choice
         - Bet 1 when uncertain about your choice, bet 2 when moderately confident, and bet 3 when fairly confident
-        - Feel completely free to change your bet both WITHIN trials and ACROSS trials
-        - Never fixate on one strategy - constantly adapt based on changing evidence
-        - Betting conservatively is often a suboptimal strategy - vary your bets based on genuine confidence
         """
     
     # Combine base prompt with strategy-specific instructions
@@ -279,23 +243,9 @@ def get_bot_prompt_strategy(strategy="standard"):
         CHOICES:
         - Throughout the task, be FLEXIBLE in your choices based on both social information and your own experience
         - You should be influenced by the choices of others in the immediate past respective to your choice
-        - You should also be influenced by your own immediate choices and feedback
-        - However, you should also retain a vague memory of the last few rounds regarding your own feedback
-        - Feel completely free to update your choice appropriately both WITHIN trials and ACROSS trials
-        - Never fixate on one strategy - constantly adapt based on changing evidence
 
         BETTING:
         - Bet 1 when uncertain about your choice, bet 2 when moderately confident, and bet 3 when fairly confident
-        - Betting conservatively can be a suboptimal strategy. To score the most points, vary your bets based on genuine confidence
-        - Feel completely free to change your bet appropriately both WITHIN trials and ACROSS trials
-
-        HISTORICAL INFORMATION USAGE:
-        When explaining your reasoning for CHOICES, you MUST specifically reference:
-        1. WHICH round or rounds influenced your current decision
-        2. WHAT pattern of rewards you've observed and remember
-        3. HOW you're weighing social information against your own experience
-
-        Your reasoning should demonstrate the integration of historical data, not just the most recent round.
         
         The following JSON string contains the questions: {questions_json} 
 
