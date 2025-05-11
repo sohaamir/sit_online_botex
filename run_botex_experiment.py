@@ -14,9 +14,6 @@ Usage:
     Use --help to see all options
 """
 
-# patch over botex model response schema to support Claude models
-from model_patch import patch_botex
-
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 from pathlib import Path
@@ -447,9 +444,6 @@ def run_tinyllama_bot(botex_db, session_id, url, **kwargs):
         url=url,
         **kwargs
     )
-
-# implement the patch
-patch_botex()
 
 def run_session(args, session_number):
     """Run a single experimental session with a botex bot"""
