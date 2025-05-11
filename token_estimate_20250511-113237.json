@@ -1,0 +1,73 @@
+{
+  "config": {
+    "rounds": 64,
+    "participants": 1,
+    "max_tokens": 1024,
+    "strategy": "standard"
+  },
+  "token_estimates": {
+    "input": {
+      "round1": 4886,
+      "system": 665,
+      "standard_round": 2095,
+      "final": 119
+    },
+    "output": {
+      "round1": 6000,
+      "standard_round": 2400,
+      "final": 800
+    }
+  },
+  "total_tokens_per_participant": {
+    "input": 137655,
+    "output": 158000,
+    "total": 295655
+  },
+  "total_tokens_all_participants": {
+    "input": 137655,
+    "output": 158000,
+    "total": 295655
+  },
+  "costs": {
+    "gpt-4.1-nano-2025-04-14": {
+      "input": 0.02064825,
+      "output": 0.0948,
+      "total": 0.11544825
+    },
+    "gpt-4": {
+      "input": 0.02064825,
+      "output": 0.0948,
+      "total": 0.11544825
+    },
+    "gpt-3.5-turbo": {
+      "input": 0.0688275,
+      "output": 0.237,
+      "total": 0.3058275
+    },
+    "claude-3-haiku-20240307": {
+      "input": 0.412965,
+      "output": 2.37,
+      "total": 2.782965
+    },
+    "claude-3-sonnet-20240229": {
+      "input": 0.412965,
+      "output": 2.37,
+      "total": 2.782965
+    },
+    "claude-3-opus-20240229": {
+      "input": 0.412965,
+      "output": 2.37,
+      "total": 2.782965
+    },
+    "gemini/gemini-1.5-flash": {
+      "input": 0.17206875,
+      "output": 1.185,
+      "total": 1.35706875
+    },
+    "gemini/gemini-1.5-pro": {
+      "input": 0.17206875,
+      "output": 1.185,
+      "total": 1.35706875
+    }
+  }
+}

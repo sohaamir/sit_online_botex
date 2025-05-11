@@ -1,0 +1,43 @@
+# botex.env - Configuration for botex experiment 
+
+# oTree configuration
+OTREE_SESSION_CONFIG=social_influence_task
+OTREE_NPARTICIPANTS=5
+OTREE_NHUMANS=1
+OTREE_SERVER_URL=http://localhost:8000
+OTREE_AUTH_LEVEL=''
+OTREE_ADMIN_PASSWORD=
+OTREE_PRODUCTION=1
+OTREE_SECRET_KEY=h8...
+OTREE_REST_KEY=dc...
+
+# Path botex SQLite database file
+BOTEX_DB="botex.sqlite3"
+
+# Google AI Studio specs
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini/gemini-1.5-flash
+
+# OpenAI API specs
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4.1-nano-2025-04-14
+
+# Anthropic API specs
+ANTHROPIC_API_KEY=
+ANTHROPIC_MODEL=claude-3-haiku-20240307
+
+# llamacpp configuration
+LOCAL_LLM_MODEL="tinyllama"
+LLAMACPP_LOCAL_LLM_PATH=models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
+LLAMACPP_SERVER_PATH=./llama_server
+LLAMACPP_SERVER_URL=http://localhost:8080
+LLAMACPP_MAX_TOKENS=256
+LLAMACPP_TEMPERATURE=0.8
+LLAMACPP_TOP_P=0.9
+LLAMACPP_TOP_K=40
+LLAMACPP_REPETITION_PENALTY=1.1
+
+# Bot behavior config
+BOT_STRATEGY=standard
+MAX_TOKENS_DEFAULT=2048
+EXPERIMENT_OUTPUT_DIR=botex_data

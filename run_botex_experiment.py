@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-run_botex_experiment.py - Run social influence task with LLM bots using different backends
+run_multi_model_experiment.py - Run social influence task with multiple LLM backends
 
-This script allows running the social influence task experiment with LLM bots using
-one of three backends:
+This script allows running the social influence task experiment with various LLM backends:
 - Google Gemini via API
-- OpenAI GPT-4o via API
+- OpenAI (GPT-4, etc.) via API
+- Anthropic Claude via API
 - TinyLLaMA locally via llama.cpp
 
 Usage:
-    python run_botex_experiment.py [OPTIONS]
+    python run_multi_model_experiment.py [OPTIONS]
 
     Use --help to see all options
 """
@@ -18,10 +18,12 @@ from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 from pathlib import Path
 import subprocess
+import requests
 import argparse
 import datetime
 import logging
-import openai
+import shutil
+import random
 import botex
 import time
 import json
@@ -34,7 +36,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[logging.StreamHandler()]
 )
-logger = logging.getLogger("run_botex_experiment")
+logger = logging.getLogger("run_multi_model")
 
 # Custom log filter to exclude noisy HTTP request logs
 class LogFilter(logging.Filter):
@@ -64,8 +66,8 @@ def parse_arguments():
     
     # LLM model selection
     parser.add_argument("-m", "--model", default=None,
-                        choices=["gemini", "openai", "tinyllama"],
-                        help="LLM implementation to use (gemini, openai, or tinyllama)")
+                        choices=["gemini", "openai", "anthropic", "tinyllama", "any"],
+                        help="LLM implementation to use (gemini, openai, anthropic, tinyllama, or any)")
     
     # Model-specific parameters
     parser.add_argument("-k", "--api-key", default=None,
@@ -114,14 +116,21 @@ def parse_arguments():
     
     args = parser.parse_args()
     
-    # If model not specified, try to determine from environment
-    if args.model is None:
-        if os.environ.get("GEMINI_API_KEY") or os.environ.get("OTREE_GEMINI_API_KEY"):
-            args.model = "gemini"
+    # If model is 'any', use whatever model has keys available
+    if args.model == 'any' or args.model is None:
+        # Check environment variables for API keys in priority order
+        if os.environ.get("ANTHROPIC_API_KEY"):
+            args.model = "anthropic"
+            logger.info("No model specified, using Anthropic Claude (found API key)")
         elif os.environ.get("OPENAI_API_KEY"):
             args.model = "openai"
+            logger.info("No model specified, using OpenAI (found API key)")
+        elif os.environ.get("GEMINI_API_KEY") or os.environ.get("OTREE_GEMINI_API_KEY"):
+            args.model = "gemini"
+            logger.info("No model specified, using Google Gemini (found API key)")
         elif os.environ.get("LLAMACPP_LOCAL_LLM_PATH"):
             args.model = "tinyllama"
+            logger.info("No model specified, using TinyLLama local model")
         else:
             logger.error("No model specified and couldn't determine from environment")
             sys.exit(1)
@@ -139,13 +148,32 @@ def parse_arguments():
             if not args.api_key:
                 logger.error("No OpenAI API key found. Please set OPENAI_API_KEY in botex.env or provide with --api-key")
                 sys.exit(1)
+        elif args.model == "anthropic":
+            args.api_key = os.environ.get("ANTHROPIC_API_KEY")
+            if not args.api_key:
+                logger.error("No Anthropic API key found. Please set ANTHROPIC_API_KEY in botex.env or provide with --api-key")
+                sys.exit(1)
+    
+    # Set model string based on the selected model
+    if not hasattr(args, 'model_string'):
+        if args.model == "gemini":
+            args.model_string = os.environ.get("GEMINI_MODEL", "gemini/gemini-1.5-flash")
+        elif args.model == "openai":
+            args.model_string = os.environ.get("OPENAI_MODEL", "gpt-4.1-nano-2025-04-14")
+        elif args.model == "anthropic":
+            args.model_string = os.environ.get("ANTHROPIC_MODEL", "claude-3-haiku-20240307")
+        elif args.model == "tinyllama":
+            args.model_string = "llamacpp"
+        else:
+            logger.error(f"Model {args.model} not supported")
+            sys.exit(1)
     
     # Set max tokens if not specified
     if args.max_tokens is None:
         if args.model == "tinyllama":
-            args.max_tokens = int(os.environ.get("LLAMACPP_MAX_TOKENS", "512"))
+            args.max_tokens = int(os.environ.get("LLAMACPP_MAX_TOKENS", "256"))
         else:
-            args.max_tokens = int(os.environ.get("MAX_TOKENS_DEFAULT", "2048"))
+            args.max_tokens = int(os.environ.get("MAX_TOKENS_DEFAULT", "1024"))
     
     # Set temperature if not specified
     if args.temperature is None:
@@ -420,12 +448,19 @@ def run_tinyllama_bot(botex_db, session_id, url, **kwargs):
 def run_session(args, session_number):
     """Run a single experimental session with a botex bot"""
     try:
+        # Import botex here to ensure environment variables are loaded first
+        import botex
+        
         # Create timestamp for this session
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         session_id = f"session_{session_number}_{timestamp}"
         
         # Create model-specific suffix for directories and filenames
         model_suffix = f"_{args.model}"
+        if args.model != "tinyllama":
+            # Extract simple name from model string
+            model_name = args.model_string.split("/")[-1].split("-")[0]
+            model_suffix = f"_{model_name}"
         
         # Create session-specific output directory with model suffix
         output_dir = os.path.join(args.output_dir, f"session_{session_id}{model_suffix}")
@@ -463,6 +498,7 @@ def run_session(args, session_number):
         
         logger.info(f"Session {session_number}: Output directory: {output_dir}")
         logger.info(f"Session {session_number}: Log file: {log_file}")
+        logger.info(f"Session {session_number}: Using model: {args.model_string}")
         
         # Initialize an oTree session
         logger.info(f"Session {session_number}: Initializing oTree session with config: {args.session_config}")
@@ -487,71 +523,15 @@ def run_session(args, session_number):
         # Get the monitor URL for display
         monitor_url = f"{args.otree_url}/SessionMonitor/{otree_session_id}"
         logger.info(f"Session {session_number}: Monitor URL: {monitor_url}")
-        print(f"\nSession {session_number}: Starting bot. Monitor progress at {monitor_url}")
+        print(f"\nSession {session_number}: Starting bot with {args.model_string}. Monitor progress at {monitor_url}")
         
         # Run the bot only if bot URLs are available
         if session['bot_urls']:
             # Configure throttling
             throttle = not args.no_throttle
             
-            # Prepare model-specific parameters and run the appropriate bot
-            if args.model == "gemini":
-                model_name = os.environ.get("GEMINI_MODEL", "gemini/gemini-1.5-flash")
-                model_params = {
-                    "model": model_name,
-                    "api_key": args.api_key,
-                    "max_tokens": args.max_tokens,
-                    "temperature": args.temperature
-                }
-                logger.info(f"Session {session_number}: Using Gemini model: {model_name}")
-                # Log partial API key for debugging
-                if args.api_key:
-                    masked_key = f"{'*' * (len(args.api_key) - 4)}{args.api_key[-4:]}" if len(args.api_key) > 4 else "****"
-                    logger.info(f"Session {session_number}: API key provided: {masked_key}")
-                else:
-                    logger.warning(f"Session {session_number}: No API key provided")
-                
-                # Get standard prompts
-                user_prompts = get_bot_prompt_strategy(args.strategy)
-                
-                logger.info(f"Session {session_number}: Starting bot with Gemini model")
-                botex.run_single_bot(
-                    url=session['bot_urls'][0],
-                    session_name=otree_session_id,
-                    session_id=otree_session_id,
-                    participant_id=session['participant_code'][session['is_human'].index(False)],
-                    botex_db=botex_db,
-                    user_prompts=user_prompts,
-                    throttle=throttle,
-                    **model_params
-                )
-                
-            elif args.model == "openai":
-                model_name = os.environ.get("OPENAI_MODEL", "gpt-4o")
-                model_params = {
-                    "model": model_name,
-                    "api_key": args.api_key,
-                    "max_tokens": args.max_tokens,
-                    "temperature": args.temperature
-                }
-                logger.info(f"Session {session_number}: Using OpenAI model: {model_name}")
-                
-                # Get standard prompts
-                user_prompts = get_bot_prompt_strategy(args.strategy)
-                
-                logger.info(f"Session {session_number}: Starting bot with OpenAI model")
-                botex.run_single_bot(
-                    url=session['bot_urls'][0],
-                    session_name=otree_session_id,
-                    session_id=otree_session_id,
-                    participant_id=session['participant_code'][session['is_human'].index(False)],
-                    botex_db=botex_db,
-                    user_prompts=user_prompts,
-                    throttle=throttle,
-                    **model_params
-                )
-                
-            elif args.model == "tinyllama":
+            # Prepare model-specific parameters
+            if args.model == "tinyllama":
                 # For TinyLLaMA, use special handling
                 logger.info(f"Session {session_number}: Using TinyLLaMA with optimized settings")
                 
@@ -574,11 +554,11 @@ def run_session(args, session_number):
                         "server_path": args.server_path,
                         "local_llm_path": args.model_path,
                         "server_url": server_url,
-                        "maximum_tokens_to_predict": 256,  # Force lower token limit
-                        "temperature": 0.8,  # Force higher temperature
+                        "maximum_tokens_to_predict": args.max_tokens,
+                        "temperature": args.temperature,
                         "top_p": 0.9,
                         "top_k": 40,
-                        "repeat_penalty": 1.1  # Add repeat penalty
+                        "repeat_penalty": 1.1
                     })
                     logger.info(f"Session {session_number}: llama.cpp server started")
                 else:
@@ -600,10 +580,46 @@ def run_session(args, session_number):
                     throttle=throttle,
                     model="llamacpp",
                     api_base=server_url,
-                    max_tokens=256,
-                    temperature=0.8
+                    max_tokens=args.max_tokens,
+                    temperature=args.temperature
                 )
                 
+                # Clean up llama.cpp server if we started it
+                if server_process is not None:
+                    logger.info(f"Session {session_number}: Stopping llama.cpp server")
+                    botex.stop_llamacpp_server(server_process)
+                    logger.info(f"Session {session_number}: llama.cpp server stopped")
+            else:
+                # For API-based models (Gemini, OpenAI, Anthropic)
+                model_params = {
+                    "model": args.model_string,
+                    "api_key": args.api_key,
+                    "max_tokens": args.max_tokens,
+                    "temperature": args.temperature
+                }
+                
+                # Get standard prompts for the strategy
+                user_prompts = get_bot_prompt_strategy(args.strategy)
+                
+                # Log partial API key for debugging
+                if args.api_key:
+                    masked_key = f"{'*' * (len(args.api_key) - 4)}{args.api_key[-4:]}" if len(args.api_key) > 4 else "****"
+                    logger.info(f"Session {session_number}: API key provided: {masked_key}")
+                else:
+                    logger.warning(f"Session {session_number}: No API key provided")
+                
+                logger.info(f"Session {session_number}: Starting bot with {args.model_string}")
+                botex.run_single_bot(
+                    url=session['bot_urls'][0],
+                    session_name=otree_session_id,
+                    session_id=otree_session_id,
+                    participant_id=session['participant_code'][session['is_human'].index(False)],
+                    botex_db=botex_db,
+                    user_prompts=user_prompts,
+                    throttle=throttle,
+                    **model_params
+                )
+            
             logger.info(f"Session {session_number}: Bot completed")
             
             # Save bot actions to JSON
@@ -666,8 +682,10 @@ def run_session(args, session_number):
                 f.write("="*70 + "\n\n")
                 f.write(f"Session ID: {otree_session_id}\n")
                 f.write(f"Session Number: {session_number}\n")
-                f.write(f"Model used: {args.model}\n")
+                f.write(f"Model used: {args.model} ({args.model_string})\n")
                 f.write(f"Strategy: {args.strategy}\n")
+                f.write(f"Max tokens: {args.max_tokens}\n")
+                f.write(f"Temperature: {args.temperature}\n")
                 f.write(f"Number of participants: {args.participants}\n")
                 f.write(f"Number of human participants: {args.humans}\n\n")
                 f.write("Files generated:\n")
@@ -677,12 +695,6 @@ def run_session(args, session_number):
                 f.write(f"- Bot participants: {os.path.basename(botex_participants_csv)}\n")
                 f.write(f"- Bot responses: {os.path.basename(botex_responses_csv)}\n")
                 f.write(f"- oTree wide data: {os.path.basename(otree_wide_csv)}\n")
-            
-            # Clean up llama.cpp server if we started it
-            if args.model == "tinyllama" and server_process is not None:
-                logger.info(f"Session {session_number}: Stopping llama.cpp server")
-                botex.stop_llamacpp_server(server_process)
-                logger.info(f"Session {session_number}: llama.cpp server stopped")
             
             logger.info(f"Session {session_number}: Experiment completed successfully")
             return {"success": True, "session_id": otree_session_id, "output_dir": output_dir}
@@ -718,9 +730,17 @@ def main():
     os.makedirs(args.output_dir, exist_ok=True)
     
     # Log the configuration
-    logger.info(f"Starting experiment with {args.model} model")
+    logger.info(f"Starting experiment with {args.model} model ({args.model_string})")
     logger.info(f"Bot strategy: {args.strategy}")
     logger.info(f"Number of sessions: {args.sessions}")
+    logger.info(f"Max tokens: {args.max_tokens}")
+    
+    # Import botex here to ensure environment variables are loaded first
+    try:
+        import botex
+    except ImportError:
+        logger.error("Failed to import botex. Make sure it's installed: pip install botex")
+        sys.exit(1)
     
     # Start oTree server if not already running
     otree_server_running = False

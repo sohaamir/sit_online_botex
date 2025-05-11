@@ -530,3 +530,21 @@ prompt eval time =    6780.92 ms /   871 tokens (    7.79 ms per token,   128.45
       total time =    7249.03 ms /   885 tokens
 srv  update_slots: all slots are idle
 srv  log_server_r: request: POST /v1/chat/completions ::1 200
+srv  log_server_r: request: GET /health ::1 200
+srv  log_server_r: request: GET /health ::1 200
+srv  log_server_r: request: GET /health ::1 200
+srv  log_server_r: request: GET /props ::1 200
+srv  params_from_: Chat format: Content-only
+slot launch_slot_: id  0 | task 13685 | processing task
+slot update_slots: id  0 | task 13685 | new prompt, n_ctx_slot = 2048, n_keep = 0, n_prompt_tokens = 40
+slot update_slots: id  0 | task 13685 | kv cache rm [0, end)
+slot update_slots: id  0 | task 13685 | prompt processing progress, n_past = 40, n_tokens = 40, progress = 1.000000
+slot update_slots: id  0 | task 13685 | prompt done, n_past = 40, n_tokens = 40
+slot      release: id  0 | task 13685 | stop processing: n_past = 155, truncated = 0
+slot print_timing: id  0 | task 13685 | 
+prompt eval time =    1311.64 ms /    40 tokens (   32.79 ms per token,    30.50 tokens per second)
+       eval time =    3769.70 ms /   116 tokens (   32.50 ms per token,    30.77 tokens per second)
+      total time =    5081.34 ms /   156 tokens
+srv  update_slots: all slots are idle
+srv  log_server_r: request: POST /v1/chat/completions ::1 200
+srv    operator(): operator(): cleaning up before exit...

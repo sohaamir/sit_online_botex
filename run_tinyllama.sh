@@ -1,5 +1,5 @@
 #!/bin/bash
-# run_tinyllama_direct.sh
+# run_tinyllama.sh
 
 # Start llama.cpp server
 ./run_llama_server.sh --max-tokens 256 --temperature 0.8 &
