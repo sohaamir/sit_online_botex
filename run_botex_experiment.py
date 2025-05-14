@@ -202,10 +202,6 @@ def get_bot_prompt_strategy(strategy="standard"):
         CHOICE STRATEGY:
         - In the very first round only, you should choose randomly between B and A
         - Throughout the task, be FLEXIBLE and somewhat BOLD in your choices
-        
-        BETTING STRATEGY:
-        - Your bets should reflect a higher risk tolerance than average
-        - Be more willing to place bet 3 (high confidence) even with moderate certainty
         """
     elif strategy == "social_follower":
         # More socially influenced strategy
@@ -213,20 +209,12 @@ def get_bot_prompt_strategy(strategy="standard"):
         CHOICE STRATEGY:
         - In the very first round only, you should choose randomly between B and A
         - Throughout the task, prioritize SOCIAL INFORMATION over your own experiences
-        
-        BETTING STRATEGY:
-        - Your bets should directly reflect your confidence in your choice
-        - Bet 1 when uncertain about your choice, bet 2 when moderately confident, and bet 3 when fairly confident
         """
     else:  # standard strategy
         strategy_prompt = """
         CHOICE STRATEGY:
         - In the very first round only, you should choose randomly between B and A
         - Throughout the task, be FLEXIBLE in your choices based on both social information and your own experience
-        
-        BETTING STRATEGY:
-        - Your bets should directly reflect your confidence in your choice
-        - Bet 1 when uncertain about your choice, bet 2 when moderately confident, and bet 3 when fairly confident
         """
     
     # Combine base prompt with strategy-specific instructions
@@ -243,9 +231,6 @@ def get_bot_prompt_strategy(strategy="standard"):
         CHOICES:
         - Throughout the task, be FLEXIBLE in your choices based on both social information and your own experience
         - You should be influenced by the choices of others in the immediate past respective to your choice
-
-        BETTING:
-        - Bet 1 when uncertain about your choice, bet 2 when moderately confident, and bet 3 when fairly confident
         
         The following JSON string contains the questions: {questions_json} 
 

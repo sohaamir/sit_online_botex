@@ -1,0 +1,23 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+Task Completed
+{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h4>Final Results</h4>
+    </div>
+    <div class="card-body">
+        <p>You have completed all rounds of the task.</p>
+        
+        <p>Your final score is: <strong>{{ total_score }}</strong> out of a possible {{ num_rounds }}.</p>
+        
+        <p>Thank you for participating in this experiment!</p>
+    </div>
+</div>
+
+{% next_button %}
+{% endblock %}
