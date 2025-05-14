@@ -2,19 +2,17 @@
 {% load otree static %}
 
 {% block title %}
-Other Players' Initial Choices and making your Second Choice and Bet
+Other Players' Initial Choices
 {% endblock %}
 
 {% block content %}
 <div class="card mb-4">
     <div class="card-header bg-primary text-white">
-        <h4>Instructions</h4>
+        <h4>Page Instructions</h4>
     </div>
     <div class="card-body">
-        <p>You are in the same round, and will now see what the other players chose for their initial choice. 
-            <br>
-            <br>
-            After reviewing their choices, you can make your second choice and bet.</p>
+        <p>Below are the initial choices made by other players in your group.</p>
+        <p>After reviewing their choices, you can make your second choice and bet.</p>
     </div>
 </div>
 
@@ -24,12 +22,22 @@ Other Players' Initial Choices and making your Second Choice and Bet
     </div>
     <div class="card-body">
         <p>Here are the initial choices that the other players in your group made:</p>
-        <ul>
-            <li>Player 1: {{ player1_choice }}</li>
-            <li>Player 2: {{ player2_choice }}</li>
-            <li>Player 3: {{ player3_choice }}</li>
-            <li>Player 4: {{ player4_choice }}</li>
-        </ul>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Player</th>
+                    <th>Initial Choice</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for player_id, choice in other_players_choices.items %}
+                <tr>
+                    <td>Player {{ player_id }}</td>
+                    <td>{{ choice }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
@@ -38,8 +46,8 @@ Other Players' Initial Choices and making your Second Choice and Bet
         <h4>Your Initial Choice and Bet</h4>
     </div>
     <div class="card-body">
-        <p>Your initial choice was: {{ choice1 }}</p>
-        <p>Your initial bet was: {{ bet1 }}</p>
+        <p>Your initial choice was: <strong>{{ choice1 }}</strong></p>
+        <p>Your initial bet was: <strong>{{ bet1 }}</strong></p>
     </div>
 </div>
 
@@ -48,7 +56,7 @@ Other Players' Initial Choices and making your Second Choice and Bet
         <h4>Your Second Choice</h4>
     </div>
     <div class="card-body">
-        
+        <p>You can now make your second choice.</p>
         {% formfield player.choice2 label="Select your second choice:" %}
     </div>
 </div>
@@ -58,8 +66,13 @@ Other Players' Initial Choices and making your Second Choice and Bet
         <h4>Your Second Bet</h4>
     </div>
     <div class="card-body">
-        
+        <p>Rate how confident you are in your second choice:</p>
         {% formfield player.bet2 label="Select your second bet:" %}
+        <ul class="mt-3">
+            <li><strong>1</strong></li>
+            <li><strong>2</strong></li>
+            <li><strong>3</strong></li>
+        </ul>
     </div>
 </div>
 

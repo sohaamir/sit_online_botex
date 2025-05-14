@@ -8,10 +8,10 @@ Round Results
 {% block content %}
 <div class="card mb-4">
     <div class="card-header bg-primary text-white">
-        <h4>Instructions</h4>
+        <h4>Page Instructions</h4>
     </div>
     <div class="card-body">
-        <p>Please review the results for this round. When you are ready, click the 'Next' button to continue to the next round.</p>
+        <p>Please review the results for the current round. After you have reviewed the page's content, and when you are ready, click the 'Next' button to continue to the next round.</p>
     </div>
 </div>
 
@@ -20,7 +20,7 @@ Round Results
         <h4>Your Result</h4>
     </div>
     <div class="card-body">
-        <p>Your second choice was {{ choice2 }}.</p>
+        <p>Your second choice was <strong>{{ choice2 }}</strong>.</p>
         <p>This choice was <strong>{{ choice_outcome }}</strong>.</p>
         
         {% if points_earned > 0 %}
@@ -46,26 +46,13 @@ Round Results
                 </tr>
             </thead>
             <tbody>
+                {% for player_id, result in all_players_results.items %}
                 <tr>
-                    <td>Player 1</td>
-                    <td>Option {{ player1_choice }}</td>
-                    <td>{{ player1_outcome }}</td>
+                    <td>Player {{ player_id }}</td>
+                    <td>{{ result.choice }}</td>
+                    <td>{{ result.outcome }}</td>
                 </tr>
-                <tr>
-                    <td>Player 2</td>
-                    <td>Option {{ player2_choice }}</td>
-                    <td>{{ player2_outcome }}</td>
-                </tr>
-                <tr>
-                    <td>Player 3</td>
-                    <td>Option {{ player3_choice }}</td>
-                    <td>{{ player3_outcome }}</td>
-                </tr>
-                <tr>
-                    <td>Player 4</td>
-                    <td>Option {{ player4_choice }}</td>
-                    <td>{{ player4_outcome }}</td>
-                </tr>
+                {% endfor %}
             </tbody>
         </table>
     </div>

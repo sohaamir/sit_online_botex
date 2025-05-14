@@ -2,59 +2,28 @@ from otree.api import *
 import random
 import csv
 import os
+from itertools import cycle
 
 author = 'Aamir Sohail'
 
 doc = """
-Script for running a variant of the online Social Influence Task (SIT) adapted to run LLM bots using the `botex` package.
-
-To run this experiment do the following: 
-
-1. Create and activate a virtual environment:
-
-    ```
-    python -m venv venv
-    source venv/bin/activate  # On Mac/Linux
-    ```
-
-2. Install the required packages:
-
-   ` pip install -r requirements.txt`
-
-3. Open a terminal and run an otree server:
-
-    `otree devserver`
-
-4. Open another terminal and run the bot:
-
-   ` python run_botex_experiment.py`
-
-
-The results will be saved to a folder called `botex_data` for further analysis.
+Multiplayer version of the Social Influence Task (SIT) supporting any combination of human 
+participants and LLM bots using the `botex` package. Players are grouped in groups of 5 and
+make decisions in real-time.
 """
 
 # Constants for the experiment
 class C(BaseConstants):
     NAME_IN_URL = 'social_influence_task'
-    PLAYERS_PER_GROUP = None  # Each participant is in their own group
+    PLAYERS_PER_GROUP = 5  # Fixed group size of 5 players
     NUM_ROUNDS = 64  # 64 rounds as default (same as the original task)
     
-    # Number of virtual players to simulate
-    VIRTUAL_PLAYERS = 4
-    
-    # High probability option for each round (based on your table)
-    HIGH_PROBABILITY_OPTION = [
-        'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',  # Rounds 1-16
-        'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',  # Rounds 17-33
-        'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',  # Rounds 34-48
-        'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B'  # Rounds 49-64
-    ]
-
     # Reversal points
     REVERSAL_ROUNDS = [16, 33, 48]
 
 
 # Hardcoded reward sequence for each round: [(A_reward, B_reward), ...]
+# Same as before - sequence of 64 rounds defining which option is rewarded in each round
 REWARD_SEQUENCE = [
     (1, 0),  # Round 1
     (1, 0),  # Round 2
@@ -122,43 +91,20 @@ REWARD_SEQUENCE = [
     (0, 1),  # Round 64
 ]
 
-# Example responses for the virtual players (59.6% average correct, the actual average accuracy in the experiment (n=316) was 60.4%)
-# These sequences are based on the provided data from the human players, with examples at 20%, 40%, 60% and 80% quartile
-
-# Player 1 sequences (54.7% correct)
-p1_choice1 = "AAAABAABBABBABBBAABBBBBBAABABBBAABBBBBBABBAABBABABAAABBBBAAABAAA"
-p1_choice2 = "AAAABAABAABBAABBAAABAABBBABBBABBBAAAAAAAABABBAAAABABABBBBAAABABA"
-
-# Player 2 sequences (73.4% correct)
-p2_choice1 = "AAAABBAAAAAAAAAAABAABBBBBBBBBBABBAAAAAABAAAAAAAAAAABBBBBAAABBBBB"
-p2_choice2 = "AAAABBAAAAAAAAAAABAABBBBBBBBBBABBAAAAAABBAAAAAAAAAABBBBBAAABBBBB"
-
-# Player 3 sequences (47.7% correct)
-p3_choice1 = "BAABABAABBBBBAAABABBAAABBBAAAAAAABABBABABAAABBABBAAABABABABAABAB"
-p3_choice2 = "ABBAABAABBBABAAABABAABABBBAAAAABBBABAABABAAABAABBAAABABBAAABABBA"
-
-# Player 4 sequences (62.5% correct)
-p4_choice1 = "BAAABBAABAAABAAAAAABAAAABBBBBBBBBBBBABBBBBBBAABBBBBBBBBBBBBBBBBB"
-p4_choice2 = "AAAABABABAAABAAAAAAAAAAABBBBBBBBAAAABBBBBABBBBBBBBBBBBBBBBBBBBBB"
-
-# Pre-determined choices for virtual players
-VIRTUAL_PLAYERS_CHOICE1 = []
-for i in range(64):  # 64 rounds
-    VIRTUAL_PLAYERS_CHOICE1.append([
-        p1_choice1[i], p2_choice1[i], p3_choice1[i], p4_choice1[i]
-    ])
-
-# Pre-determined choices for virtual players - Second choice
-VIRTUAL_PLAYERS_CHOICE2 = []
-for i in range(64):  # 64 rounds
-    VIRTUAL_PLAYERS_CHOICE2.append([
-        p1_choice2[i], p2_choice2[i], p3_choice2[i], p4_choice2[i]
-    ])
+# Pre-determined high probability option for each round
+HIGH_PROBABILITY_OPTION = [
+    'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',  # Rounds 1-16
+    'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',  # Rounds 17-33
+    'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',  # Rounds 34-48
+    'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B'  # Rounds 49-64
+]
 
 
 class Subsession(BaseSubsession):
     def creating_session(self):
-        pass  # No need for group management since PLAYERS_PER_GROUP = None
+        if self.round_number == 1:
+            # Group players using group_by_arrival_time
+            self.group_randomly(fixed_id_in_group=True)
 
 
 class Group(BaseGroup):
@@ -172,13 +118,17 @@ class Group(BaseGroup):
     # Reversal indicator
     reversal_happened = models.IntegerField(initial=0)  # 1 if a reversal happened in this round, 0 otherwise
     
+    # Tracking progress
+    all_first_choices_made = models.BooleanField(initial=False)
+    all_second_choices_made = models.BooleanField(initial=False)
+    
     def set_round_rewards(self):
         """Set the rewards for options A and B in the current round"""
         # Get rewards from the pre-generated sequence
         self.round_reward_A, self.round_reward_B = REWARD_SEQUENCE[self.round_number - 1]
         
         # Set which option has high probability in this round
-        self.high_probability_option = C.HIGH_PROBABILITY_OPTION[self.round_number - 1]
+        self.high_probability_option = HIGH_PROBABILITY_OPTION[self.round_number - 1]
         
         # Check if this is a reversal round
         self.reversal_happened = 1 if self.round_number in C.REVERSAL_ROUNDS else 0
@@ -187,56 +137,35 @@ class Group(BaseGroup):
         print(f"Rewards: A = {self.round_reward_A}, B = {self.round_reward_B}")
         if self.reversal_happened:
             print(f"REVERSAL occurred at round {self.round_number}")
+    
+    def get_other_players_first_choices(self, current_player_id):
+        """Get the first choices of all other players in the group"""
+        other_players = [p for p in self.get_players() if p.id_in_group != current_player_id]
+        return {p.id_in_group: p.choice1 for p in other_players}
+    
+    def check_all_first_choices_made(self):
+        """Check if all players have made their first choice"""
+        for player in self.get_players():
+            if player.choice1 is None:
+                return False
+        self.all_first_choices_made = True
+        return True
+    
+    def check_all_second_choices_made(self):
+        """Check if all players have made their second choice"""
+        for player in self.get_players():
+            if player.choice2 is None:
+                return False
+        self.all_second_choices_made = True
+        return True
+    
+    def get_players_second_choices(self):
+        """Get the second choices of all players in the group"""
+        return {p.id_in_group: {'choice': p.choice2, 'outcome': 'Correct' if p.trial_reward == 1 else 'Incorrect'}
+                for p in self.get_players()}
 
 
 class Player(BasePlayer):
-    # Comprehension check fields
-    q1_correct = models.BooleanField(initial=False)
-    q2_correct = models.BooleanField(initial=False)
-    q3_correct = models.BooleanField(initial=False)
-    q4_correct = models.BooleanField(initial=False)
-
-    # Comprehension check fields
-    comprehension_q1 = models.StringField(
-        choices=[
-            ['40 points', '40 points'],
-            ['minus 40 points', 'minus 40 points'],
-            ['60 points', '60 points'],
-            ['minus 60 points', 'minus 60 points']
-        ],
-        widget=widgets.RadioSelect
-    )
-    
-    comprehension_q2 = models.StringField(
-        choices=[
-            ['Option 1', 'Option 1'],
-            ['Option 2', 'Option 2'],
-            ['Option 3', 'Option 3'],
-            ['Option 4', 'Option 4']
-        ],
-        widget=widgets.RadioSelect
-    )
-    
-    comprehension_q3 = models.StringField(
-        choices=[
-            ['From your initial choice and bet only', 'From your initial choice and bet only'],
-            ['From your second bet and choice only', 'From your second bet and choice only'],
-            ['From either the first and second choices/bets but randomly on each trial', 'From either the first and second choices/bets but randomly on each trial'],
-            ['From both the first and second choices/bets on each trial', 'From both the first and second choices/bets on each trial']
-        ],
-        widget=widgets.RadioSelect
-    )
-    
-    comprehension_q4 = models.StringField(
-        choices=[
-            ['Randomly determined', 'Randomly determined'],
-            ['One option will give you a reward everytime, and the other will give you a loss everytime', 'One option will give you a reward everytime, and the other will give you a loss everytime'],
-            ['One option will give you a reward randomly, and the other will give you a loss randomly', 'One option will give you a reward randomly, and the other will give you a loss randomly'],
-            ['One option will give you a reward most of the time, and the other will give you a loss most of the time', 'One option will give you a reward most of the time, and the other will give you a loss most of the time']
-        ],
-        widget=widgets.RadioSelect
-    )
-
     # Choice and bet tracking variables
     choice1 = models.StringField(widget=widgets.RadioSelect, choices=['A', 'B'])     # Player's first choice ('A' or 'B')
     choice2 = models.StringField(widget=widgets.RadioSelect, choices=['A', 'B'])     # Player's second choice ('A' or 'B')
@@ -246,7 +175,7 @@ class Player(BasePlayer):
     # Choice tracking variables
     switch_vs_stay = models.IntegerField()               # Whether player switched (1) or stayed (0) between choices
     trial_reward = models.IntegerField(initial=0)        # Reward received in current trial (1 or 0)
-    loss_or_gain = models.IntegerField()                  # Whether player gained (1) or lost (-1) points
+    loss_or_gain = models.IntegerField()                 # Whether player gained (1) or lost (-1) points
     
     # Social influence tracking
     choice1_with = models.FloatField(initial=0)        # Percentage of others who made same first choice
@@ -270,116 +199,35 @@ class Player(BasePlayer):
     choice1_sum_earnings = models.IntegerField(initial=0)  # Sum of choice1_earnings over trials
     choice2_sum_earnings = models.IntegerField(initial=0)  # Sum of choice2_earnings over trials
     bonus_payment_score = models.IntegerField(initial=0)  # Total bonus points earned
-    
-    # Virtual players' choices - First choice
-    player1_choice_one = models.StringField()
-    player2_choice_one = models.StringField()
-    player3_choice_one = models.StringField()
-    player4_choice_one = models.StringField()
-    
-    # Virtual players' choices - Second choice
-    player1_choice_two = models.StringField()
-    player2_choice_two = models.StringField()
-    player3_choice_two = models.StringField()
-    player4_choice_two = models.StringField()
-    
-    # Track accuracy of virtual players' choices - First choice
-    player1_choice1_accuracy = models.BooleanField()
-    player2_choice1_accuracy = models.BooleanField()
-    player3_choice1_accuracy = models.BooleanField()
-    player4_choice1_accuracy = models.BooleanField()
-    
-    # Track accuracy of virtual players' choices - Second choice
-    player1_choice2_accuracy = models.BooleanField()
-    player2_choice2_accuracy = models.BooleanField()
-    player3_choice2_accuracy = models.BooleanField()
-    player4_choice2_accuracy = models.BooleanField()
-    
-    # Track whether virtual players gained or lost points
-    player1_loss_or_gain = models.IntegerField()
-    player2_loss_or_gain = models.IntegerField()
-    player3_loss_or_gain = models.IntegerField()
-    player4_loss_or_gain = models.IntegerField()
-    
-    def set_virtual_players_choices_and_outcomes(self):
-        """Set the choices and outcomes for virtual players based on pre-determined sequences"""
-        round_index = self.round_number - 1
-        
-        # Set first choices for virtual players
-        self.player1_choice_one = VIRTUAL_PLAYERS_CHOICE1[round_index][0]
-        self.player2_choice_one = VIRTUAL_PLAYERS_CHOICE1[round_index][1]
-        self.player3_choice_one = VIRTUAL_PLAYERS_CHOICE1[round_index][2]
-        self.player4_choice_one = VIRTUAL_PLAYERS_CHOICE1[round_index][3]
-        
-        # Set second choices for virtual players
-        self.player1_choice_two = VIRTUAL_PLAYERS_CHOICE2[round_index][0]
-        self.player2_choice_two = VIRTUAL_PLAYERS_CHOICE2[round_index][1]
-        self.player3_choice_two = VIRTUAL_PLAYERS_CHOICE2[round_index][2]
-        self.player4_choice_two = VIRTUAL_PLAYERS_CHOICE2[round_index][3]
-        
-        # Calculate accuracy for first choices
-        high_prob_option = self.group.high_probability_option
-        self.player1_choice1_accuracy = (self.player1_choice_one == high_prob_option)
-        self.player2_choice1_accuracy = (self.player2_choice_one == high_prob_option)
-        self.player3_choice1_accuracy = (self.player3_choice_one == high_prob_option)
-        self.player4_choice1_accuracy = (self.player4_choice_one == high_prob_option)
-        
-        # Calculate accuracy for second choices
-        self.player1_choice2_accuracy = (self.player1_choice_two == high_prob_option)
-        self.player2_choice2_accuracy = (self.player2_choice_two == high_prob_option)
-        self.player3_choice2_accuracy = (self.player3_choice_two == high_prob_option)
-        self.player4_choice2_accuracy = (self.player4_choice_two == high_prob_option)
-        
-        # Calculate reward outcomes for virtual players
-        if self.player1_choice_two == 'A':
-            p1_rewarded = self.group.round_reward_A == 1
-        else:
-            p1_rewarded = self.group.round_reward_B == 1
-            
-        if self.player2_choice_two == 'A':
-            p2_rewarded = self.group.round_reward_A == 1
-        else:
-            p2_rewarded = self.group.round_reward_B == 1
-            
-        if self.player3_choice_two == 'A':
-            p3_rewarded = self.group.round_reward_A == 1
-        else:
-            p3_rewarded = self.group.round_reward_B == 1
-            
-        if self.player4_choice_two == 'A':
-            p4_rewarded = self.group.round_reward_A == 1
-        else:
-            p4_rewarded = self.group.round_reward_B == 1
-        
-        # Set gain/loss values (1 for gain, -1 for loss)
-        self.player1_loss_or_gain = 1 if p1_rewarded else -1
-        self.player2_loss_or_gain = 1 if p2_rewarded else -1
-        self.player3_loss_or_gain = 1 if p3_rewarded else -1
-        self.player4_loss_or_gain = 1 if p4_rewarded else -1
+
+    # Is this player a bot? Used for analysis
+    is_bot = models.BooleanField()
     
     def calculate_first_choice_social_influence(self):
         """Calculate the percentage of others who made same/different first choices"""
-        # First choice agreement
-        same_choice1 = 0
-        for choice in [self.player1_choice_one, self.player2_choice_one,
-                    self.player3_choice_one, self.player4_choice_one]:
-            if choice == self.choice1:
-                same_choice1 += 1
+        other_players = [p for p in self.group.get_players() if p.id_in_group != self.id_in_group]
+        same_choice1 = sum(1 for p in other_players if p.choice1 == self.choice1)
         
-        self.choice1_with = same_choice1 / C.VIRTUAL_PLAYERS
-        self.choice1_against = 1 - self.choice1_with
+        total_other_players = len(other_players)
+        if total_other_players > 0:
+            self.choice1_with = same_choice1 / total_other_players
+            self.choice1_against = 1 - self.choice1_with
+        else:
+            self.choice1_with = 0
+            self.choice1_against = 0
 
     def calculate_second_choice_social_influence(self):
         """Calculate the percentage of others who made same/different second choices"""
-        # Second choice agreement
-        same_choice2 = 0
-        for choice in [self.player1_choice_two, self.player2_choice_two,
-                    self.player3_choice_two, self.player4_choice_two]:
-            if choice == self.choice2:
-                same_choice2 += 1
+        other_players = [p for p in self.group.get_players() if p.id_in_group != self.id_in_group]
+        same_choice2 = sum(1 for p in other_players if p.choice2 == self.choice2)
         
-        self.choice2_with = same_choice2 / C.VIRTUAL_PLAYERS
-        self.choice2_against = 1 - self.choice2_with
+        total_other_players = len(other_players)
+        if total_other_players > 0:
+            self.choice2_with = same_choice2 / total_other_players
+            self.choice2_against = 1 - self.choice2_with
+        else:
+            self.choice2_with = 0
+            self.choice2_against = 0
     
     def calculate_choice1_earnings(self):
         """Calculate earnings for first choice"""
@@ -398,6 +246,26 @@ class Player(BasePlayer):
         else:  # Would not have been rewarded
             self.choice1_earnings = -1 * self.bet1 * 20  # Negative points
     
+    def calculate_choice2_earnings(self):
+        """Calculate earnings for second choice"""
+        # For choice2, calculate reward
+        if self.choice2 == 'A':
+            self.trial_reward = self.group.round_reward_A
+        else:  # 'B'
+            self.trial_reward = self.group.round_reward_B
+        
+        # Set binary reward outcome
+        self.choice2_reward_binary = self.trial_reward
+        
+        # Calculate earnings
+        if self.trial_reward == 1:  # Option was rewarded
+            self.choice2_earnings = self.bet2 * 20  # Positive points
+        else:  # Option was not rewarded
+            self.choice2_earnings = -1 * self.bet2 * 20  # Negative points
+        
+        # Set whether the player gained or lost points
+        self.loss_or_gain = 1 if self.choice2_earnings > 0 else -1
+    
     def update_cumulative_sums(self):
         """Update all cumulative sums across rounds"""
         if self.round_number == 1:
@@ -408,6 +276,7 @@ class Player(BasePlayer):
             self.choice2_reward_binary_sum = self.choice2_reward_binary
             self.choice1_sum_earnings = self.choice1_earnings
             self.choice2_sum_earnings = self.choice2_earnings
+            self.bonus_payment_score = self.choice2_earnings  # Initialize with second choice earnings
         else:
             # Subsequent rounds - add current values to previous sums
             previous_player = self.in_round(self.round_number - 1)
@@ -417,70 +286,33 @@ class Player(BasePlayer):
             self.choice2_reward_binary_sum = previous_player.choice2_reward_binary_sum + self.choice2_reward_binary
             self.choice1_sum_earnings = previous_player.choice1_sum_earnings + self.choice1_earnings
             self.choice2_sum_earnings = previous_player.choice2_sum_earnings + self.choice2_earnings
+            self.bonus_payment_score = previous_player.bonus_payment_score + self.choice2_earnings
 
 
-class Welcome(Page):
-    """Initial page with study information and consent"""
-    @staticmethod
-    def is_displayed(player):
-        return player.round_number == 1
-
-class TaskStructure(Page):
-    """Reward structure page"""
-    @staticmethod
-    def is_displayed(player):
-        return player.round_number == 1
-
-class RoundStructure(Page):
-    """Task RoundStructure page"""
-    @staticmethod
-    def is_displayed(player):
-        return player.round_number == 1
-
-class Comprehension(Page):
-    form_model = 'player'
-    form_fields = ['comprehension_q1', 'comprehension_q2', 'comprehension_q3', 'comprehension_q4']
+# PAGES
+class GroupingWaitPage(WaitPage):
+    """Wait page to form groups based on arrival time"""
+    group_by_arrival_time = True
+    title_text = "Waiting for Other Players"
+    body_text = "Please wait while we form groups of 5 players..."
+    template_name = 'global/WaitPage.html'
     
     @staticmethod
     def is_displayed(player):
         return player.round_number == 1
-    
-    @staticmethod
-    def before_next_page(player, timeout_happened):
-        # Check each answer and store correctness
-        player.q1_correct = player.comprehension_q1 == 'minus 60 points'
-        player.q2_correct = player.comprehension_q2 == 'Option 3'
-        player.q3_correct = player.comprehension_q3 == 'From either the first and second choices/bets but randomly on each trial'
-        player.q4_correct = player.comprehension_q4 == 'One option will give you a reward most of the time, and the other will give you a loss most of the time'
-    
-    # We don't stop the bot from progressing regardless of answers
-    def error_message(self, values):
-        return None
-        
-class ComprehensionResults(Page):
-    @staticmethod
-    def is_displayed(player):
-        return player.round_number == 1
-        
-    @staticmethod
-    def vars_for_template(player):
-        return {
-            'q1_correct': player.q1_correct,
-            'q2_correct': player.q2_correct,
-            'q3_correct': player.q3_correct,
-            'q4_correct': player.q4_correct,
-            'q1_answer': player.comprehension_q1,
-            'q2_answer': player.comprehension_q2,
-            'q3_answer': player.comprehension_q3,
-            'q4_answer': player.comprehension_q4,
-            'all_correct': player.q1_correct and player.q2_correct and 
-                          player.q3_correct and player.q4_correct
-        }
 
-class Transition(Page):
+
+class TaskStartWaitPage(WaitPage):
+    """Wait page at the start of the task to synchronize all players"""
+    title_text = "Waiting for All Players"
+    body_text = "Please wait for all players to be ready to start the task..."
+    template_name = 'global/WaitPage.html'
+    
     @staticmethod
-    def is_displayed(player):
-        return player.round_number == 1
+    def after_all_players_arrive(group):
+        # Set up the rewards for the first round
+        group.set_round_rewards()
+
 
 class FirstDecisions(Page):
     form_model = 'player'
@@ -489,10 +321,8 @@ class FirstDecisions(Page):
     @staticmethod
     def vars_for_template(player):
         # Ensure group rewards are set for this round
-        player.group.set_round_rewards()
-        
-        # Set up virtual players
-        player.set_virtual_players_choices_and_outcomes()
+        if player.round_number > 1:
+            player.group.set_round_rewards()
         
         return {
             'round_number': player.round_number,
@@ -500,8 +330,21 @@ class FirstDecisions(Page):
     
     @staticmethod
     def before_next_page(player, timeout_happened):
-        # Calculate agreement with other players for first choice only
-        player.calculate_first_choice_social_influence()
+        # Mark this player as having made their first choice
+        player.group.check_all_first_choices_made()
+
+
+class FirstDecisionsWaitPage(WaitPage):
+    """Wait page after first decisions to ensure all players have made their choices"""
+    title_text = "Waiting for Other Players"
+    body_text = "Please wait for all players to make their initial choices..."
+    template_name = 'global/WaitPage.html'
+    
+    @staticmethod
+    def after_all_players_arrive(group):
+        # Calculate social influence for all players
+        for player in group.get_players():
+            player.calculate_first_choice_social_influence()
 
 
 class SecondDecisions(Page):
@@ -510,14 +353,17 @@ class SecondDecisions(Page):
     
     @staticmethod
     def vars_for_template(player):
+        # Get the first choices of all other players
+        other_players_choices = {}
+        for p in player.group.get_players():
+            if p.id_in_group != player.id_in_group:
+                other_players_choices[p.id_in_group] = p.choice1
+        
         return {
             'round_number': player.round_number,
             'choice1': player.choice1,
             'bet1': player.bet1,
-            'player1_choice': player.player1_choice_one,
-            'player2_choice': player.player2_choice_one,
-            'player3_choice': player.player3_choice_one,
-            'player4_choice': player.player4_choice_one,
+            'other_players_choices': other_players_choices,
         }
     
     @staticmethod
@@ -525,30 +371,8 @@ class SecondDecisions(Page):
         # Calculate earnings for first choice (not shown to player)
         player.calculate_choice1_earnings()
         
-        # Calculate rewards for second choice
-        if player.choice2 == 'A':
-            player.trial_reward = player.group.round_reward_A
-        else:  # 'B'
-            player.trial_reward = player.group.round_reward_B
-        
-        # Set binary reward outcome
-        player.choice2_reward_binary = player.trial_reward
-        
-        # Calculate second choice earnings
-        if player.trial_reward == 1:  # Option was rewarded
-            player.choice2_earnings = player.bet2 * 20  # Positive points
-        else:  # Option was not rewarded
-            player.choice2_earnings = -1 * player.bet2 * 20  # Negative points
-            
-        # Update cumulative score for bonus payment
-        if player.round_number == 1:
-            player.bonus_payment_score = player.choice2_earnings
-        else:
-            prev_player = player.in_round(player.round_number - 1)
-            player.bonus_payment_score = prev_player.bonus_payment_score + player.choice2_earnings
-        
-        # Set whether the player gained or lost points
-        player.loss_or_gain = 1 if player.choice2_earnings > 0 else -1
+        # Calculate earnings for second choice
+        player.calculate_choice2_earnings()
         
         # Update accuracy metrics
         player.choice1_accuracy = (player.choice1 == player.group.high_probability_option)
@@ -560,8 +384,21 @@ class SecondDecisions(Page):
         # Calculate if player switched or stayed
         player.switch_vs_stay = 1 if player.choice1 != player.choice2 else 0
         
-        # Calculate agreement with other players for second choice
-        player.calculate_second_choice_social_influence()
+        # Check if all players have made their second choices
+        player.group.check_all_second_choices_made()
+
+
+class SecondDecisionsWaitPage(WaitPage):
+    """Wait page after second decisions to ensure all players have made their choices"""
+    title_text = "Waiting for Other Players"
+    body_text = "Please wait for all players to make their second choices..."
+    template_name = 'global/WaitPage.html'
+    
+    @staticmethod
+    def after_all_players_arrive(group):
+        # Calculate social influence for second choices
+        for player in group.get_players():
+            player.calculate_second_choice_social_influence()
 
 
 class RoundResults(Page):
@@ -570,11 +407,14 @@ class RoundResults(Page):
         # Calculate the absolute value of points earned for display
         points_display = abs(player.choice2_earnings)
         
-        # Create outcome displays for virtual players
-        player1_outcome = "Correct" if player.player1_loss_or_gain == 1 else "Incorrect"
-        player2_outcome = "Correct" if player.player2_loss_or_gain == 1 else "Incorrect" 
-        player3_outcome = "Correct" if player.player3_loss_or_gain == 1 else "Incorrect"
-        player4_outcome = "Correct" if player.player4_loss_or_gain == 1 else "Incorrect"
+        # Get the second choices of all players
+        all_players_results = {}
+        for p in player.group.get_players():
+            if p.id_in_group != player.id_in_group:
+                all_players_results[p.id_in_group] = {
+                    'choice': p.choice2,
+                    'outcome': 'Correct' if p.trial_reward == 1 else 'Incorrect'
+                }
         
         return {
             'round_number': player.round_number,
@@ -583,17 +423,19 @@ class RoundResults(Page):
             'points_earned': player.choice2_earnings,
             'points_display': points_display,
             'total_points': player.bonus_payment_score,
-            
-            # Virtual players' choices and outcomes
-            'player1_choice': player.player1_choice_two,
-            'player2_choice': player.player2_choice_two,
-            'player3_choice': player.player3_choice_two,
-            'player4_choice': player.player4_choice_two,
-            'player1_outcome': player1_outcome,
-            'player2_outcome': player2_outcome,
-            'player3_outcome': player3_outcome,
-            'player4_outcome': player4_outcome,
+            'all_players_results': all_players_results,
         }
+
+
+class ResultsWaitPage(WaitPage):
+    """Wait page after results to ensure all players are ready for the next round"""
+    title_text = "Waiting for Other Players"
+    body_text = "Please wait for all players to review their results..."
+    template_name = 'global/WaitPage.html'
+    
+    @staticmethod
+    def is_displayed(player):
+        return player.round_number < C.NUM_ROUNDS
 
 
 class FinalResults(Page):
@@ -611,6 +453,7 @@ class FinalResults(Page):
         player.participant.vars['choice1_reward_binary_sum'] = player.choice1_reward_binary_sum
         player.participant.vars['choice2_reward_binary_sum'] = player.choice2_reward_binary_sum
         player.participant.vars['bonus_payoff'] = cu(max(0, player.bonus_payment_score / 600))
+        player.participant.finished = True
     
     @staticmethod
     def vars_for_template(player):
@@ -620,4 +463,14 @@ class FinalResults(Page):
         }
 
 
-page_sequence = [Welcome, TaskStructure, RoundStructure, Comprehension, ComprehensionResults, Transition, FirstDecisions, SecondDecisions, RoundResults, FinalResults]
+page_sequence = [
+    GroupingWaitPage,
+    TaskStartWaitPage,
+    FirstDecisions,
+    FirstDecisionsWaitPage,
+    SecondDecisions,
+    SecondDecisionsWaitPage,
+    RoundResults,
+    ResultsWaitPage,
+    FinalResults
+]

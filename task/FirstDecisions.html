@@ -2,16 +2,16 @@
 {% load otree static %}
 
 {% block title %}
-Initial Choice and Bet
+First Choice and Bet
 {% endblock %}
 
 {% block content %}
 <div class="card mb-4">
     <div class="card-header bg-primary text-white">
-        <h4>Instructions</h4>
+        <h4>Page Instructions</h4>
     </div>
     <div class="card-body">
-        <p>You have started a new round. Please make your initial choice and bet for this round, then submit the form.</p>
+        <p>Please make your initial choice and bet for this round, then submit the form.</p>
     </div>
 </div>
 
@@ -20,7 +20,6 @@ Initial Choice and Bet
         <h4>Make your initial choice</h4>
     </div>
     <div class="card-body">
-        
         {% formfield player.choice1 label="Select your choice:" %}
     </div>
 </div>
@@ -30,7 +29,13 @@ Initial Choice and Bet
         <h4>Make your initial bet</h4>
     </div>
     <div class="card-body">
+        <p>Rate how confident you are in your choice:</p>
         {% formfield player.bet1 label="Select your bet:" %}
+        <ul class="mt-3">
+            <li><strong>1</strong></li>
+            <li><strong>2</strong></li>
+            <li><strong>3</strong></li>
+        </ul>
     </div>
 </div>
 
