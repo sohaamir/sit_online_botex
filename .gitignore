@@ -57,3 +57,10 @@ llama_server
 botex.env
 botexenv/
 ,cache*
+
+# Scripts
+run_tinyllama.sh 
+run_llama_server.sh 
+install_llama_cpp.sh 
+download_model.sh 
+check_response_format_support.py
