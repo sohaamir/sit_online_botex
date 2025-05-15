@@ -13,7 +13,7 @@ Usage:
 
     Use --help to see all options
 """
-
+from custom_bot_runner import run_bots_on_session_with_wait_handling
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 from pathlib import Path
@@ -544,15 +544,13 @@ def run_session(args, session_number):
                     logger.warning(f"Session {session_number}: No API key provided")
                 
                 logger.info(f"Session {session_number}: Starting bot with {args.model_string}")
-                botex.run_single_bot(
-                    url=session['bot_urls'][0],
-                    session_name=otree_session_id,
+                run_bots_on_session_with_wait_handling(
                     session_id=otree_session_id,
-                    participant_id=session['participant_code'][session['is_human'].index(False)],
+                    bot_urls=session['bot_urls'],  
                     botex_db=botex_db,
                     user_prompts=user_prompts,
                     throttle=throttle,
-                    **model_params
+                    **model_params  # Let model_params provide the model, api_key, etc.
                 )
             
             logger.info(f"Session {session_number}: Bot completed")

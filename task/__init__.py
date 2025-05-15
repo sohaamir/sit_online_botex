@@ -383,24 +383,12 @@ class GroupingWaitPage(WaitPage):
     """Wait page to form groups based on arrival time"""
     group_by_arrival_time = True
     title_text = "Waiting for Other Players"
-    body_text = "Please wait while we form groups of 3 players..."  # Updated to 3 players
-    template_name = 'global/WaitPage.html'
+    body_text = "Please wait while we form groups of 3 players..."
+    template_name = 'global/BotWaitPage.html'  # Use our custom template
     
     @staticmethod
     def is_displayed(player):
         return player.round_number == 1
-
-
-class TaskStartWaitPage(WaitPage):
-    """Wait page at the start of the task to synchronize all players"""
-    title_text = "Waiting for All Players"
-    body_text = "Please wait for all players to be ready to start the task..."
-    template_name = 'global/WaitPage.html'
-    
-    @staticmethod
-    def after_all_players_arrive(group):
-        # Set up the rewards for the first round
-        group.set_round_rewards()
 
 
 class FirstDecisions(Page):
@@ -573,7 +561,6 @@ class FinalResults(Page):
 
 page_sequence = [
     GroupingWaitPage,
-    TaskStartWaitPage,
     FirstDecisions,
     FirstDecisionsWaitPage,
     SecondDecisions,

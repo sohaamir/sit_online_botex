@@ -1,0 +1,20 @@
+{% extends "otree/WaitPage.html" %}
+
+{% block title %}{{ title_text }}{% endblock %}
+
+{% block content %}
+    <div style="text-align: center;">
+        <p>{{ body_text }}</p>
+        
+        <!-- Meta refresh tag for automatic page refresh -->
+        <meta http-equiv="refresh" content="5">
+        
+        <!-- Hidden form element for bots to detect -->
+        <div style="display: none;">
+            <form id="wait-form">
+                <input type="hidden" id="id_waiting" name="waiting" value="true">
+                <button id="hidden-next-button" class="otree-btn-next">Continue</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}
