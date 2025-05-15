@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-run_multi_model_experiment.py - Run social influence task with multiple LLM backends
+run_botex_experiment.py - Run social influence task with multiple LLM backends
 
 This script allows running the social influence task experiment with various LLM backends:
 - Google Gemini via API
@@ -9,7 +9,7 @@ This script allows running the social influence task experiment with various LLM
 - TinyLLaMA locally via llama.cpp
 
 Usage:
-    python run_multi_model_experiment.py [OPTIONS]
+    python run_botex_experiment.py [OPTIONS]
 
     Use --help to see all options
 """

@@ -8,15 +8,15 @@ author = 'Aamir Sohail'
 
 doc = """
 Multiplayer version of the Social Influence Task (SIT) supporting any combination of human 
-participants and LLM bots using the `botex` package. Players are grouped in groups of 5 and
+participants and LLM bots using the `botex` package. Players are grouped in groups of 3 and
 make decisions in real-time.
 """
 
 # Constants for the experiment
 class C(BaseConstants):
     NAME_IN_URL = 'social_influence_task'
-    PLAYERS_PER_GROUP = 5  # Fixed group size of 5 players
-    NUM_ROUNDS = 64  # 64 rounds as default (same as the original task)
+    PLAYERS_PER_GROUP = 3  # Modified from 5 to 3 players
+    NUM_ROUNDS = 5  # 64 rounds as default (same as the original task)
     
     # Reversal points
     REVERSAL_ROUNDS = [16, 33, 48]
@@ -138,15 +138,18 @@ class Group(BaseGroup):
         if self.reversal_happened:
             print(f"REVERSAL occurred at round {self.round_number}")
     
+    # Update the get_other_players_first_choices method
     def get_other_players_first_choices(self, current_player_id):
         """Get the first choices of all other players in the group"""
         other_players = [p for p in self.get_players() if p.id_in_group != current_player_id]
-        return {p.id_in_group: p.choice1 for p in other_players}
+        # Only include players who have made choices
+        return {p.id_in_group: p.field_maybe_none('choice1') for p in other_players}
     
     def check_all_first_choices_made(self):
         """Check if all players have made their first choice"""
         for player in self.get_players():
-            if player.choice1 is None:
+            # Use field_maybe_none to safely check if choice1 is None
+            if player.field_maybe_none('choice1') is None:
                 return False
         self.all_first_choices_made = True
         return True
@@ -154,15 +157,17 @@ class Group(BaseGroup):
     def check_all_second_choices_made(self):
         """Check if all players have made their second choice"""
         for player in self.get_players():
-            if player.choice2 is None:
+            # Use field_maybe_none to safely check if choice2 is None
+            if player.field_maybe_none('choice2') is None:
                 return False
         self.all_second_choices_made = True
         return True
     
-    def get_players_second_choices(self):
-        """Get the second choices of all players in the group"""
-        return {p.id_in_group: {'choice': p.choice2, 'outcome': 'Correct' if p.trial_reward == 1 else 'Incorrect'}
-                for p in self.get_players()}
+    def get_other_players_first_choices(self, current_player_id):
+        """Get the first choices of all other players in the group"""
+        other_players = [p for p in self.get_players() if p.id_in_group != current_player_id]
+        return {p.id_in_group: p.field_maybe_none('choice1') for p in other_players}
+
 
 
 class Player(BasePlayer):
@@ -203,27 +208,85 @@ class Player(BasePlayer):
     # Is this player a bot? Used for analysis
     is_bot = models.BooleanField()
     
+    # Virtual players' choices - First choice (only tracking 2 other players now, instead of 4)
+    player1_choice_one = models.StringField()
+    player2_choice_one = models.StringField()
+    
+    # Virtual players' choices - Second choice
+    player1_choice_two = models.StringField()
+    player2_choice_two = models.StringField()
+    
+    # Track accuracy of virtual players' choices - First choice
+    player1_choice1_accuracy = models.BooleanField()
+    player2_choice1_accuracy = models.BooleanField()
+    
+    # Track accuracy of virtual players' choices - Second choice
+    player1_choice2_accuracy = models.BooleanField()
+    player2_choice2_accuracy = models.BooleanField()
+    
+    # Track whether virtual players gained or lost points
+    player1_loss_or_gain = models.IntegerField()
+    player2_loss_or_gain = models.IntegerField()
+
+    # determine if this player is a bot
+    def set_bot_flag(self):
+        """Set the is_bot flag based on participant.label"""
+        # botex sets participant.label for bots
+        if self.participant.label and 'bot' in self.participant.label.lower():
+            self.is_bot = True
+        # Or check if participant was created by botex
+        elif hasattr(self.participant, '_is_bot') and self.participant._is_bot:
+            self.is_bot = True
+        # Alternative check using participant vars
+        elif 'is_bot' in self.participant.vars and self.participant.vars['is_bot']:
+            self.is_bot = True
+        else:
+            self.is_bot = False
+    
+    # Modify the calculate_first_choice_social_influence method
     def calculate_first_choice_social_influence(self):
         """Calculate the percentage of others who made same/different first choices"""
+        # Get my choice safely using field_maybe_none
+        my_choice = self.field_maybe_none('choice1')
+        if my_choice is None:
+            self.choice1_with = 0
+            self.choice1_against = 0
+            return
+            
         other_players = [p for p in self.group.get_players() if p.id_in_group != self.id_in_group]
-        same_choice1 = sum(1 for p in other_players if p.choice1 == self.choice1)
+        # Only count players who have made choices
+        valid_choices = [p.field_maybe_none('choice1') for p in other_players]
+        valid_choices = [c for c in valid_choices if c is not None]
         
-        total_other_players = len(other_players)
-        if total_other_players > 0:
-            self.choice1_with = same_choice1 / total_other_players
+        same_choice1 = sum(1 for c in valid_choices if c == my_choice)
+        
+        total_valid_choices = len(valid_choices)
+        if total_valid_choices > 0:
+            self.choice1_with = same_choice1 / total_valid_choices
             self.choice1_against = 1 - self.choice1_with
         else:
             self.choice1_with = 0
             self.choice1_against = 0
 
+    # Modify the calculate_second_choice_social_influence method too
     def calculate_second_choice_social_influence(self):
         """Calculate the percentage of others who made same/different second choices"""
         other_players = [p for p in self.group.get_players() if p.id_in_group != self.id_in_group]
-        same_choice2 = sum(1 for p in other_players if p.choice2 == self.choice2)
         
-        total_other_players = len(other_players)
-        if total_other_players > 0:
-            self.choice2_with = same_choice2 / total_other_players
+        # Only count players who have made a choice
+        valid_other_players = [p for p in other_players if p.choice2 is not None]
+        
+        # Check if this player has made a choice yet
+        if self.choice2 is None:
+            self.choice2_with = 0
+            self.choice2_against = 0
+            return
+        
+        same_choice2 = sum(1 for p in valid_other_players if p.choice2 == self.choice2)
+        
+        total_valid_players = len(valid_other_players)
+        if total_valid_players > 0:
+            self.choice2_with = same_choice2 / total_valid_players
             self.choice2_against = 1 - self.choice2_with
         else:
             self.choice2_with = 0
@@ -287,6 +350,32 @@ class Player(BasePlayer):
             self.choice1_sum_earnings = previous_player.choice1_sum_earnings + self.choice1_earnings
             self.choice2_sum_earnings = previous_player.choice2_sum_earnings + self.choice2_earnings
             self.bonus_payment_score = previous_player.bonus_payment_score + self.choice2_earnings
+    
+    # Update the save_other_players_data method
+    def save_other_players_data(self):
+        """Save data about other players in the group"""
+        # Get other players
+        other_players = [p for p in self.group.get_players() if p.id_in_group != self.id_in_group]
+        
+        # Make sure we have the right number of players
+        if len(other_players) == 2:
+            # Save first player data (index 0)
+            if other_players[0].choice1 is not None:
+                self.player1_choice_one = other_players[0].choice1
+            if other_players[0].choice2 is not None:
+                self.player1_choice_two = other_players[0].choice2
+                self.player1_choice1_accuracy = other_players[0].choice1_accuracy
+                self.player1_choice2_accuracy = other_players[0].choice2_accuracy
+                self.player1_loss_or_gain = other_players[0].loss_or_gain
+            
+            # Save second player data (index 1)
+            if other_players[1].choice1 is not None:
+                self.player2_choice_one = other_players[1].choice1
+            if other_players[1].choice2 is not None:
+                self.player2_choice_two = other_players[1].choice2
+                self.player2_choice1_accuracy = other_players[1].choice1_accuracy
+                self.player2_choice2_accuracy = other_players[1].choice2_accuracy
+                self.player2_loss_or_gain = other_players[1].loss_or_gain
 
 
 # PAGES
@@ -294,7 +383,7 @@ class GroupingWaitPage(WaitPage):
     """Wait page to form groups based on arrival time"""
     group_by_arrival_time = True
     title_text = "Waiting for Other Players"
-    body_text = "Please wait while we form groups of 5 players..."
+    body_text = "Please wait while we form groups of 3 players..."  # Updated to 3 players
     template_name = 'global/WaitPage.html'
     
     @staticmethod
@@ -342,9 +431,15 @@ class FirstDecisionsWaitPage(WaitPage):
     
     @staticmethod
     def after_all_players_arrive(group):
-        # Calculate social influence for all players
+        # At this point all players should have completed their choices
+        # Update group-level tracking first
+        group.all_first_choices_made = True
+        
+        # Then calculate social influence for each player
         for player in group.get_players():
-            player.calculate_first_choice_social_influence()
+            # Skip any calculations for players without choices (shouldn't happen if wait page works correctly)
+            if player.field_maybe_none('choice1') is not None:
+                player.calculate_first_choice_social_influence()
 
 
 class SecondDecisions(Page):
@@ -352,17 +447,26 @@ class SecondDecisions(Page):
     form_fields = ['choice2', 'bet2']
     
     @staticmethod
+    def is_displayed(player):
+        # Only show this page if the player has made their first choice
+        return player.field_maybe_none('choice1') is not None
+    
+    # Update the vars_for_template in SecondDecisions
+    @staticmethod
     def vars_for_template(player):
         # Get the first choices of all other players
         other_players_choices = {}
         for p in player.group.get_players():
             if p.id_in_group != player.id_in_group:
-                other_players_choices[p.id_in_group] = p.choice1
+                # Use field_maybe_none for safety
+                choice = p.field_maybe_none('choice1')
+                if choice is not None:
+                    other_players_choices[p.id_in_group] = choice
         
         return {
             'round_number': player.round_number,
-            'choice1': player.choice1,
-            'bet1': player.bet1,
+            'choice1': player.field_maybe_none('choice1'),
+            'bet1': player.field_maybe_none('bet1'),
             'other_players_choices': other_players_choices,
         }
     
@@ -394,11 +498,15 @@ class SecondDecisionsWaitPage(WaitPage):
     body_text = "Please wait for all players to make their second choices..."
     template_name = 'global/WaitPage.html'
     
+    # Update SecondDecisionsWaitPage similarly
     @staticmethod
     def after_all_players_arrive(group):
-        # Calculate social influence for second choices
+        # Calculate social influence for second choices for players who have made choices
         for player in group.get_players():
-            player.calculate_second_choice_social_influence()
+            if player.choice2 is not None:
+                player.calculate_second_choice_social_influence()
+                # Save other players' data for later analysis
+                player.save_other_players_data()
 
 
 class RoundResults(Page):
