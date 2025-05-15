@@ -28,6 +28,7 @@ data/
 # oTree Specific
 *.otreezip
 heroku_cheatsheet.txt
+test/
 
 # R Related Files
 *.Rproj
