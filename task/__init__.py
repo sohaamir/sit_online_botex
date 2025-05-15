@@ -105,6 +105,10 @@ class Subsession(BaseSubsession):
         if self.round_number == 1:
             # Group players using group_by_arrival_time
             self.group_randomly(fixed_id_in_group=True)
+            
+        # Set rewards for all groups in this subsession
+        for group in self.get_groups():
+            group.set_round_rewards()
 
 
 class Group(BaseGroup):
@@ -294,15 +298,19 @@ class Player(BasePlayer):
     
     def calculate_choice1_earnings(self):
         """Calculate earnings for first choice"""
+        # Ensure group rewards are set for this round if not already set
+        if self.group.field_maybe_none('round_reward_A') is None or self.group.field_maybe_none('round_reward_B') is None:
+            self.group.set_round_rewards()
+            
         # For choice1, see if it would have been rewarded
         if self.choice1 == 'A':
             choice1_reward = self.group.round_reward_A
         else:  # 'B'
             choice1_reward = self.group.round_reward_B
-            
+                
         # Set binary reward outcome
         self.choice1_reward_binary = choice1_reward
-        
+            
         # Calculate earnings
         if choice1_reward == 1:  # Would have been rewarded
             self.choice1_earnings = self.bet1 * 20  # Positive points
@@ -311,6 +319,10 @@ class Player(BasePlayer):
     
     def calculate_choice2_earnings(self):
         """Calculate earnings for second choice"""
+        # Ensure group rewards are set for this round if not already set
+        if self.group.field_maybe_none('round_reward_A') is None or self.group.field_maybe_none('round_reward_B') is None:
+            self.group.set_round_rewards()
+            
         # For choice2, calculate reward
         if self.choice2 == 'A':
             self.trial_reward = self.group.round_reward_A

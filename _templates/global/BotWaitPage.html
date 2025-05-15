@@ -1,3 +1,4 @@
+<!-- _templates/global/BotWaitPage.html -->
 {% extends "otree/WaitPage.html" %}
 
 {% block title %}{{ title_text }}{% endblock %}
@@ -9,12 +10,25 @@
         <!-- Meta refresh tag for automatic page refresh -->
         <meta http-equiv="refresh" content="5">
         
-        <!-- Hidden form element for bots to detect -->
+        <!-- Special hidden elements for bot detection -->
         <div style="display: none;">
-            <form id="wait-form">
-                <input type="hidden" id="id_waiting" name="waiting" value="true">
-                <button id="hidden-next-button" class="otree-btn-next">Continue</button>
-            </form>
+            <input type="hidden" id="is_wait_page" value="true">
+            <button id="hidden-next-button" class="otree-btn-next">Continue</button>
         </div>
+        
+        <!-- Timer display for humans -->
+        <p>Waiting time: <span id="wait-time">0:00</span></p>
+        
+        <script>
+            // Show waiting time for humans
+            let waitTime = 0;
+            const waitTimer = setInterval(function() {
+                waitTime++;
+                const minutes = Math.floor(waitTime / 60);
+                const seconds = waitTime % 60;
+                document.getElementById('wait-time').textContent = 
+                    `${minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
+            }, 1000);
+        </script>
     </div>
 {% endblock %}

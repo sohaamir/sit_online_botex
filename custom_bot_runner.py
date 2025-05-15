@@ -1,8 +1,10 @@
-import time
+# custom_bot_runner.py - Improved version
 import logging
 import threading
+import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 import botex
 
 logger = logging.getLogger("custom_botex")
@@ -40,7 +42,6 @@ def run_bots_on_session_with_wait_handling(session_id, bot_urls=None, botex_db=N
     user_prompts['analyze_page_no_q'] = wait_page_prompt
     
     # Also add a special prompt for when there are no questions but there is a next button
-    # This helps in case botex misidentifies a wait page
     user_prompts['analyze_page_no_q_full_hist'] = wait_page_prompt
     
     # Add enhancement to kwargs
@@ -58,27 +59,6 @@ def run_bots_on_session_with_wait_handling(session_id, bot_urls=None, botex_db=N
         thread.start()
         monitor_threads.append(thread)
     
-    # Add a hook to handle stale element errors
-    # This is done by modifying the selenium script execution in botex
-    # We add retry logic to the click_on_element function
-    original_run_bot = botex.bot.run_bot
-    
-    # Define a wrapper to catch stale element errors
-    def run_bot_with_retry(**kwargs):
-        try:
-            return original_run_bot(**kwargs)
-        except Exception as e:
-            if "stale element reference" in str(e):
-                logger.warning(f"Stale element error for {kwargs.get('url', 'unknown URL')}, retrying...")
-                time.sleep(5)  # Wait a bit before retry
-                return original_run_bot(**kwargs)
-            else:
-                # Re-raise other errors
-                raise
-    
-    # Monkey patch the run_bot function
-    botex.bot.run_bot = run_bot_with_retry
-    
     try:
         # Run the bots using botex's function
         result = botex.run_bots_on_session(
@@ -92,9 +72,9 @@ def run_bots_on_session_with_wait_handling(session_id, bot_urls=None, botex_db=N
         logger.info(f"All bots for session {session_id} completed successfully")
         return result
     finally:
-        # Restore the original function
-        botex.bot.run_bot = original_run_bot
-        
+        # Give monitor threads a chance to finish
+        for thread in monitor_threads:
+            thread.join(timeout=5)
 
 def wait_page_monitor(url, participant_id):
     """Monitor wait pages and help handle them"""
@@ -134,9 +114,26 @@ def wait_page_monitor(url, participant_id):
                         logger.info(f"Participant {participant_id} on wait page, poll #{check_count}")
                     is_on_wait_page = True
                     
-                    # Refresh the page periodically to check for updates
+                    # Special handling for wait pages
+                    try:
+                        # Try clicking any 'next' buttons if they exist (sometimes hidden)
+                        next_buttons = driver.find_elements(By.CLASS_NAME, 'otree-btn-next')
+                        if next_buttons and len(next_buttons) > 0:
+                            logger.info(f"Found next button on wait page, attempting to click")
+                            try:
+                                driver.execute_script("arguments[0].click();", next_buttons[0])
+                                logger.info(f"Clicked next button on wait page")
+                                time.sleep(2)
+                                continue
+                            except:
+                                pass
+                    except:
+                        pass
+                    
+                    # Refresh the page to help with potential issues
                     if check_count % 4 == 0:  # Every 20 seconds
                         logger.info(f"Refreshing wait page for participant {participant_id}")
+                        driver.refresh()
                     
                     time.sleep(5)
                     check_count += 1

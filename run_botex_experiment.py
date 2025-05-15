@@ -18,7 +18,9 @@ from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 from pathlib import Path
 import subprocess
+import webbrowser
 import requests
+import platform
 import argparse
 import datetime
 import logging
@@ -29,6 +31,11 @@ import time
 import json
 import sys
 import os
+
+from botex_patches import apply_all_patches
+
+# Apply all patches before running
+apply_all_patches(botex)
 
 # Set up logging
 logging.basicConfig(
@@ -114,6 +121,10 @@ def parse_arguments():
     parser.add_argument("-x", "--no-throttle", action="store_true",
                         help="Disable throttling of API requests")
     
+    # Open browser option
+    parser.add_argument("--no-browser", action="store_true", 
+                   help="Disable automatic browser opening (default is to open browser)")
+    
     args = parser.parse_args()
     
     # If model is 'any', use whatever model has keys available
@@ -183,6 +194,24 @@ def parse_arguments():
             args.temperature = 0.7
     
     return args
+
+# Function to automatically open the Chrome browser with the oTree session URL
+def open_chrome_browser(url, max_attempts=3):
+    """Open the specified URL in a browser with retry logic"""
+
+    for attempt in range(max_attempts):
+        try:
+            # Simple approach - just use the default browser
+            webbrowser.open(url)
+            logger.info(f"Opened browser with URL: {url}")
+            return True
+        except Exception as e:
+            logger.warning(f"Browser opening attempt {attempt+1}/{max_attempts} failed: {str(e)}")
+            if attempt < max_attempts - 1:
+                time.sleep(1)  # Wait before retrying
+    
+    logger.error(f"Failed to open browser after {max_attempts} attempts")
+    return False
 
 def get_bot_prompt_strategy(strategy="standard"):
     """Return the appropriate bot prompts based on the strategy"""
@@ -459,6 +488,9 @@ def run_session(args, session_number):
         monitor_url = f"{args.otree_url}/SessionMonitor/{otree_session_id}"
         logger.info(f"Session {session_number}: Monitor URL: {monitor_url}")
         print(f"\nSession {session_number}: Starting bot with {args.model_string}. Monitor progress at {monitor_url}")
+
+        # Automatically open Chrome with the monitor URL unless --no-browser was specified
+        open_chrome_browser(monitor_url)
         
         # Run the bot only if bot URLs are available
         if session['bot_urls']:
