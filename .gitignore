@@ -68,4 +68,8 @@ test_models.py
 pip_list.txt 
 long_prompts.txt 
 estimate_tokens.py 
-botex_env.txt bot_prompts.csv
+botex_env.txt 
+bot_prompts.csv
+
+# Botex data
+botex_source_code_copy/

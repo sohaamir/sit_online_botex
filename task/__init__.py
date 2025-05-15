@@ -16,11 +16,10 @@ make decisions in real-time.
 class C(BaseConstants):
     NAME_IN_URL = 'social_influence_task'
     PLAYERS_PER_GROUP = 3  # Modified from 5 to 3 players
-    NUM_ROUNDS = 5  # 64 rounds as default (same as the original task)
+    NUM_ROUNDS = 3  # 64 rounds as default (same as the original task)
     
     # Reversal points
     REVERSAL_ROUNDS = [16, 33, 48]
-
 
 # Hardcoded reward sequence for each round: [(A_reward, B_reward), ...]
 # Same as before - sequence of 64 rounds defining which option is rewarded in each round
@@ -427,7 +426,7 @@ class FirstDecisionsWaitPage(WaitPage):
     """Wait page after first decisions to ensure all players have made their choices"""
     title_text = "Waiting for Other Players"
     body_text = "Please wait for all players to make their initial choices..."
-    template_name = 'global/WaitPage.html'
+    template_name = 'global/BotWaitPage.html'
     
     @staticmethod
     def after_all_players_arrive(group):
@@ -496,7 +495,7 @@ class SecondDecisionsWaitPage(WaitPage):
     """Wait page after second decisions to ensure all players have made their choices"""
     title_text = "Waiting for Other Players"
     body_text = "Please wait for all players to make their second choices..."
-    template_name = 'global/WaitPage.html'
+    template_name = 'global/BotWaitPage.html'
     
     # Update SecondDecisionsWaitPage similarly
     @staticmethod

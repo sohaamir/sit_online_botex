@@ -2,7 +2,7 @@
 {% load otree static %}
 
 {% block title %}
-Other Players' Initial Choices
+Round {{ player.round_number }} - Second Choice and Second Bet
 {% endblock %}
 
 {% block content %}
@@ -11,7 +11,7 @@ Other Players' Initial Choices
         <h4>Page Instructions</h4>
     </div>
     <div class="card-body">
-        <p>Below are the initial choices made by other players in your group.</p>
+        <p>Below are the initial choices made by other players in your group for {{ player.round_number }}.</p>
         <p>After reviewing their choices, you can make your second choice and bet.</p>
     </div>
 </div>

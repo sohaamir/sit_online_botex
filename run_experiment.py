@@ -26,7 +26,7 @@ Examples:
     # Run with specific strategy
     python run_model.py openai 1 --strategy risk_taking
 """
-
+from run_botex_experiment import open_chrome_browser, monitor_url
 import sys
 import os
 import argparse
@@ -72,6 +72,9 @@ def main():
     # Run the command
     print(f"Running experiment with {args.model} model...")
     print(f"Output will be saved to {output_dir}")
+
+    # Open browser with monitor URL
+    open_chrome_browser(monitor_url)
     
     result = subprocess.run(cmd)
     return result.returncode

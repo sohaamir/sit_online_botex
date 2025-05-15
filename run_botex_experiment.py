@@ -13,16 +13,16 @@ Usage:
 
     Use --help to see all options
 """
-from custom_bot_runner import run_bots_on_session_with_wait_handling
+
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 from pathlib import Path
 import subprocess
 import webbrowser
-import requests
 import platform
 import argparse
 import datetime
+import requests
 import logging
 import shutil
 import random
@@ -31,11 +31,6 @@ import time
 import json
 import sys
 import os
-
-from botex_patches import apply_all_patches
-
-# Apply all patches before running
-apply_all_patches(botex)
 
 # Set up logging
 logging.basicConfig(
@@ -121,10 +116,6 @@ def parse_arguments():
     parser.add_argument("-x", "--no-throttle", action="store_true",
                         help="Disable throttling of API requests")
     
-    # Open browser option
-    parser.add_argument("--no-browser", action="store_true", 
-                   help="Disable automatic browser opening (default is to open browser)")
-    
     args = parser.parse_args()
     
     # If model is 'any', use whatever model has keys available
@@ -195,24 +186,6 @@ def parse_arguments():
     
     return args
 
-# Function to automatically open the Chrome browser with the oTree session URL
-def open_chrome_browser(url, max_attempts=3):
-    """Open the specified URL in a browser with retry logic"""
-
-    for attempt in range(max_attempts):
-        try:
-            # Simple approach - just use the default browser
-            webbrowser.open(url)
-            logger.info(f"Opened browser with URL: {url}")
-            return True
-        except Exception as e:
-            logger.warning(f"Browser opening attempt {attempt+1}/{max_attempts} failed: {str(e)}")
-            if attempt < max_attempts - 1:
-                time.sleep(1)  # Wait before retrying
-    
-    logger.error(f"Failed to open browser after {max_attempts} attempts")
-    return False
-
 def get_bot_prompt_strategy(strategy="standard"):
     """Return the appropriate bot prompts based on the strategy"""
     
@@ -221,6 +194,8 @@ def get_bot_prompt_strategy(strategy="standard"):
         The scraped web page texts contain instructions on how the experiment/survey is conducted. These instructions might include information on how participants are being compensated or paid for their participation. 
         If this is the case, please act as if this compensation also applies to you and make sure to include this information in the summary so that you will recall it in later prompts. 
         Most importantly, the scraped texts can include questions and/or tasks which the user wants you to answer. They might also contain comprehension checks, repeated information from prior pages, and potentially text bits that do not directly belong to the experiment.
+
+        There will be various pages where you will be waiting for other players to catch up. If this happens, please be patient and understand that this is part of the experiment, which is a multiplayer game.
         
         When interacting with the experiment, analyze each page carefully and respond with a valid JSON."""
     
@@ -263,7 +238,7 @@ def get_bot_prompt_strategy(strategy="standard"):
         
         The following JSON string contains the questions: {questions_json} 
 
-        For each identified question, you must provide two variables: 'reason' contains your reasoning or thought that leads you to a response or answer and 'answer' which contains your response.
+        For each identified question, you must provide two variables: 'reason' contains your reasoning or thought that leads you to a response or answer and 'answer' which contains your response. In your response, include the choices and bets made by the other players in the current round.
 
         Taken together, a correct answer to a text with two questions would have the form {{""answers"": {{""ID of first question"": {{""reason"": ""Your reasoning for how you want to answer the first question"", ""answer"":""Your final answer to the first question""}}, ""ID of the second question"": {{""reason"": ""Your reasoning for how you want to answer the second question"", ""answer"": ""Your final answer to the second question""}}}},""summary"": ""Your summary"", ""confused"": ""set to `true` if you are confused by any part of the instructions, otherwise set it to `false`""}}"""
     }
@@ -489,7 +464,7 @@ def run_session(args, session_number):
         logger.info(f"Session {session_number}: Monitor URL: {monitor_url}")
         print(f"\nSession {session_number}: Starting bot with {args.model_string}. Monitor progress at {monitor_url}")
 
-        # Automatically open Chrome with the monitor URL unless --no-browser was specified
+        # Automatically open Chrome with the monitor URL
         open_chrome_browser(monitor_url)
         
         # Run the bot only if bot URLs are available
@@ -576,13 +551,15 @@ def run_session(args, session_number):
                     logger.warning(f"Session {session_number}: No API key provided")
                 
                 logger.info(f"Session {session_number}: Starting bot with {args.model_string}")
-                run_bots_on_session_with_wait_handling(
+                botex.run_single_bot(
+                    url=session['bot_urls'][0],
+                    session_name=otree_session_id,
                     session_id=otree_session_id,
-                    bot_urls=session['bot_urls'],  
+                    participant_id=session['participant_code'][session['is_human'].index(False)],
                     botex_db=botex_db,
                     user_prompts=user_prompts,
                     throttle=throttle,
-                    **model_params  # Let model_params provide the model, api_key, etc.
+                    **model_params
                 )
             
             logger.info(f"Session {session_number}: Bot completed")
@@ -681,6 +658,37 @@ def run_session(args, session_number):
             bot_actions_handler.close()
         if 'json_handler' in locals():
             logger.removeHandler(json_handler)
+
+def open_chrome_browser(url, max_attempts=5):
+    """Open the specified URL in a browser with retry logic"""
+    
+    for attempt in range(max_attempts):
+        try:
+            # macOS-specific approach for Chrome
+            if platform.system() == 'Darwin':
+                try:
+                    # Try to use Google Chrome specifically
+                    subprocess.run(['open', '-a', 'Google Chrome', url], check=True)
+                    logger.info(f"Opened Chrome with URL: {url}")
+                    return True
+                except subprocess.CalledProcessError:
+                    # Fall back to default browser if Chrome isn't available
+                    webbrowser.open(url)
+                    logger.info(f"Opened default browser with URL: {url}")
+                    return True
+            else:
+                # For other platforms use the webbrowser module
+                webbrowser.open(url)
+                logger.info(f"Opened browser with URL: {url}")
+                return True
+                
+        except Exception as e:
+            logger.warning(f"Browser opening attempt {attempt+1}/{max_attempts} failed: {str(e)}")
+            if attempt < max_attempts - 1:
+                time.sleep(1)  # Wait before retrying
+    
+    logger.error(f"Failed to open browser after {max_attempts} attempts")
+    return False
 
 def main():
     """Main function to run the experiment"""

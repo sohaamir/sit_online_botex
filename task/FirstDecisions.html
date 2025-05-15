@@ -2,7 +2,7 @@
 {% load otree static %}
 
 {% block title %}
-First Choice and Bet
+Round {{ player.round_number }} - First Choice and First Bet
 {% endblock %}
 
 {% block content %}
@@ -11,7 +11,7 @@ First Choice and Bet
         <h4>Page Instructions</h4>
     </div>
     <div class="card-body">
-        <p>Please make your initial choice and bet for this round, then submit the form.</p>
+        <p>Please make your initial choice and bet for this round ({{ player.round_number }}), then submit the form.</p>
     </div>
 </div>
 
