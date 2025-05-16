@@ -11,7 +11,7 @@ Round {{ player.round_number }} - Second Choice and Second Bet
         <h4>Page Instructions</h4>
     </div>
     <div class="card-body">
-        <p>Below are the initial choices made by other players in your group for {{ player.round_number }}.</p>
+        <p>Below are the initial choices made by other players in your group for round {{ player.round_number }}.</p>
         <p>After reviewing their choices, you can make your second choice and bet.</p>
     </div>
 </div>
@@ -32,7 +32,7 @@ Round {{ player.round_number }} - Second Choice and Second Bet
             <tbody>
                 {% for player_id, choice in other_players_choices.items %}
                 <tr>
-                    <td>Player {{ player_id }}</td>
+                    <td>{{ player_id }}</td>
                     <td>{{ choice }}</td>
                 </tr>
                 {% endfor %}
@@ -68,11 +68,6 @@ Round {{ player.round_number }} - Second Choice and Second Bet
     <div class="card-body">
         <p>Rate how confident you are in your second choice:</p>
         {% formfield player.bet2 label="Select your second bet:" %}
-        <ul class="mt-3">
-            <li><strong>1</strong></li>
-            <li><strong>2</strong></li>
-            <li><strong>3</strong></li>
-        </ul>
     </div>
 </div>
 

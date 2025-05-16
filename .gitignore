@@ -25,10 +25,11 @@ data/
 *~
 .DS_Store
 
-# oTree Specific
+# oTree Specific (including apps)
 *.otreezip
 heroku_cheatsheet.txt
 test/
+questionnaires/
 
 # R Related Files
 *.Rproj

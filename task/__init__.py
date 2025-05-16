@@ -450,17 +450,20 @@ class SecondDecisions(Page):
         # Only show this page if the player has made their first choice
         return player.field_maybe_none('choice1') is not None
     
-    # Update the vars_for_template in SecondDecisions
     @staticmethod
     def vars_for_template(player):
         # Get the first choices of all other players
         other_players_choices = {}
+        other_player_index = 1  # Start with Player 1
+        
         for p in player.group.get_players():
             if p.id_in_group != player.id_in_group:
                 # Use field_maybe_none for safety
                 choice = p.field_maybe_none('choice1')
                 if choice is not None:
-                    other_players_choices[p.id_in_group] = choice
+                    # Use sequential numbering instead of actual player IDs
+                    other_players_choices[f"Player {other_player_index}"] = choice
+                    other_player_index += 1
         
         return {
             'round_number': player.round_number,
@@ -514,14 +517,17 @@ class RoundResults(Page):
         # Calculate the absolute value of points earned for display
         points_display = abs(player.choice2_earnings)
         
-        # Get the second choices of all players
+        # Get the second choices of all players with sequential numbering
         all_players_results = {}
+        other_player_index = 1  # Start with Player 1
+        
         for p in player.group.get_players():
             if p.id_in_group != player.id_in_group:
-                all_players_results[p.id_in_group] = {
+                all_players_results[f"Player {other_player_index}"] = {
                     'choice': p.choice2,
                     'outcome': 'Correct' if p.trial_reward == 1 else 'Incorrect'
                 }
+                other_player_index += 1
         
         return {
             'round_number': player.round_number,

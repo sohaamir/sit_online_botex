@@ -11,7 +11,7 @@ Round Results for Round {{ player.round_number }}
         <h4>Page Instructions</h4>
     </div>
     <div class="card-body">
-        <p>Please review the results for the current round. After you have reviewed the page's content, and when you are ready, click the 'Next' button to continue to the next round.</p>
+        <p>Please review the results for the current round (round {{ player.round_number }}). After you have reviewed the page's content, and when you are ready, click the 'Next' button to continue to the next round.</p>
     </div>
 </div>
 
@@ -48,7 +48,7 @@ Round Results for Round {{ player.round_number }}
             <tbody>
                 {% for player_id, result in all_players_results.items %}
                 <tr>
-                    <td>Player {{ player_id }}</td>
+                    <td>{{ player_id }}</td>
                     <td>{{ result.choice }}</td>
                     <td>{{ result.outcome }}</td>
                 </tr>

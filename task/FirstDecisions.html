@@ -11,7 +11,7 @@ Round {{ player.round_number }} - First Choice and First Bet
         <h4>Page Instructions</h4>
     </div>
     <div class="card-body">
-        <p>Please make your initial choice and bet for this round ({{ player.round_number }}), then submit the form.</p>
+        <p>Please make your initial choice and bet for this round (round {{ player.round_number }}), then submit the form.</p>
     </div>
 </div>
 
@@ -31,11 +31,6 @@ Round {{ player.round_number }} - First Choice and First Bet
     <div class="card-body">
         <p>Rate how confident you are in your choice:</p>
         {% formfield player.bet1 label="Select your bet:" %}
-        <ul class="mt-3">
-            <li><strong>1</strong></li>
-            <li><strong>2</strong></li>
-            <li><strong>3</strong></li>
-        </ul>
     </div>
 </div>
 

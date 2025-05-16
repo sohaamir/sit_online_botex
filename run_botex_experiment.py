@@ -232,13 +232,25 @@ def get_bot_prompt_strategy(strategy="standard"):
 
         I need you to answer {nr_q} question(s) and update your summary. When making choices and bets, follow these critical guidelines:
 
-        CHOICES:
+        CHOICES AND REASONING FORMAT:
+        - For your FIRST CHOICE and FIRST BET (initial decision), reference the SECOND CHOICES and SECOND BETS made by other players in the PREVIOUS ROUND (with the exception of the very first round).
+        - For your SECOND CHOICE and SECOND BET (revised decision), reference the FIRST CHOICES and FIRST BETS made by other players in the CURRENT ROUND.
+        - ALWAYS format your reasoning in this exact pattern: "Player 1 chose X, Player 2 chose Z, therefore I will choose [option] with [bet]"
+        - IMPORTANT: Use sequential player numbering (Player 1, Player 2) regardless of their actual IDs in the game
+        - Include both what other players did AND the reason for your own decision
+        - Make sure to use this format EVERY TIME you provide reasoning for a choice or bet
+        
+        CHOICES STRATEGY:
         - Throughout the task, be FLEXIBLE in your choices based on both social information and your own experience
         - You should be influenced by the choices of others in the immediate past respective to your choice
         
         The following JSON string contains the questions: {questions_json} 
 
-        For each identified question, you must provide two variables: 'reason' contains your reasoning or thought that leads you to a response or answer and 'answer' which contains your response. In your response, include the choices and bets made by the other players in the current round.
+        For each identified question, you must provide two variables: 'reason' contains your reasoning or thought that leads you to a response or answer and 'answer' which contains your response. In your reasoning, include the choices made by the other players in the current/previous round. 
+        
+        For example, when making your initial choice and bet: "Player 1 chose X for their second choice in the previous round, Player 2 chose Y for their second choice in the previous round, there I will choose <option> with <bet>".
+
+        And when making your second choice and bet: "Player 1 chose X for their first choice in the current round, Player 2 chose Y for their first choice in the current round, there I will choose <option> with <bet>".
 
         Taken together, a correct answer to a text with two questions would have the form {{""answers"": {{""ID of first question"": {{""reason"": ""Your reasoning for how you want to answer the first question"", ""answer"":""Your final answer to the first question""}}, ""ID of the second question"": {{""reason"": ""Your reasoning for how you want to answer the second question"", ""answer"": ""Your final answer to the second question""}}}},""summary"": ""Your summary"", ""confused"": ""set to `true` if you are confused by any part of the instructions, otherwise set it to `false`""}}"""
     }
@@ -357,32 +369,31 @@ def export_ordered_response_data(csv_file, botex_db, session_id):
                 f.write("session_id,participant_id,round,question_id,answer,reason\n")
                 f.write(f"# Error exporting responses: {str(e)}\n")
 
-def run_tinyllama_bot(botex_db, session_id, url, **kwargs):
-    """Run TinyLLaMA bot with additional length constraints"""
+def configure_tinyllama_params(args, user_prompts):
+    """Configure parameters for TinyLLaMA bots to be used with run_bots_on_session"""
     
     # Add explicit brevity instructions to all prompts
-    original_prompts = kwargs.get('user_prompts', {})
-    for key in original_prompts:
-        if isinstance(original_prompts[key], str):
-            original_prompts[key] += "\n\nIMPORTANT: Your responses must be extremely brief and concise."
+    modified_prompts = {}
+    for key, value in user_prompts.items():
+        if isinstance(value, str):
+            modified_prompts[key] = value + "\n\nIMPORTANT: Your responses must be extremely brief and concise."
     
     # Make sure temperature is high enough to avoid repetition
-    kwargs['temperature'] = max(kwargs.get('temperature', 0.7), 0.8)
+    temperature = max(args.temperature, 0.8)
     
     # Enforce low max tokens
-    kwargs['max_tokens'] = min(kwargs.get('max_tokens', 256), 256)
+    max_tokens = min(args.max_tokens, 256)
     
-    # Add repetition penalty if using llamacpp
-    if kwargs.get('model') == 'llamacpp':
-        kwargs['repetition_penalty'] = 1.1
+    # Define additional parameters for llamacpp
+    additional_params = {
+        'temperature': temperature,
+        'max_tokens': max_tokens,
+    }
     
-    # Call the actual bot runner
-    return botex.run_single_bot(
-        botex_db=botex_db,
-        session_id=session_id,
-        url=url,
-        **kwargs
-    )
+    if args.model == 'llamacpp':
+        additional_params['repetition_penalty'] = 1.1
+    
+    return modified_prompts, additional_params
 
 def run_session(args, session_number):
     """Run a single experimental session with a botex bot"""
@@ -394,18 +405,29 @@ def run_session(args, session_number):
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         session_id = f"session_{session_number}_{timestamp}"
         
-        # Create model-specific suffix for directories and filenames
-        model_suffix = f"_{args.model}"
-        if args.model != "tinyllama":
-            # Extract simple name from model string
-            model_name = args.model_string.split("/")[-1].split("-")[0]
-            model_suffix = f"_{model_name}"
+        # Calculate number of bots
+        n_bots = args.participants - args.humans
         
-        # Create session-specific output directory with model suffix
+        # Create model-specific suffix with detailed information
+        if args.model == "tinyllama":
+            # For TinyLLaMA, use a simpler descriptor
+            model_full_name = "tinyllama"
+        else:
+            # For API models, extract the full model name from the model string
+            # Remove any vendor prefix like 'gemini/' or 'anthropic/'
+            if '/' in args.model_string:
+                model_full_name = args.model_string.split('/')[-1]
+            else:
+                model_full_name = args.model_string
+        
+        # Updated suffix with humans, bots, and detailed model info
+        model_suffix = f"_{args.model}_nhumans{args.humans}_nbots{n_bots}_{model_full_name}"
+        
+        # Create session-specific output directory with enhanced suffix
         output_dir = os.path.join(args.output_dir, f"session_{session_id}{model_suffix}")
         os.makedirs(output_dir, exist_ok=True)
         
-        # Create session-specific database and log files with model suffix
+        # Create session-specific database and log files with enhanced suffix
         botex_db = os.path.join(output_dir, f"botex_{session_id}{model_suffix}.sqlite3")
         log_file = os.path.join(output_dir, f"experiment_log_{timestamp}{model_suffix}.txt")
         bot_actions_log = os.path.join(output_dir, f"bot_actions_{timestamp}{model_suffix}.txt")
@@ -454,7 +476,7 @@ def run_session(args, session_number):
         otree_session_id = session['session_id']
         logger.info(f"Session {session_number}: Initialized oTree session with ID: {otree_session_id}")
         
-        # Define output filenames with model suffix
+        # When exporting files, use the enhanced suffix:
         botex_responses_csv = os.path.join(output_dir, f"botex_{otree_session_id}_responses{model_suffix}.csv")
         botex_participants_csv = os.path.join(output_dir, f"botex_{otree_session_id}_participants{model_suffix}.csv")
         otree_wide_csv = os.path.join(output_dir, f"otree_{otree_session_id}_wide{model_suffix}.csv")
@@ -506,24 +528,20 @@ def run_session(args, session_number):
                 else:
                     server_process = None
                 
-                # Get specialized TinyLLaMA prompts
+                # Get specialized TinyLLaMA prompts and configure parameters
                 user_prompts = get_tinyllama_prompts(args.strategy)
-                logger.info(f"Session {session_number}: Using simplified prompts for TinyLLaMA")
-                
-                # Run TinyLLaMA bot with specialized function
-                logger.info(f"Session {session_number}: Starting TinyLLaMA bot with optimized settings")
-                run_tinyllama_bot(
-                    botex_db=botex_db,
+                modified_prompts, tinyllama_params = configure_tinyllama_params(args, user_prompts)
+
+                # Run bots with optimized settings
+                logger.info(f"Session {session_number}: Starting TinyLLaMA bots with optimized settings")
+                botex.run_bots_on_session(
                     session_id=otree_session_id,
-                    url=session['bot_urls'][0],
-                    session_name=otree_session_id,
-                    participant_id=session['participant_code'][session['is_human'].index(False)],
-                    user_prompts=user_prompts,
+                    botex_db=botex_db,
+                    user_prompts=modified_prompts,
                     throttle=throttle,
                     model="llamacpp",
                     api_base=server_url,
-                    max_tokens=args.max_tokens,
-                    temperature=args.temperature
+                    **tinyllama_params
                 )
                 
                 # Clean up llama.cpp server if we started it
@@ -551,11 +569,8 @@ def run_session(args, session_number):
                     logger.warning(f"Session {session_number}: No API key provided")
                 
                 logger.info(f"Session {session_number}: Starting bot with {args.model_string}")
-                botex.run_single_bot(
-                    url=session['bot_urls'][0],
-                    session_name=otree_session_id,
+                botex.run_bots_on_session(
                     session_id=otree_session_id,
-                    participant_id=session['participant_code'][session['is_human'].index(False)],
                     botex_db=botex_db,
                     user_prompts=user_prompts,
                     throttle=throttle,
