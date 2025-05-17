@@ -29,7 +29,6 @@ data/
 *.otreezip
 heroku_cheatsheet.txt
 test/
-questionnaires/
 
 # R Related Files
 *.Rproj
