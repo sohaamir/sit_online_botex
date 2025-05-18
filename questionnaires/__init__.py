@@ -27,14 +27,11 @@ class Subsession(BaseSubsession):
 class Group(BaseGroup):
     pass
 
-
 class Player(BasePlayer):
-    # Fields for LSAS (Liebowitz Social Anxiety Scale)
-    # Each question has two components: anxiety and avoidance
-    # Anxiety scores: 0 (None) to 3 (Severe)
-    # Avoidance scores: 0 (Never) to 3 (Usually)
+    # The field generation loops will now only create 2 fields each
+    # instead of the full questionnaires
     
-    # Generate LSAS anxiety fields
+    # Generate LSAS anxiety fields (now only 2)
     for i in range(1, C.NUM_LSAS_QUESTIONS + 1):
         locals()[f'lsas_anxiety_{i}'] = models.IntegerField(
             choices=[
@@ -46,9 +43,9 @@ class Player(BasePlayer):
             widget=widgets.RadioSelect,
             label=f"Question {i}"
         )
-    del i  # Delete the loop variable
+    del i
     
-    # Generate LSAS avoidance fields
+    # Generate LSAS avoidance fields (now only 2)
     for i in range(1, C.NUM_LSAS_QUESTIONS + 1):
         locals()[f'lsas_avoidance_{i}'] = models.IntegerField(
             choices=[
@@ -60,7 +57,7 @@ class Player(BasePlayer):
             widget=widgets.RadioSelect,
             label=f"Question {i}"
         )
-    del i  # Delete the loop variable
+    del i
     
     # Total scores for LSAS
     lsas_anxiety_score = models.IntegerField()
