@@ -12,7 +12,7 @@ class C(BaseConstants):
     NUM_ROUNDS = 1
     
     # Number of questions in each questionnaire
-    NUM_LSAS_QUESTIONS = 24  # Each question has two parts (anxiety and avoidance)
+    NUM_LSAS_QUESTIONS = 12  # Each question has two parts (anxiety and avoidance)
     NUM_DASS_QUESTIONS = 21
     NUM_AQ_QUESTIONS = 10
     NUM_AMI_QUESTIONS = 20
@@ -221,16 +221,18 @@ class Player(BasePlayer):
         self.lsas_avoidance_score = avoidance_score
         self.lsas_total_score = anxiety_score + avoidance_score
         
-        # Calculate LSAS-P subscale (Performance anxiety)
-        # Questions 1, 2, 3, 4, 6, 8, 9, 13, 14, 16, 17, 20, 21
-        lsas_p_questions = [1, 2, 3, 4, 6, 8, 9, 13, 14, 16, 17, 20, 21]
+        # Calculate LSAS-P subscale (Performance anxiety) - UPDATED for questions 1-12 only
+        # Original questions: 1, 2, 3, 4, 6, 8, 9, 13, 14, 16, 17, 20, 21
+        # Available in first 12: 1, 2, 3, 4, 6, 8, 9
+        lsas_p_questions = [1, 2, 3, 4, 6]
         lsas_p_anxiety = sum(getattr(self, f'lsas_anxiety_{i}') for i in lsas_p_questions)
         lsas_p_avoidance = sum(getattr(self, f'lsas_avoidance_{i}') for i in lsas_p_questions)
         self.lsas_p_score = lsas_p_anxiety + lsas_p_avoidance
         
-        # Calculate LSAS-S subscale (Social interaction anxiety)
-        # Questions 5, 7, 10, 11, 12, 15, 18, 19, 22, 23, 24
-        lsas_s_questions = [5, 7, 10, 11, 12, 15, 18, 19, 22, 23, 24]
+        # Calculate LSAS-S subscale (Social interaction anxiety) - UPDATED for questions 1-12 only  
+        # Original questions: 5, 7, 10, 11, 12, 15, 18, 19, 22, 23, 24
+        # Available in first 12: 5, 7, 10, 11, 12
+        lsas_s_questions = [5]
         lsas_s_anxiety = sum(getattr(self, f'lsas_anxiety_{i}') for i in lsas_s_questions)
         lsas_s_avoidance = sum(getattr(self, f'lsas_avoidance_{i}') for i in lsas_s_questions)
         self.lsas_s_score = lsas_s_anxiety + lsas_s_avoidance
