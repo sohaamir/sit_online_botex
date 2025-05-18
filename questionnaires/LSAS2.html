@@ -1,0 +1,111 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+Social Anxiety Questionnaire - Part 2
+{% endblock %}
+
+{% block content %}
+    <div class="card mb-3">
+        <div class="card-header bg-primary text-white">
+            <h5>Questionnaire 1 (Part 2 of 4)</h5>
+        </div>
+        <div class="card-body">
+            <p>Please continue answering both questions for each situation:</p>
+            
+            <div class="alert alert-info">
+                <p><strong>Question A:</strong> How <strong>anxious</strong> or fearful do you feel in this situation?<br>
+                Choose from: None (0), Mild (1), Moderate (2), or Severe (3)</p>
+                
+                <p><strong>Question B:</strong> How often do you <strong>avoid</strong> this situation?<br>
+                Choose from: Never (0%), Occasionally (1-33%), Often (34-66%), or Usually (67-100%)</p>
+            </div>
+            
+            <div class="question-block mb-4">
+                <h4>Situation 7: Going to a party</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>How anxious or fearful do you feel when going to a party?</strong></p>
+                        {% formfield player.lsas_anxiety_7 label="" %}
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>How often do you avoid going to a party?</strong></p>
+                        {% formfield player.lsas_avoidance_7 label="" %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="question-block mb-4">
+                <h4>Situation 8: Working while being observed</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>How anxious or fearful do you feel when working while being observed?</strong></p>
+                        {% formfield player.lsas_anxiety_8 label="" %}
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>How often do you avoid working while being observed?</strong></p>
+                        {% formfield player.lsas_avoidance_8 label="" %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="question-block mb-4">
+                <h4>Situation 9: Writing while being observed</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>How anxious or fearful do you feel when writing while being observed?</strong></p>
+                        {% formfield player.lsas_anxiety_9 label="" %}
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>How often do you avoid writing while being observed?</strong></p>
+                        {% formfield player.lsas_avoidance_9 label="" %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="question-block mb-4">
+                <h4>Situation 10: Calling someone you don't know very well</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>How anxious or fearful do you feel when calling someone you don't know very well?</strong></p>
+                        {% formfield player.lsas_anxiety_10 label="" %}
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>How often do you avoid calling someone you don't know very well?</strong></p>
+                        {% formfield player.lsas_avoidance_10 label="" %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="question-block mb-4">
+                <h4>Situation 11: Talking with people you don't know very well</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>How anxious or fearful do you feel when talking with people you don't know very well?</strong></p>
+                        {% formfield player.lsas_anxiety_11 label="" %}
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>How often do you avoid talking with people you don't know very well?</strong></p>
+                        {% formfield player.lsas_avoidance_11 label="" %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="question-block mb-4">
+                <h4>Situation 12: Meeting strangers</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>How anxious or fearful do you feel when meeting strangers?</strong></p>
+                        {% formfield player.lsas_anxiety_12 label="" %}
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>How often do you avoid meeting strangers?</strong></p>
+                        {% formfield player.lsas_avoidance_12 label="" %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% next_button %}
+{% endblock %}

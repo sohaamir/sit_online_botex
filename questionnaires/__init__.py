@@ -12,7 +12,7 @@ class C(BaseConstants):
     NUM_ROUNDS = 1
     
     # Number of questions in each questionnaire
-    NUM_LSAS_QUESTIONS = 12  # Each question has two parts (anxiety and avoidance)
+    NUM_LSAS_QUESTIONS = 24  # Each question has two parts (anxiety and avoidance)
     NUM_DASS_QUESTIONS = 21
     NUM_AQ_QUESTIONS = 10
     NUM_AMI_QUESTIONS = 20
@@ -28,10 +28,7 @@ class Group(BaseGroup):
     pass
 
 class Player(BasePlayer):
-    # The field generation loops will now only create 2 fields each
-    # instead of the full questionnaires
-    
-    # Generate LSAS anxiety fields (now only 2)
+    # Generate LSAS anxiety fields (all 24)
     for i in range(1, C.NUM_LSAS_QUESTIONS + 1):
         locals()[f'lsas_anxiety_{i}'] = models.IntegerField(
             choices=[
@@ -41,11 +38,11 @@ class Player(BasePlayer):
                 [3, 'Severe'],
             ],
             widget=widgets.RadioSelect,
-            label=f"Question {i}"
+            label=""
         )
     del i
     
-    # Generate LSAS avoidance fields (now only 2)
+    # Generate LSAS avoidance fields (all 24)
     for i in range(1, C.NUM_LSAS_QUESTIONS + 1):
         locals()[f'lsas_avoidance_{i}'] = models.IntegerField(
             choices=[
@@ -55,7 +52,7 @@ class Player(BasePlayer):
                 [3, 'Usually (67-100%)'],
             ],
             widget=widgets.RadioSelect,
-            label=f"Question {i}"
+            label=""
         )
     del i
     
@@ -215,26 +212,24 @@ class Player(BasePlayer):
     # Calculate LSAS scores
     def calculate_lsas_scores(self):
         # Calculate main scores
-        anxiety_score = sum(getattr(self, f'lsas_anxiety_{i}') for i in range(1, C.NUM_LSAS_QUESTIONS + 1))
-        avoidance_score = sum(getattr(self, f'lsas_avoidance_{i}') for i in range(1, C.NUM_LSAS_QUESTIONS + 1))
+        anxiety_score = sum(getattr(self, f'lsas_anxiety_{i}', 0) or 0 for i in range(1, C.NUM_LSAS_QUESTIONS + 1))
+        avoidance_score = sum(getattr(self, f'lsas_avoidance_{i}', 0) or 0 for i in range(1, C.NUM_LSAS_QUESTIONS + 1))
         self.lsas_anxiety_score = anxiety_score
         self.lsas_avoidance_score = avoidance_score
         self.lsas_total_score = anxiety_score + avoidance_score
         
-        # Calculate LSAS-P subscale (Performance anxiety) - UPDATED for questions 1-12 only
-        # Original questions: 1, 2, 3, 4, 6, 8, 9, 13, 14, 16, 17, 20, 21
-        # Available in first 12: 1, 2, 3, 4, 6, 8, 9
-        lsas_p_questions = [1, 2, 3, 4, 6]
-        lsas_p_anxiety = sum(getattr(self, f'lsas_anxiety_{i}') for i in lsas_p_questions)
-        lsas_p_avoidance = sum(getattr(self, f'lsas_avoidance_{i}') for i in lsas_p_questions)
+        # Calculate LSAS-P subscale (Performance anxiety)
+        # Standard LSAS performance items: 1, 3, 6, 8, 9, 13, 14, 16, 17, 20
+        lsas_p_questions = [1, 3, 6, 8, 9, 13, 14, 16, 17, 20]
+        lsas_p_anxiety = sum(getattr(self, f'lsas_anxiety_{i}', 0) or 0 for i in lsas_p_questions)
+        lsas_p_avoidance = sum(getattr(self, f'lsas_avoidance_{i}', 0) or 0 for i in lsas_p_questions)
         self.lsas_p_score = lsas_p_anxiety + lsas_p_avoidance
         
-        # Calculate LSAS-S subscale (Social interaction anxiety) - UPDATED for questions 1-12 only  
-        # Original questions: 5, 7, 10, 11, 12, 15, 18, 19, 22, 23, 24
-        # Available in first 12: 5, 7, 10, 11, 12
-        lsas_s_questions = [5]
-        lsas_s_anxiety = sum(getattr(self, f'lsas_anxiety_{i}') for i in lsas_s_questions)
-        lsas_s_avoidance = sum(getattr(self, f'lsas_avoidance_{i}') for i in lsas_s_questions)
+        # Calculate LSAS-S subscale (Social interaction anxiety)
+        # Standard LSAS social interaction items: 2, 4, 5, 7, 10, 11, 12, 15, 18, 19, 21, 22, 23, 24
+        lsas_s_questions = [2, 4, 5, 7, 10, 11, 12, 15, 18, 19, 21, 22, 23, 24]
+        lsas_s_anxiety = sum(getattr(self, f'lsas_anxiety_{i}', 0) or 0 for i in lsas_s_questions)
+        lsas_s_avoidance = sum(getattr(self, f'lsas_avoidance_{i}', 0) or 0 for i in lsas_s_questions)
         self.lsas_s_score = lsas_s_anxiety + lsas_s_avoidance
     
     # Calculate DASS scores
@@ -361,18 +356,57 @@ class Instructions(Page):
     """General instructions for the questionnaire battery"""
     pass
 
-class LSAS(Page):
-    """Liebowitz Social Anxiety Scale"""
+class LSAS1(Page):
+    """Liebowitz Social Anxiety Scale - Part 1 (Situations 1-6)"""
     form_model = 'player'
-    
-    @staticmethod
-    def get_form_fields(player):
-        anxiety_fields = [f'lsas_anxiety_{i}' for i in range(1, C.NUM_LSAS_QUESTIONS + 1)]
-        avoidance_fields = [f'lsas_avoidance_{i}' for i in range(1, C.NUM_LSAS_QUESTIONS + 1)]
-        return anxiety_fields + avoidance_fields
+    form_fields = [
+        'lsas_anxiety_1', 'lsas_avoidance_1',
+        'lsas_anxiety_2', 'lsas_avoidance_2',
+        'lsas_anxiety_3', 'lsas_avoidance_3',
+        'lsas_anxiety_4', 'lsas_avoidance_4',
+        'lsas_anxiety_5', 'lsas_avoidance_5',
+        'lsas_anxiety_6', 'lsas_avoidance_6',
+    ]
+
+class LSAS2(Page):
+    """Liebowitz Social Anxiety Scale - Part 2 (Situations 7-12)"""
+    form_model = 'player'
+    form_fields = [
+        'lsas_anxiety_7', 'lsas_avoidance_7',
+        'lsas_anxiety_8', 'lsas_avoidance_8',
+        'lsas_anxiety_9', 'lsas_avoidance_9',
+        'lsas_anxiety_10', 'lsas_avoidance_10',
+        'lsas_anxiety_11', 'lsas_avoidance_11',
+        'lsas_anxiety_12', 'lsas_avoidance_12',
+    ]
+
+class LSAS3(Page):
+    """Liebowitz Social Anxiety Scale - Part 3 (Situations 13-18)"""
+    form_model = 'player'
+    form_fields = [
+        'lsas_anxiety_13', 'lsas_avoidance_13',
+        'lsas_anxiety_14', 'lsas_avoidance_14',
+        'lsas_anxiety_15', 'lsas_avoidance_15',
+        'lsas_anxiety_16', 'lsas_avoidance_16',
+        'lsas_anxiety_17', 'lsas_avoidance_17',
+        'lsas_anxiety_18', 'lsas_avoidance_18',
+    ]
+
+class LSAS4(Page):
+    """Liebowitz Social Anxiety Scale - Part 4 (Situations 19-24)"""
+    form_model = 'player'
+    form_fields = [
+        'lsas_anxiety_19', 'lsas_avoidance_19',
+        'lsas_anxiety_20', 'lsas_avoidance_20',
+        'lsas_anxiety_21', 'lsas_avoidance_21',
+        'lsas_anxiety_22', 'lsas_avoidance_22',
+        'lsas_anxiety_23', 'lsas_avoidance_23',
+        'lsas_anxiety_24', 'lsas_avoidance_24',
+    ]
     
     @staticmethod
     def before_next_page(player, timeout_happened):
+        # Calculate scores only after all questions are completed
         player.calculate_lsas_scores()
 
 class DASS(Page):
@@ -439,7 +473,10 @@ class SSMS(Page):
 
 page_sequence = [
     Instructions,
-    LSAS,
+    LSAS1,
+    LSAS2,
+    LSAS3,
+    LSAS4,
     DASS,
     AQ,
     AMI,
