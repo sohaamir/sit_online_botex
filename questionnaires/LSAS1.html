@@ -8,7 +8,7 @@ Social Anxiety Questionnaire - Part 1
 {% block content %}
     <div class="card mb-3">
         <div class="card-header bg-primary text-white">
-            <h5>Questionnaire 1 (Part 1 of 4)</h5>
+            <h5>Questionnaire 1 (Part 1 of 3)</h5>
         </div>
         <div class="card-body">
             <p>This questionnaire assesses your feelings in various social situations. For each situation, please answer:</p>
@@ -103,6 +103,34 @@ Social Anxiety Questionnaire - Part 1
                     <div class="col-md-6">
                         <p><strong>How often do you avoid acting, performing, or giving a talk in front of an audience?</strong></p>
                         {% formfield player.lsas_avoidance_6 label="" %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="question-block mb-4">
+                <h4>Situation 7: Going to a party</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>How anxious or fearful do you feel when going to a party?</strong></p>
+                        {% formfield player.lsas_anxiety_7 label="" %}
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>How often do you avoid going to a party?</strong></p>
+                        {% formfield player.lsas_avoidance_7 label="" %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="question-block mb-4">
+                <h4>Situation 8: Working while being observed</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>How anxious or fearful do you feel when working while being observed?</strong></p>
+                        {% formfield player.lsas_anxiety_8 label="" %}
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>How often do you avoid working while being observed?</strong></p>
+                        {% formfield player.lsas_avoidance_8 label="" %}
                     </div>
                 </div>
             </div>

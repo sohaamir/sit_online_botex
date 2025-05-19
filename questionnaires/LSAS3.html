@@ -8,10 +8,10 @@ Social Anxiety Questionnaire - Part 3
 {% block content %}
     <div class="card mb-3">
         <div class="card-header bg-primary text-white">
-            <h5>Questionnaire 1 (Part 3 of 4)</h5>
+            <h5>Questionnaire 1 (Part 3 of 3)</h5>
         </div>
         <div class="card-body">
-            <p>Please continue answering both questions for each situation:</p>
+            <p>Please answer the final questions for the remaining situations:</p>
             
             <div class="alert alert-info">
                 <p><strong>Question A:</strong> How <strong>anxious</strong> or fearful do you feel in this situation?<br>
@@ -19,62 +19,6 @@ Social Anxiety Questionnaire - Part 3
                 
                 <p><strong>Question B:</strong> How often do you <strong>avoid</strong> this situation?<br>
                 Choose from: Never (0%), Occasionally (1-33%), Often (34-66%), or Usually (67-100%)</p>
-            </div>
-            
-            <div class="question-block mb-4">
-                <h4>Situation 13: Urinating in a public bathroom</h4>
-                <div class="row">
-                    <div class="col-md-6">
-                        <p><strong>How anxious or fearful do you feel when urinating in a public bathroom?</strong></p>
-                        {% formfield player.lsas_anxiety_13 label="" %}
-                    </div>
-                    <div class="col-md-6">
-                        <p><strong>How often do you avoid urinating in a public bathroom?</strong></p>
-                        {% formfield player.lsas_avoidance_13 label="" %}
-                    </div>
-                </div>
-            </div>
-            
-            <div class="question-block mb-4">
-                <h4>Situation 14: Entering a room when others are already seated</h4>
-                <div class="row">
-                    <div class="col-md-6">
-                        <p><strong>How anxious or fearful do you feel when entering a room when others are already seated?</strong></p>
-                        {% formfield player.lsas_anxiety_14 label="" %}
-                    </div>
-                    <div class="col-md-6">
-                        <p><strong>How often do you avoid entering a room when others are already seated?</strong></p>
-                        {% formfield player.lsas_avoidance_14 label="" %}
-                    </div>
-                </div>
-            </div>
-            
-            <div class="question-block mb-4">
-                <h4>Situation 15: Being the center of attention</h4>
-                <div class="row">
-                    <div class="col-md-6">
-                        <p><strong>How anxious or fearful do you feel when being the center of attention?</strong></p>
-                        {% formfield player.lsas_anxiety_15 label="" %}
-                    </div>
-                    <div class="col-md-6">
-                        <p><strong>How often do you avoid being the center of attention?</strong></p>
-                        {% formfield player.lsas_avoidance_15 label="" %}
-                    </div>
-                </div>
-            </div>
-            
-            <div class="question-block mb-4">
-                <h4>Situation 16: Speaking up at a meeting</h4>
-                <div class="row">
-                    <div class="col-md-6">
-                        <p><strong>How anxious or fearful do you feel when speaking up at a meeting?</strong></p>
-                        {% formfield player.lsas_anxiety_16 label="" %}
-                    </div>
-                    <div class="col-md-6">
-                        <p><strong>How often do you avoid speaking up at a meeting?</strong></p>
-                        {% formfield player.lsas_avoidance_16 label="" %}
-                    </div>
-                </div>
             </div>
             
             <div class="question-block mb-4">
@@ -101,6 +45,90 @@ Social Anxiety Questionnaire - Part 3
                     <div class="col-md-6">
                         <p><strong>How often do you avoid expressing disagreement or disapproval to people you don't know very well?</strong></p>
                         {% formfield player.lsas_avoidance_18 label="" %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="question-block mb-4">
+                <h4>Situation 19: Looking at people you don't know very well in the eyes</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>How anxious or fearful do you feel when looking at people you don't know very well in the eyes?</strong></p>
+                        {% formfield player.lsas_anxiety_19 label="" %}
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>How often do you avoid looking at people you don't know very well in the eyes?</strong></p>
+                        {% formfield player.lsas_avoidance_19 label="" %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="question-block mb-4">
+                <h4>Situation 20: Giving a report to a group</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>How anxious or fearful do you feel when giving a report to a group?</strong></p>
+                        {% formfield player.lsas_anxiety_20 label="" %}
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>How often do you avoid giving a report to a group?</strong></p>
+                        {% formfield player.lsas_avoidance_20 label="" %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="question-block mb-4">
+                <h4>Situation 21: Trying to pick up someone</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>How anxious or fearful do you feel when trying to pick up someone?</strong></p>
+                        {% formfield player.lsas_anxiety_21 label="" %}
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>How often do you avoid trying to pick up someone?</strong></p>
+                        {% formfield player.lsas_avoidance_21 label="" %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="question-block mb-4">
+                <h4>Situation 22: Returning goods to a store</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>How anxious or fearful do you feel when returning goods to a store?</strong></p>
+                        {% formfield player.lsas_anxiety_22 label="" %}
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>How often do you avoid returning goods to a store?</strong></p>
+                        {% formfield player.lsas_avoidance_22 label="" %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="question-block mb-4">
+                <h4>Situation 23: Giving a party</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>How anxious or fearful do you feel when giving a party?</strong></p>
+                        {% formfield player.lsas_anxiety_23 label="" %}
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>How often do you avoid giving a party?</strong></p>
+                        {% formfield player.lsas_avoidance_23 label="" %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="question-block mb-4">
+                <h4>Situation 24: Resisting a high pressure salesperson</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>How anxious or fearful do you feel when resisting a high pressure salesperson?</strong></p>
+                        {% formfield player.lsas_anxiety_24 label="" %}
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>How often do you avoid resisting a high pressure salesperson?</strong></p>
+                        {% formfield player.lsas_avoidance_24 label="" %}
                     </div>
                 </div>
             </div>
