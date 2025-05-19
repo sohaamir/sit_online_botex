@@ -28,9 +28,9 @@ class Group(BaseGroup):
     pass
 
 class Player(BasePlayer):
-    # Generate LSAS anxiety fields (all 24)
-    for i in range(1, C.NUM_LSAS_QUESTIONS + 1):
-        locals()[f'lsas_anxiety_{i}'] = models.IntegerField(
+    # Generate LSAS anxiety fields (all 24) - using different variable name
+    for lsas_idx in range(1, C.NUM_LSAS_QUESTIONS + 1):
+        locals()[f'lsas_anxiety_{lsas_idx}'] = models.IntegerField(
             choices=[
                 [0, 'None'],
                 [1, 'Mild'],
@@ -40,11 +40,12 @@ class Player(BasePlayer):
             widget=widgets.RadioSelect,
             label=""
         )
-    del i
+    # Clean up the loop variable
+    del lsas_idx
     
-    # Generate LSAS avoidance fields (all 24)
-    for i in range(1, C.NUM_LSAS_QUESTIONS + 1):
-        locals()[f'lsas_avoidance_{i}'] = models.IntegerField(
+    # Generate LSAS avoidance fields (all 24) - using different variable name
+    for lsas_avoid_idx in range(1, C.NUM_LSAS_QUESTIONS + 1):
+        locals()[f'lsas_avoidance_{lsas_avoid_idx}'] = models.IntegerField(
             choices=[
                 [0, 'Never (0%)'],
                 [1, 'Occasionally (1-33%)'],
@@ -54,7 +55,8 @@ class Player(BasePlayer):
             widget=widgets.RadioSelect,
             label=""
         )
-    del i
+    # Clean up the loop variable
+    del lsas_avoid_idx
     
     # Total scores for LSAS
     lsas_anxiety_score = models.IntegerField()
@@ -67,8 +69,8 @@ class Player(BasePlayer):
     
     # Fields for DASS (Depression Anxiety Stress Scale)
     # Each item is scored from 0 (Did not apply to me at all) to 3 (Applied to me very much)
-    for i in range(1, C.NUM_DASS_QUESTIONS + 1):
-        locals()[f'dass_{i}'] = models.IntegerField(
+    for dass_idx in range(1, C.NUM_DASS_QUESTIONS + 1):
+        locals()[f'dass_{dass_idx}'] = models.IntegerField(
             choices=[
                 [0, 'Did not apply to me at all'],
                 [1, 'Applied to me to some degree, or some of the time'],
@@ -76,9 +78,10 @@ class Player(BasePlayer):
                 [3, 'Applied to me very much, or most of the time'],
             ],
             widget=widgets.RadioSelect,
-            label=f"Question {i}"
+            label=f"Question {dass_idx}"
         )
-    del i  # Delete the loop variable
+    # Clean up the loop variable
+    del dass_idx
     
     # Total scores for DASS
     dass_depression_score = models.IntegerField()  # Doubled scores
@@ -241,8 +244,8 @@ class Player(BasePlayer):
     
     # Fields for AMI (Ambivalent Misogyny Inventory) - Updated to 18 questions
     # Scored from 4 (Completely Untrue) to 0 (Completely True)
-    for i in range(1, C.NUM_AMI_QUESTIONS + 1):
-        locals()[f'ami_{i}'] = models.IntegerField(
+    for ami_idx in range(1, C.NUM_AMI_QUESTIONS + 1):
+        locals()[f'ami_{ami_idx}'] = models.IntegerField(
             choices=[
                 [4, 'Completely Untrue'],
                 [3, 'Somewhat Untrue'],
@@ -251,9 +254,10 @@ class Player(BasePlayer):
                 [0, 'Completely True'],
             ],
             widget=widgets.RadioSelect,
-            label=f"Question {i}"
+            label=f"Question {ami_idx}"
         )
-    del i  # Delete the loop variable
+    # Clean up the loop variable
+    del ami_idx
     
     # Total score for AMI
     ami_total_score = models.IntegerField()
@@ -268,9 +272,9 @@ class Player(BasePlayer):
     # All other questions are standard scored (1 for Disagree Strongly, 5 for Agree Strongly)
 
     # Standard scored questions (all except question 2)
-    for i in [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 
-              17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]:
-        locals()[f'srpsf_{i}'] = models.IntegerField(
+    for srpsf_idx in [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 
+                      17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]:
+        locals()[f'srpsf_{srpsf_idx}'] = models.IntegerField(
             choices=[
                 [1, 'Disagree Strongly'],
                 [2, 'Disagree'],
@@ -279,8 +283,10 @@ class Player(BasePlayer):
                 [5, 'Agree Strongly'],
             ],
             widget=widgets.RadioSelect,
-            label=f"Question {i}"
+            label=f"Question {srpsf_idx}"
         )
+    # Clean up the loop variable
+    del srpsf_idx
 
     # Reverse scored question 2
     srpsf_2 = models.IntegerField(
@@ -309,26 +315,30 @@ class Player(BasePlayer):
     # Questions where Yes=0, No=1: [14, 15, 16, 18, 19]
 
     # Standard scored questions (Yes=1, No=0)
-    for i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 17, 20, 21]:
-        locals()[f'ssms_{i}'] = models.IntegerField(
+    for ssms_std_idx in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 17, 20, 21]:
+        locals()[f'ssms_{ssms_std_idx}'] = models.IntegerField(
             choices=[
                 [0, 'No'],
                 [1, 'Yes'],
             ],
             widget=widgets.RadioSelect,
-            label=f"Question {i}"
+            label=f"Question {ssms_std_idx}"
         )
+    # Clean up the loop variable
+    del ssms_std_idx
 
     # Reverse scored questions (Yes=0, No=1)
-    for i in [14, 15, 16, 18, 19]:
-        locals()[f'ssms_{i}'] = models.IntegerField(
+    for ssms_rev_idx in [14, 15, 16, 18, 19]:
+        locals()[f'ssms_{ssms_rev_idx}'] = models.IntegerField(
             choices=[
                 [1, 'No'],
                 [0, 'Yes'],
             ],
             widget=widgets.RadioSelect,
-            label=f"Question {i}"
+            label=f"Question {ssms_rev_idx}"
         )
+    # Clean up the loop variable
+    del ssms_rev_idx
     
     # Total score for SSMS
     ssms_total_score = models.IntegerField()
@@ -341,22 +351,22 @@ class Player(BasePlayer):
     # Calculate LSAS scores
     def calculate_lsas_scores(self):
         # Calculate main scores
-        anxiety_score = sum(getattr(self, f'lsas_anxiety_{i}', 0) or 0 for i in range(1, C.NUM_LSAS_QUESTIONS + 1))
-        avoidance_score = sum(getattr(self, f'lsas_avoidance_{i}', 0) or 0 for i in range(1, C.NUM_LSAS_QUESTIONS + 1))
+        anxiety_score = sum(getattr(self, f'lsas_anxiety_{idx}', 0) or 0 for idx in range(1, C.NUM_LSAS_QUESTIONS + 1))
+        avoidance_score = sum(getattr(self, f'lsas_avoidance_{idx}', 0) or 0 for idx in range(1, C.NUM_LSAS_QUESTIONS + 1))
         self.lsas_anxiety_score = anxiety_score
         self.lsas_avoidance_score = avoidance_score
         self.lsas_total_score = anxiety_score + avoidance_score
         
         # Calculate LSAS-P subscale (Performance anxiety)
         lsas_p_questions = [1, 2, 3, 4, 6, 8, 9, 13, 14, 16, 17, 20, 21]
-        lsas_p_anxiety = sum(getattr(self, f'lsas_anxiety_{i}', 0) or 0 for i in lsas_p_questions)
-        lsas_p_avoidance = sum(getattr(self, f'lsas_avoidance_{i}', 0) or 0 for i in lsas_p_questions)
+        lsas_p_anxiety = sum(getattr(self, f'lsas_anxiety_{idx}', 0) or 0 for idx in lsas_p_questions)
+        lsas_p_avoidance = sum(getattr(self, f'lsas_avoidance_{idx}', 0) or 0 for idx in lsas_p_questions)
         self.lsas_p_score = lsas_p_anxiety + lsas_p_avoidance
         
         # Calculate LSAS-S subscale (Social interaction anxiety)
         lsas_s_questions = [5, 7, 10, 11, 12, 15, 18, 19, 22, 23, 24]
-        lsas_s_anxiety = sum(getattr(self, f'lsas_anxiety_{i}', 0) or 0 for i in lsas_s_questions)
-        lsas_s_avoidance = sum(getattr(self, f'lsas_avoidance_{i}', 0) or 0 for i in lsas_s_questions)
+        lsas_s_anxiety = sum(getattr(self, f'lsas_anxiety_{idx}', 0) or 0 for idx in lsas_s_questions)
+        lsas_s_avoidance = sum(getattr(self, f'lsas_avoidance_{idx}', 0) or 0 for idx in lsas_s_questions)
         self.lsas_s_score = lsas_s_anxiety + lsas_s_avoidance
     
     # Calculate DASS scores
@@ -369,9 +379,9 @@ class Player(BasePlayer):
         stress_items = [1, 6, 8, 11, 12, 14, 18]
         
         # Double the scores for each subscale as per instructions
-        depression_score = sum(getattr(self, f'dass_{i}') for i in depression_items) * 2
-        anxiety_score = sum(getattr(self, f'dass_{i}') for i in anxiety_items) * 2
-        stress_score = sum(getattr(self, f'dass_{i}') for i in stress_items) * 2
+        depression_score = sum(getattr(self, f'dass_{idx}') for idx in depression_items) * 2
+        anxiety_score = sum(getattr(self, f'dass_{idx}') for idx in anxiety_items) * 2
+        stress_score = sum(getattr(self, f'dass_{idx}') for idx in stress_items) * 2
         
         self.dass_depression_score = depression_score
         self.dass_anxiety_score = anxiety_score
@@ -381,62 +391,62 @@ class Player(BasePlayer):
     # Calculate AQ-10 scores (updated for direct 0/1 scoring)
     def calculate_aq_scores(self):
         # Since questions are now directly scored as 0/1, just sum them up
-        self.aq_total_score = sum(getattr(self, f'aq_{i}') for i in range(1, C.NUM_AQ_QUESTIONS + 1))
+        self.aq_total_score = sum(getattr(self, f'aq_{idx}') for idx in range(1, C.NUM_AQ_QUESTIONS + 1))
     
     # Calculate AMI scores
     def calculate_ami_score(self):
         # Total score
-        self.ami_total_score = sum(getattr(self, f'ami_{i}') for i in range(1, C.NUM_AMI_QUESTIONS + 1))
+        self.ami_total_score = sum(getattr(self, f'ami_{idx}') for idx in range(1, C.NUM_AMI_QUESTIONS + 1))
         
         # AMI-ES (Emotional Stereotyping) - questions 1, 6, 7, 13, 16, 18
         ami_es_items = [1, 6, 7, 13, 16, 18]
-        self.ami_es_score = sum(getattr(self, f'ami_{i}') for i in ami_es_items)
+        self.ami_es_score = sum(getattr(self, f'ami_{idx}') for idx in ami_es_items)
         
         # AMI-SM (Sexual Manipulation) - questions 2, 3, 4, 8, 14, 17
         ami_sm_items = [2, 3, 4, 8, 14, 17]
-        self.ami_sm_score = sum(getattr(self, f'ami_{i}') for i in ami_sm_items)
+        self.ami_sm_score = sum(getattr(self, f'ami_{idx}') for idx in ami_sm_items)
         
         # AMI-BA (Benevolent Acts) - questions 5, 9, 10, 11, 12, 15
         ami_ba_items = [5, 9, 10, 11, 12, 15]
-        self.ami_ba_score = sum(getattr(self, f'ami_{i}') for i in ami_ba_items)
+        self.ami_ba_score = sum(getattr(self, f'ami_{idx}') for idx in ami_ba_items)
     
     # Calculate SRP-SF scores (updated for question 2 reverse scoring)
     def calculate_srpsf_score(self):
         # All questions are now properly scored in their field definitions
         # Question 2 is reverse scored in the field definition, so we can sum directly
-        self.srpsf_total_score = sum(getattr(self, f'srpsf_{i}') for i in range(1, C.NUM_SRPSF_QUESTIONS + 1))
+        self.srpsf_total_score = sum(getattr(self, f'srpsf_{idx}') for idx in range(1, C.NUM_SRPSF_QUESTIONS + 1))
         
         # SRPSF-IPM (Interpersonal Manipulation) - questions 7, 9, 10, 15, 19, 23, 26
         srpsf_ipm_items = [7, 9, 10, 15, 19, 23, 26]
-        self.srpsf_ipm_score = sum(getattr(self, f'srpsf_{i}') for i in srpsf_ipm_items)
+        self.srpsf_ipm_score = sum(getattr(self, f'srpsf_{idx}') for idx in srpsf_ipm_items)
         
         # SRPSF-CA (Callous Affect) - questions 3, 8, 13, 16, 18, 24, 28
         srpsf_ca_items = [3, 8, 13, 16, 18, 24, 28]
-        self.srpsf_ca_score = sum(getattr(self, f'srpsf_{i}') for i in srpsf_ca_items)
+        self.srpsf_ca_score = sum(getattr(self, f'srpsf_{idx}') for idx in srpsf_ca_items)
         
         # SRPSF-ELS (Erratic Lifestyle) - questions 1, 4, 11, 14, 17, 21, 27
         srpsf_els_items = [1, 4, 11, 14, 17, 21, 27]
-        self.srpsf_els_score = sum(getattr(self, f'srpsf_{i}') for i in srpsf_els_items)
+        self.srpsf_els_score = sum(getattr(self, f'srpsf_{idx}') for idx in srpsf_els_items)
         
         # SRPSF-CT (Criminal Tendencies) - questions 2, 5, 6, 12, 22, 25, 29
         # Question 2 is reverse scored in the field definition, so we can include it directly
         srpsf_ct_items = [2, 5, 6, 12, 22, 25, 29]
-        self.srpsf_ct_score = sum(getattr(self, f'srpsf_{i}') for i in srpsf_ct_items)
+        self.srpsf_ct_score = sum(getattr(self, f'srpsf_{idx}') for idx in srpsf_ct_items)
 
     # Calculate SSMS scores (updated for direct 0/1 scoring)
     def calculate_ssms_score(self):
         # Since questions are now directly scored as 0/1 based on their logic, just sum them up
-        self.ssms_total_score = sum(getattr(self, f'ssms_{i}') for i in range(1, C.NUM_SSMS_QUESTIONS + 1))
+        self.ssms_total_score = sum(getattr(self, f'ssms_{idx}') for idx in range(1, C.NUM_SSMS_QUESTIONS + 1))
         
         # SSMS-CD (Cognitive Disorganization) - questions 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
         # All CD items are standard scored (Yes=1)
         ssms_cd_items = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-        self.ssms_cd_score = sum(getattr(self, f'ssms_{i}') for i in ssms_cd_items)
+        self.ssms_cd_score = sum(getattr(self, f'ssms_{idx}') for idx in ssms_cd_items)
         
         # SSMS-IA (Introvertive Anhedonia) - questions 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
         # Questions are already scored correctly in their field definitions
         ssms_ia_items = [12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
-        self.ssms_ia_score = sum(getattr(self, f'ssms_{i}') for i in ssms_ia_items)
+        self.ssms_ia_score = sum(getattr(self, f'ssms_{idx}') for idx in ssms_ia_items)
 
 
 # PAGES
@@ -526,7 +536,7 @@ class AQ(Page):
     
     @staticmethod
     def get_form_fields(player):
-        aq_fields = [f'aq_{i}' for i in range(1, C.NUM_AQ_QUESTIONS + 1)]
+        aq_fields = [f'aq_{idx}' for idx in range(1, C.NUM_AQ_QUESTIONS + 1)]
         check_fields = ['aq_check_1', 'aq_check_2', 'aq_check_3']
         return aq_fields + check_fields
     

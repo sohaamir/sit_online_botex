@@ -79,10 +79,10 @@ def parse_arguments():
     parser.add_argument("--temperature", type=float, default=None,
                         help="Temperature setting for the model")
     
-    # Bot behavior configuration
-    parser.add_argument("--strategy", default=os.environ.get("BOT_STRATEGY", "standard"),
-                        choices=["standard", "risk_taking", "social_follower"],
-                        help="Bot strategy to use")
+    # Questionnaire role configuration (NEW)
+    parser.add_argument("--q-role", default="typical",
+                        choices=["typical", "patient"],
+                        help="Role for questionnaire completion (typical: neurotypical individual, patient: individual with psychopathology)")
     
     # llama.cpp specific settings
     parser.add_argument("--model-path", default=os.environ.get("LLAMACPP_LOCAL_LLM_PATH"),
@@ -161,7 +161,7 @@ def parse_arguments():
         if args.model == "gemini":
             args.model_string = os.environ.get("GEMINI_MODEL", "gemini/gemini-1.5-flash")
         elif args.model == "openai":
-            args.model_string = os.environ.get("OPENAI_MODEL", "gpt-4.1-nano-2025-04-14")
+            args.model_string = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
         elif args.model == "anthropic":
             args.model_string = os.environ.get("ANTHROPIC_MODEL", "claude-3-haiku-20240307")
         elif args.model == "tinyllama":
@@ -186,114 +186,162 @@ def parse_arguments():
     
     return args
 
-def get_bot_prompt_strategy(strategy="standard"):
-    """Return the appropriate bot prompts based on the strategy"""
+def get_general_instructions():
+    """General instructions that apply to both questionnaires and task"""
+    return """You are participating in an online research study that may include questionnaires and/or experimental tasks, potentially involving other human or artificial participants. 
+
+    GENERAL PARTICIPATION GUIDELINES:
+    - Respond honestly and thoughtfully to all questions and tasks
+    - Follow the instructions provided on each page carefully  
+    - If compensation information is mentioned, consider it as applying to you
+    - Be patient during waiting periods - this is normal in multiplayer experiments
+    - Always respond in valid JSON format when requested
     
-    base_system_prompt = """You are participating in an online survey and/or experiment, potentially involving other human or artificial participants. The user provides you with a series of independent prompts. 
-        Most prompts will also contain scraped text data from a webpage containing the survey/experiment, and detailed tasks for you on how to analyze this text data. 
-        The scraped web page texts contain instructions on how the experiment/survey is conducted. These instructions might include information on how participants are being compensated or paid for their participation. 
-        If this is the case, please act as if this compensation also applies to you and make sure to include this information in the summary so that you will recall it in later prompts. 
-        Most importantly, the scraped texts can include questions and/or tasks which the user wants you to answer. They might also contain comprehension checks, repeated information from prior pages, and potentially text bits that do not directly belong to the experiment.
-
-        There will be various pages where you will be waiting for other players to catch up. If this happens, please be patient and understand that this is part of the experiment, which is a multiplayer game.
-        
-        When interacting with the experiment, analyze each page carefully and respond with a valid JSON."""
+    The study consists of different components:
+    - Questionnaires asking about your thoughts, feelings, and behaviors
+    - Experimental tasks that may involve decisions and interactions with others
     
-    # Strategy-specific prompts
-    if strategy == "risk_taking":
-        # More risk-taking strategy
-        strategy_prompt = """
-        CHOICE STRATEGY:
-        - In the very first round only, you should choose randomly between B and A
-        - Throughout the task, be FLEXIBLE and somewhat BOLD in your choices
-        """
-    elif strategy == "social_follower":
-        # More socially influenced strategy
-        strategy_prompt = """
-        CHOICE STRATEGY:
-        - In the very first round only, you should choose randomly between B and A
-        - Throughout the task, prioritize SOCIAL INFORMATION over your own experiences
-        """
-    else:  # standard strategy
-        strategy_prompt = """
-        CHOICE STRATEGY:
-        - In the very first round only, you should choose randomly between B and A
-        - Throughout the task, be FLEXIBLE in your choices based on both social information and your own experience
-        """
+    Each component has its own specific instructions which will be provided."""
+
+def get_questionnaire_instructions():
+    """Specific instructions for questionnaire components"""
+    return """QUESTIONNAIRE COMPLETION INSTRUCTIONS:
     
-    # Combine base prompt with strategy-specific instructions
-    combined_system_prompt = base_system_prompt + "\n\n" + strategy_prompt
+    When you encounter questionnaire pages:
+    - Read each question carefully and completely
+    - Consider your genuine thoughts, feelings, and typical behaviors
+    - Answer based on your assigned role and psychological state
+    - Don't overthink individual items - respond intuitively
+    - Be consistent in your responses throughout all questionnaires
+    - There are no right or wrong answers - just answer honestly from your perspective
     
-    # Create the full prompts dictionary
-    prompts = {
-        "system": combined_system_prompt,
+    The questionnaires assess various psychological and social aspects such as:
+    - Social anxiety and avoidance behaviors
+    - Mood and emotional experiences  
+    - Social interaction patterns
+    - Personality characteristics
+    - Cognitive and perceptual experiences"""
+
+def get_task_instructions():
+    """Specific instructions for experimental task components"""
+    return """EXPERIMENTAL TASK INSTRUCTIONS:
+    
+    When you encounter experimental task pages:
+    - Read all instructions carefully before making decisions
+    - Pay attention to information about other participants' choices
+    - Make decisions that align with your goals in the task
+    - Consider both your own experiences and social information when making choices
+    - Wait patiently when other participants are making their decisions
+    - Follow any specific formatting requirements for your responses"""
+
+def get_questionnaire_role_instructions(role="typical"):
+    """Generate role-specific instructions for questionnaire completion"""
+    
+    if role == "patient":
+        return """YOUR ROLE - Individual with Psychopathology:
         
-        "analyze_page_q": """Perfect. This is your summary of the survey/experiment so far: \n\n {summary} \n\n You have now proceeded to the next page. This is the body text of the web page: \n\n {body} \n\n 
-
-        I need you to answer {nr_q} question(s) and update your summary. When making choices and bets, follow these critical guidelines:
-
-        CHOICES AND REASONING FORMAT:
-        - For your FIRST CHOICE and FIRST BET (initial decision), reference the SECOND CHOICES and SECOND BETS made by other players in the PREVIOUS ROUND (with the exception of the very first round).
-        - For your SECOND CHOICE and SECOND BET (revised decision), reference the FIRST CHOICES and FIRST BETS made by other players in the CURRENT ROUND.
-        - ALWAYS format your reasoning in this exact pattern: "Player 1 chose X, Player 2 chose Z, therefore I will choose [option] with [bet]"
-        - IMPORTANT: Use sequential player numbering (Player 1, Player 2) regardless of their actual IDs in the game
-        - Include both what other players did AND the reason for your own decision
-        - Make sure to use this format EVERY TIME you provide reasoning for a choice or bet
+        You are someone who is currently experiencing significant psychological difficulties. Your responses should reflect the perspective of someone dealing with mental health challenges.
         
-        CHOICES STRATEGY:
-        - Throughout the task, be FLEXIBLE in your choices based on both social information and your own experience
-        - You should be influenced by the choices of others in the immediate past respective to your choice
+        Your psychological profile:
+        - You experience persistent feelings of sadness, hopelessness, or emptiness
+        - You have high levels of anxiety, particularly in social situations
+        - You often feel isolated and disconnected from others
         
-        The following JSON string contains the questions: {questions_json} 
-
-        For each identified question, you must provide two variables: 'reason' contains your reasoning or thought that leads you to a response or answer and 'answer' which contains your response. In your reasoning, include the choices made by the other players in the current/previous round. 
+        When answering questionnaires:
+        - Reflect these ongoing psychological difficulties in your responses
+        - Be honest about the severity of your symptoms"""
         
-        For example, when making your initial choice and bet: "Player 1 chose X for their second choice in the previous round, Player 2 chose Y for their second choice in the previous round, there I will choose <option> with <bet>".
+    else:  # typical (neurotypical)
+        return """YOUR ROLE - Neurotypical Individual:
+        
+        You are someone with typical psychological functioning and mental health. Your responses should reflect the perspective of a psychologically healthy individual.
+        
+        Your psychological profile:
+        - You experience normal variations in mood but generally feel emotionally stable
+        - You have typical levels of anxiety that don't significantly impair your functioning
+        - You feel connected to others and maintain healthy social relationships
+        
+        When answering questionnaires:
+        - Reflect normal, healthy psychological functioning
+        - Answer from the perspective of someone who is mentally well-adjusted"""
 
-        And when making your second choice and bet: "Player 1 chose X for their first choice in the current round, Player 2 chose Y for their first choice in the current round, there I will choose <option> with <bet>".
+def get_bot_prompts(q_role="typical"):
+    """Create the complete prompt system with all components"""
+    
+    # Combine all instructions
+    general_instructions = get_general_instructions()
+    questionnaire_instructions = get_questionnaire_instructions() 
+    task_instructions = get_task_instructions()
+    role_instructions = get_questionnaire_role_instructions(q_role)
+    
+    # Create the comprehensive system prompt
+    system_prompt = f"""{general_instructions}
 
-        Taken together, a correct answer to a text with two questions would have the form {{""answers"": {{""ID of first question"": {{""reason"": ""Your reasoning for how you want to answer the first question"", ""answer"":""Your final answer to the first question""}}, ""ID of the second question"": {{""reason"": ""Your reasoning for how you want to answer the second question"", ""answer"": ""Your final answer to the second question""}}}},""summary"": ""Your summary"", ""confused"": ""set to `true` if you are confused by any part of the instructions, otherwise set it to `false`""}}"""
+{questionnaire_instructions}
+
+{task_instructions}
+
+{role_instructions}
+
+Remember: Always analyze each page carefully and respond in valid JSON format when requested."""
+
+    # Create the page analysis prompt
+    analyze_prompt = """Perfect. This is your summary of the study so far: 
+
+{summary} 
+
+You have now proceeded to the next page. This is the body text of the web page: 
+
+{body} 
+
+I need you to answer {nr_q} question(s) and update your summary.
+
+RESPONSE FORMATTING:
+For each question, provide:
+- 'reason': Your reasoning or thought process leading to your response
+- 'answer': Your final answer to the question
+
+QUESTIONNAIRE RESPONSES:
+- Answer according to your assigned psychological role and profile
+- Be consistent with your established character throughout
+- Provide brief reasoning that explains your perspective
+
+TASK RESPONSES:  
+- Consider the specific instructions provided in the task
+- Reference relevant information about other participants if applicable
+- Explain your decision-making process clearly
+
+The following JSON string contains the questions: {questions_json}
+
+Respond with this format: {{"answers": {{"question_id": {{"reason": "Your reasoning", "answer": "Your answer"}}}}, "summary": "Updated summary of the study", "confused": false}}"""
+
+    return {
+        "system": system_prompt,
+        "analyze_page_q": analyze_prompt
     }
-    
-    # Customize the prompts based on strategy
-    if strategy == "risk_taking":
-        prompts["analyze_page_q"] = prompts["analyze_page_q"].replace(
-            "Bet 1 when uncertain about your choice, bet 2 when moderately confident, and bet 3 when fairly confident",
-            "Be more willing to place bet 3 (high confidence) even with moderate certainty. Prefer bet 2 or 3 when you have any confidence."
-        ).replace(
-            "Betting conservatively can be a suboptimal strategy",
-            "Betting conservatively is clearly a suboptimal strategy. To maximize points, TAKE RISKS with higher bets"
-        )
-    elif strategy == "social_follower":
-        prompts["analyze_page_q"] = prompts["analyze_page_q"].replace(
-            "be FLEXIBLE in your choices based on both social information and your own experience",
-            "prioritize SOCIAL INFORMATION over your own experiences. When the majority of other players choose an option, strongly consider following them"
-        ).replace(
-            "Betting conservatively can be a suboptimal strategy",
-            "Betting conservatively when uncertain is your preferred approach. When following the majority, bet higher"
-        )
-    
-    return prompts
 
-def get_tinyllama_prompts(strategy="standard"):
+def get_tinyllama_prompts(q_role="typical"):
     """Return simplified prompts optimized for TinyLLaMA"""
     
-    # Very simplified system prompt
-    system_prompt = """You are participating in an experiment making choices between options A and B. 
-Answer ONLY in valid JSON format. Keep answers extremely short.
-Your goal is to maximize points."""
+    # Simplified role instruction
+    if q_role == "patient":
+        role_context = "You have mental health difficulties. Answer questionnaires reflecting psychological problems. "
+    else:
+        role_context = "You are mentally healthy. Answer questionnaires as a typical person. "
     
-    # Simplified analysis prompt
-    analyze_prompt = """Summary so far: {summary}
+    # Very simplified system prompt
+    system_prompt = f"""You are in a research study. {role_context}Answer in JSON format only. Keep responses brief."""
+    
+    # Simplified analysis prompt  
+    analyze_prompt = """Summary: {summary}
 
-Page text: {body}
+Page: {body}
 
-Answer {nr_q} question(s). For each question, provide brief reasoning and answer.
-Questions: {questions_json}
+Answer {nr_q} questions: {questions_json}
 
-Respond with JSON: {{"answers": {{...}}, "summary": "Brief summary", "confused": false}}
+JSON format: {{"answers": {{...}}, "summary": "Brief summary", "confused": false}}
 
-REMEMBER: Keep all text extremely brief."""
+Keep all text very short."""
     
     return {
         "system": system_prompt,
@@ -408,7 +456,7 @@ def run_session(args, session_number):
         # Calculate number of bots
         n_bots = args.participants - args.humans
         
-        # Create model-specific suffix with detailed information
+        # Create model-specific suffix with detailed information INCLUDING questionnaire role
         if args.model == "tinyllama":
             # For TinyLLaMA, use a simpler descriptor
             model_full_name = "tinyllama"
@@ -420,8 +468,8 @@ def run_session(args, session_number):
             else:
                 model_full_name = args.model_string
         
-        # Updated suffix with humans, bots, and detailed model info
-        model_suffix = f"_{args.model}_nhumans{args.humans}_nbots{n_bots}_{model_full_name}"
+        # Updated suffix with humans, bots, detailed model info, AND questionnaire role
+        model_suffix = f"_{args.model}_nhumans{args.humans}_nbots{n_bots}_{model_full_name}_qrole{args.q_role}"
         
         # Create session-specific output directory with enhanced suffix
         output_dir = os.path.join(args.output_dir, f"session_{session_id}{model_suffix}")
@@ -460,6 +508,7 @@ def run_session(args, session_number):
         logger.info(f"Session {session_number}: Output directory: {output_dir}")
         logger.info(f"Session {session_number}: Log file: {log_file}")
         logger.info(f"Session {session_number}: Using model: {args.model_string}")
+        logger.info(f"Session {session_number}: Questionnaire role: {args.q_role}")
         
         # Initialize an oTree session
         logger.info(f"Session {session_number}: Initializing oTree session with config: {args.session_config}")
@@ -484,7 +533,7 @@ def run_session(args, session_number):
         # Get the monitor URL for display
         monitor_url = f"{args.otree_url}/SessionMonitor/{otree_session_id}"
         logger.info(f"Session {session_number}: Monitor URL: {monitor_url}")
-        print(f"\nSession {session_number}: Starting bot with {args.model_string}. Monitor progress at {monitor_url}")
+        print(f"\nSession {session_number}: Starting bot with {args.model_string} (q-role: {args.q_role}). Monitor progress at {monitor_url}")
 
         # Automatically open Chrome with the monitor URL
         open_chrome_browser(monitor_url)
@@ -528,8 +577,8 @@ def run_session(args, session_number):
                 else:
                     server_process = None
                 
-                # Get specialized TinyLLaMA prompts and configure parameters
-                user_prompts = get_tinyllama_prompts(args.strategy)
+                # Get specialized TinyLLaMA prompts with questionnaire role
+                user_prompts = get_tinyllama_prompts(args.q_role)
                 modified_prompts, tinyllama_params = configure_tinyllama_params(args, user_prompts)
 
                 # Run bots with optimized settings
@@ -558,8 +607,8 @@ def run_session(args, session_number):
                     "temperature": args.temperature
                 }
                 
-                # Get standard prompts for the strategy
-                user_prompts = get_bot_prompt_strategy(args.strategy)
+                # Get standard prompts with questionnaire role
+                user_prompts = get_bot_prompts(args.q_role)
                 
                 # Log partial API key for debugging
                 if args.api_key:
@@ -640,7 +689,7 @@ def run_session(args, session_number):
                 f.write(f"Session ID: {otree_session_id}\n")
                 f.write(f"Session Number: {session_number}\n")
                 f.write(f"Model used: {args.model} ({args.model_string})\n")
-                f.write(f"Strategy: {args.strategy}\n")
+                f.write(f"Questionnaire role: {args.q_role}\n")
                 f.write(f"Max tokens: {args.max_tokens}\n")
                 f.write(f"Temperature: {args.temperature}\n")
                 f.write(f"Number of participants: {args.participants}\n")
@@ -719,7 +768,7 @@ def main():
     
     # Log the configuration
     logger.info(f"Starting experiment with {args.model} model ({args.model_string})")
-    logger.info(f"Bot strategy: {args.strategy}")
+    logger.info(f"Questionnaire role: {args.q_role}")
     logger.info(f"Number of sessions: {args.sessions}")
     logger.info(f"Max tokens: {args.max_tokens}")
     
