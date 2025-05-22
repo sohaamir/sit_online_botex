@@ -29,6 +29,7 @@ import random
 import botex
 import time
 import json
+import csv
 import sys
 import os
 
@@ -51,6 +52,131 @@ class LogFilter(logging.Filter):
 for handler in logging.getLogger().handlers:
     handler.addFilter(LogFilter())
 
+def load_model_mapping(file_path, num_participants):
+    """
+    Load player-model mapping from a CSV file.
+    
+    Args:
+        file_path (str): Path to the CSV file
+        num_participants (int): Expected number of participants
+        
+    Returns:
+        dict: Mapping of player IDs to model names, or None if file not found
+    """
+    if not os.path.exists(file_path):
+        logger.info(f"No player model mapping file found at {file_path}")
+        return None
+        
+    player_models = {}
+    try:
+        with open(file_path, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                player_id = int(row['player_id'])
+                model_name = row['model_name'].strip()
+                player_models[player_id] = model_name
+        
+        # Fill in missing players with default model (gemini-1.5-flash)
+        for player_id in range(1, num_participants + 1):
+            if player_id not in player_models:
+                player_models[player_id] = "gemini-1.5-flash"
+                logger.info(f"Player {player_id} not specified in mapping file, defaulting to gemini-1.5-flash")
+                
+        return player_models
+    except Exception as e:
+        logger.error(f"Error loading model mapping: {str(e)}")
+        return None
+
+def get_available_models():
+    """
+    Get all available models from environment variables.
+    
+    Returns:
+        dict: Dictionary mapping model names to their full model strings and provider
+    """
+    available_models = {}
+    
+    # Gemini models
+    gemini_models_str = os.environ.get('GEMINI_MODELS', 'gemini-1.5-flash')  # Default fallback
+    gemini_models = [m.strip() for m in gemini_models_str.split(',') if m.strip()]
+    for model in gemini_models:
+        model_name = model.strip()
+        available_models[model_name] = {
+            'full_name': f"gemini/{model_name}", 
+            'provider': 'gemini',
+            'api_key_env': 'GEMINI_API_KEY'
+        }
+    
+    # OpenAI models
+    openai_models_str = os.environ.get('OPENAI_MODELS', '')
+    if openai_models_str:
+        openai_models = [m.strip() for m in openai_models_str.split(',') if m.strip()]
+        for model in openai_models:
+            model_name = model.strip()
+            available_models[model_name] = {
+                'full_name': model_name,
+                'provider': 'openai',
+                'api_key_env': 'OPENAI_API_KEY'
+            }
+    
+    # Anthropic models
+    anthropic_models_str = os.environ.get('ANTHROPIC_MODELS', '')
+    if anthropic_models_str:
+        anthropic_models = [m.strip() for m in anthropic_models_str.split(',') if m.strip()]
+        for model in anthropic_models:
+            model_name = model.strip()
+            available_models[model_name] = {
+                'full_name': model_name,
+                'provider': 'anthropic',
+                'api_key_env': 'ANTHROPIC_API_KEY'
+            }
+    
+    # Local models
+    local_models_str = os.environ.get('LOCAL_LLM_MODELS', '')
+    if local_models_str:
+        local_models = [m.strip() for m in local_models_str.split(',') if m.strip()]
+        for model in local_models:
+            model_name = model.strip()
+            available_models[model_name] = {
+                'full_name': 'llamacpp',
+                'provider': 'local',
+                'api_key_env': None
+            }
+    
+    return available_models
+
+def validate_player_models(player_models, available_models, participants=None, humans=None):
+    """
+    Validate that all player models are available.
+    
+    Args:
+        player_models (dict): Mapping of player IDs to model names
+        available_models (dict): Available models
+        participants (int): Total number of participants
+        humans (int): Number of human participants
+        
+    Returns:
+        tuple: (is_valid, error_message)
+    """
+    if not player_models:
+        return True, None
+        
+    for player_id, model_name in player_models.items():
+        if model_name not in available_models:
+            return False, f"Player {player_id} is assigned model '{model_name}' which is not available in botex.env"
+    
+    # Enhanced validation when humans > 0
+    if humans is not None and humans > 0 and participants is not None:
+        num_bots = participants - humans
+        if len(player_models) < participants:
+            logger.warning(f"Only {len(player_models)} models specified but {participants} participants. "
+                          f"With {humans} human(s), ensure you have models for at least {num_bots} players.")
+        
+        logger.info(f"Note: {humans} participant(s) will be human and won't use the specified models. "
+                   f"Model assignments will only apply to the {num_bots} bot participants.")
+    
+    return True, None
+
 def parse_arguments():
     """Parse command line arguments, using defaults from environment if not provided"""
     # First load environment variables
@@ -66,6 +192,10 @@ def parse_arguments():
     parser.add_argument("-s", "--sessions", type=int, default=1,
                         help="Number of concurrent sessions to run")
     
+    # Model mapping file
+    parser.add_argument("--model-mapping", default="player_models.csv",
+                        help="Path to CSV file mapping player IDs to models")
+    
     # LLM model selection
     parser.add_argument("-m", "--model", default=None,
                         choices=["gemini", "openai", "anthropic", "tinyllama", "any"],
@@ -79,10 +209,10 @@ def parse_arguments():
     parser.add_argument("--temperature", type=float, default=None,
                         help="Temperature setting for the model")
     
-    # Questionnaire role configuration (NEW)
-    parser.add_argument("--q-role", default="typical",
-                        choices=["typical", "patient"],
-                        help="Role for questionnaire completion (typical: neurotypical individual, patient: individual with psychopathology)")
+    # Questionnaire role configuration
+    parser.add_argument("--q-role", default="none",
+                    choices=["none", "typical", "patient"],
+                    help="Role for questionnaire completion (typical: neurotypical individual, patient: individual with psychopathology, none: no specific role)")
     
     # llama.cpp specific settings
     parser.add_argument("--model-path", default=os.environ.get("LLAMACPP_LOCAL_LLM_PATH"),
@@ -207,7 +337,7 @@ def get_questionnaire_instructions():
     """Specific instructions for questionnaire components"""
     return """QUESTIONNAIRE COMPLETION INSTRUCTIONS:
     
-    When you encounter questionnaire pages:
+    If you encounter questionnaire pages:
     - Read each question carefully and completely
     - Consider your genuine thoughts, feelings, and typical behaviors
     - Answer based on your assigned role and psychological state
@@ -226,7 +356,8 @@ def get_task_instructions():
     """Specific instructions for experimental task components"""
     return """EXPERIMENTAL TASK INSTRUCTIONS:
     
-    When you encounter experimental task pages:
+    If you encounter experimental task pages:
+    - In the very first round, choose randomly between the two options (A) and (B). Do not arbitrarily choose option A over option B
     - Read all instructions carefully before making decisions
     - Pay attention to information about other participants' choices
     - Make decisions that align with your goals in the task
@@ -265,27 +396,35 @@ def get_questionnaire_role_instructions(role="typical"):
         - Reflect normal, healthy psychological functioning
         - Answer from the perspective of someone who is mentally well-adjusted"""
 
-def get_bot_prompts(q_role="typical"):
+def get_bot_prompts(q_role=None):
     """Create the complete prompt system with all components"""
     
-    # Combine all instructions
+    # Combine all instructions - but make questionnaire instructions optional
     general_instructions = get_general_instructions()
-    questionnaire_instructions = get_questionnaire_instructions() 
     task_instructions = get_task_instructions()
-    role_instructions = get_questionnaire_role_instructions(q_role)
     
-    # Create the comprehensive system prompt
+    # Create the system prompt, starting with just general and task instructions
     system_prompt = f"""{general_instructions}
+
+{task_instructions}"""
+    
+    # Only add questionnaire instructions and role instructions if a role is specified
+    if q_role in ["patient", "typical"]:
+        questionnaire_instructions = get_questionnaire_instructions() 
+        role_instructions = get_questionnaire_role_instructions(q_role)
+        
+        system_prompt += f"""
 
 {questionnaire_instructions}
 
-{task_instructions}
-
-{role_instructions}
+{role_instructions}"""
+    
+    # Add the final reminder
+    system_prompt += """
 
 Remember: Always analyze each page carefully and respond in valid JSON format when requested."""
 
-    # Create the page analysis prompt
+    # Create the page analysis prompt - modify to conditionally include questionnaire guidance
     analyze_prompt = """Perfect. This is your summary of the study so far: 
 
 {summary} 
@@ -300,12 +439,19 @@ RESPONSE FORMATTING:
 For each question, provide:
 - 'reason': Your reasoning or thought process leading to your response
 - 'answer': Your final answer to the question
+"""
 
+    # Only add questionnaire-specific instructions if a role is specified
+    if q_role in ["patient", "typical"]:
+        analyze_prompt += """
 QUESTIONNAIRE RESPONSES:
 - Answer according to your assigned psychological role and profile
 - Be consistent with your established character throughout
 - Provide brief reasoning that explains your perspective
+"""
 
+    # Always include task responses guidance
+    analyze_prompt += """
 TASK RESPONSES:  
 - Consider the specific instructions provided in the task
 - Reference relevant information about other participants if applicable
@@ -453,23 +599,39 @@ def run_session(args, session_number):
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         session_id = f"session_{session_number}_{timestamp}"
         
+        # Load available models and player model mappings
+        available_models = get_available_models()
+        player_models = None
+        if os.path.exists(args.model_mapping):
+            player_models = load_model_mapping(args.model_mapping, args.participants)
+            is_valid, error_msg = validate_player_models(
+                player_models, available_models, args.participants, args.humans
+            )
+            if not is_valid:
+                return {"success": False, "error": error_msg}
+        
         # Calculate number of bots
         n_bots = args.participants - args.humans
         
-        # Create model-specific suffix with detailed information INCLUDING questionnaire role
-        if args.model == "tinyllama":
-            # For TinyLLaMA, use a simpler descriptor
-            model_full_name = "tinyllama"
+        # Create model-specific suffix - update to reflect player-specific models if used
+        if player_models:
+            # Create a summary of models used
+            model_counts = {}
+            for model in player_models.values():
+                provider = available_models[model]['provider']
+                model_counts[provider] = model_counts.get(provider, 0) + 1
+            model_summary = "_".join([f"{provider}{count}" for provider, count in model_counts.items()])
+            model_suffix = f"_mixed_{model_summary}_nhumans{args.humans}_nbots{n_bots}_qrole{args.q_role}"
         else:
-            # For API models, extract the full model name from the model string
-            # Remove any vendor prefix like 'gemini/' or 'anthropic/'
-            if '/' in args.model_string:
-                model_full_name = args.model_string.split('/')[-1]
+            # Use original logic for single model
+            if args.model == "tinyllama":
+                model_full_name = "tinyllama"
             else:
-                model_full_name = args.model_string
-        
-        # Updated suffix with humans, bots, detailed model info, AND questionnaire role
-        model_suffix = f"_{args.model}_nhumans{args.humans}_nbots{n_bots}_{model_full_name}_qrole{args.q_role}"
+                if '/' in args.model_string:
+                    model_full_name = args.model_string.split('/')[-1]
+                else:
+                    model_full_name = args.model_string
+            model_suffix = f"_{args.model}_nhumans{args.humans}_nbots{n_bots}_{model_full_name}_qrole{args.q_role}"
         
         # Create session-specific output directory with enhanced suffix
         output_dir = os.path.join(args.output_dir, f"session_{session_id}{model_suffix}")
@@ -507,7 +669,10 @@ def run_session(args, session_number):
         
         logger.info(f"Session {session_number}: Output directory: {output_dir}")
         logger.info(f"Session {session_number}: Log file: {log_file}")
-        logger.info(f"Session {session_number}: Using model: {args.model_string}")
+        if player_models:
+            logger.info(f"Session {session_number}: Using player-specific models")
+        else:
+            logger.info(f"Session {session_number}: Using model: {args.model_string}")
         logger.info(f"Session {session_number}: Questionnaire role: {args.q_role}")
         
         # Initialize an oTree session
@@ -524,6 +689,29 @@ def run_session(args, session_number):
         # Get the session ID from the returned data
         otree_session_id = session['session_id']
         logger.info(f"Session {session_number}: Initialized oTree session with ID: {otree_session_id}")
+
+        # After session initialization, log which participants are human vs bot
+        logger.info(f"Session {session_number}: Participant assignments:")
+        for i, is_human in enumerate(session['is_human']):
+            participant_type = "Human" if is_human else "Bot"
+            player_id = i + 1
+            if not is_human and player_models and player_id in player_models:
+                model_name = player_models[player_id]
+                logger.info(f"  Player {player_id}: {participant_type} (assigned model: {model_name})")
+            else:
+                logger.info(f"  Player {player_id}: {participant_type}")
+
+        # Warn about unused model assignments
+        if player_models and args.humans > 0:
+            unused_models = []
+            for player_id, model_name in player_models.items():
+                if player_id <= len(session['is_human']) and session['is_human'][player_id - 1]:
+                    unused_models.append((player_id, model_name))
+            
+            if unused_models:
+                logger.warning(f"The following model assignments are unused because those players are human:")
+                for player_id, model_name in unused_models:
+                    logger.warning(f"  Player {player_id}: {model_name}")
         
         # When exporting files, use the enhanced suffix:
         botex_responses_csv = os.path.join(output_dir, f"botex_{otree_session_id}_responses{model_suffix}.csv")
@@ -533,7 +721,10 @@ def run_session(args, session_number):
         # Get the monitor URL for display
         monitor_url = f"{args.otree_url}/SessionMonitor/{otree_session_id}"
         logger.info(f"Session {session_number}: Monitor URL: {monitor_url}")
-        print(f"\nSession {session_number}: Starting bot with {args.model_string} (q-role: {args.q_role}). Monitor progress at {monitor_url}")
+        if player_models:
+            print(f"\nSession {session_number}: Starting bots with player-specific models (q-role: {args.q_role}). Monitor progress at {monitor_url}")
+        else:
+            print(f"\nSession {session_number}: Starting bot with {args.model_string} (q-role: {args.q_role}). Monitor progress at {monitor_url}")
 
         # Automatically open Chrome with the monitor URL
         open_chrome_browser(monitor_url)
@@ -543,88 +734,226 @@ def run_session(args, session_number):
             # Configure throttling
             throttle = not args.no_throttle
             
-            # Prepare model-specific parameters
-            if args.model == "tinyllama":
-                # For TinyLLaMA, use special handling
-                logger.info(f"Session {session_number}: Using TinyLLaMA with optimized settings")
+            # Check if we're using player-specific models
+            if player_models:
+                logger.info(f"Session {session_number}: Using player-specific models")
                 
-                # Check if server is running
-                server_url = args.server_url or "http://localhost:8080"
-                llamacpp_server_running = False
-                try:
-                    import requests
-                    response = requests.get(f"{server_url}/health", timeout=5)
-                    if response.status_code == 200:
-                        llamacpp_server_running = True
-                        logger.info(f"Session {session_number}: llama.cpp server is running at {server_url}")
-                except:
-                    logger.warning(f"Session {session_number}: llama.cpp server not detected at {server_url}")
+                # Map bot URLs to player IDs
+                bot_urls_by_player = {}
+                bot_idx = 0
+                for i, is_human in enumerate(session['is_human']):
+                    if not is_human:
+                        # This is a bot - assign the next bot URL
+                        player_id = i + 1  # oTree player IDs are 1-indexed
+                        bot_urls_by_player[player_id] = session['bot_urls'][bot_idx]
+                        bot_idx += 1
                 
-                # Start server if needed
-                if not llamacpp_server_running:
-                    logger.info(f"Session {session_number}: Starting llama.cpp server...")
-                    server_process = botex.start_llamacpp_server({
-                        "server_path": args.server_path,
-                        "local_llm_path": args.model_path,
-                        "server_url": server_url,
-                        "maximum_tokens_to_predict": args.max_tokens,
-                        "temperature": args.temperature,
-                        "top_p": 0.9,
-                        "top_k": 40,
-                        "repeat_penalty": 1.1
-                    })
-                    logger.info(f"Session {session_number}: llama.cpp server started")
-                else:
-                    server_process = None
+                # Check if any player uses a local model and start server if needed
+                use_local_model = any(available_models[player_models[player_id]]['provider'] == 'local' 
+                                      for player_id in bot_urls_by_player.keys() if player_id in player_models)
                 
-                # Get specialized TinyLLaMA prompts with questionnaire role
-                user_prompts = get_tinyllama_prompts(args.q_role)
-                modified_prompts, tinyllama_params = configure_tinyllama_params(args, user_prompts)
-
-                # Run bots with optimized settings
-                logger.info(f"Session {session_number}: Starting TinyLLaMA bots with optimized settings")
-                botex.run_bots_on_session(
-                    session_id=otree_session_id,
-                    botex_db=botex_db,
-                    user_prompts=modified_prompts,
-                    throttle=throttle,
-                    model="llamacpp",
-                    api_base=server_url,
-                    **tinyllama_params
-                )
+                server_process = None
+                if use_local_model:
+                    logger.info(f"Session {session_number}: Starting llama.cpp server for local models")
+                    server_url = args.server_url or "http://localhost:8080"
+                    
+                    # Check if server is already running
+                    llamacpp_server_running = False
+                    try:
+                        import requests
+                        response = requests.get(f"{server_url}/health", timeout=5)
+                        if response.status_code == 200:
+                            llamacpp_server_running = True
+                            logger.info(f"Session {session_number}: llama.cpp server is running at {server_url}")
+                    except:
+                        logger.warning(f"Session {session_number}: llama.cpp server not detected at {server_url}")
+                    
+                    # Start server if needed
+                    if not llamacpp_server_running:
+                        server_process = botex.start_llamacpp_server({
+                            "server_path": args.server_path,
+                            "local_llm_path": args.model_path,
+                            "server_url": server_url,
+                            "maximum_tokens_to_predict": args.max_tokens,
+                            "temperature": args.temperature,
+                            "top_p": 0.9,
+                            "top_k": 40,
+                            "repeat_penalty": 1.1
+                        })
+                        logger.info(f"Session {session_number}: llama.cpp server started")
+                
+                # Start each bot with its assigned model
+                bot_threads = []
+                model_data = {}  # Store model info for later
+                
+                for player_id, url in bot_urls_by_player.items():
+                    # Get the model for this player
+                    if player_id in player_models:
+                        model_name = player_models[player_id]
+                        model_info = available_models[model_name]
+                        
+                        # Store model data for output file
+                        model_data[player_id] = {
+                            'model_name': model_name,
+                            'full_name': model_info['full_name'],
+                            'provider': model_info['provider']
+                        }
+                        
+                        # Get API key if needed
+                        api_key = None
+                        if model_info['api_key_env']:
+                            api_key = os.environ.get(model_info['api_key_env'])
+                        
+                        # Configure prompts based on model
+                        if model_info['provider'] == 'local':
+                            user_prompts = get_tinyllama_prompts(args.q_role if args.q_role != "none" else None)
+                            modified_prompts, tinyllama_params = configure_tinyllama_params(args, user_prompts)
+                            user_prompts = modified_prompts
+                        else:
+                            user_prompts = get_bot_prompts(args.q_role if args.q_role != "none" else None)
+                        
+                        # Log which model is used for this player
+                        logger.info(f"Session {session_number}: Player {player_id} using {model_name} ({model_info['provider']})")
+                        
+                        # Start the bot with its assigned model
+                        thread = botex.run_single_bot(
+                            url=url,
+                            session_id=otree_session_id,
+                            participant_id=f"P{player_id}",
+                            botex_db=botex_db,
+                            model=model_info['full_name'],
+                            api_key=api_key,
+                            user_prompts=user_prompts,
+                            temperature=args.temperature,
+                            max_tokens=args.max_tokens,
+                            throttle=throttle,
+                            wait=False
+                        )
+                        bot_threads.append(thread)
+                        thread.start()
+                    else:
+                        # Use default model if no specific model assigned (shouldn't happen with our logic)
+                        logger.info(f"Session {session_number}: Player {player_id} using default model {args.model_string}")
+                        
+                        thread = botex.run_single_bot(
+                            url=url,
+                            session_id=otree_session_id,
+                            participant_id=f"P{player_id}",
+                            botex_db=botex_db,
+                            model=args.model_string,
+                            api_key=args.api_key,
+                            user_prompts=get_bot_prompts(args.q_role if args.q_role != "none" else None),
+                            temperature=args.temperature,
+                            max_tokens=args.max_tokens,
+                            throttle=throttle,
+                            wait=False
+                        )
+                        bot_threads.append(thread)
+                        thread.start()
+                
+                # Wait for all bots to finish
+                for thread in bot_threads:
+                    thread.join()
                 
                 # Clean up llama.cpp server if we started it
                 if server_process is not None:
                     logger.info(f"Session {session_number}: Stopping llama.cpp server")
                     botex.stop_llamacpp_server(server_process)
                     logger.info(f"Session {session_number}: llama.cpp server stopped")
+                
+                # Save model assignment data
+                model_assignment_file = os.path.join(output_dir, f"model_assignments_{otree_session_id}.json")
+                with open(model_assignment_file, 'w') as f:
+                    json.dump({
+                        'session_id': otree_session_id,
+                        'player_models': model_data
+                    }, f, indent=2)
+                    
+                logger.info(f"Session {session_number}: Player model assignments saved to {model_assignment_file}")
+                
             else:
-                # For API-based models (Gemini, OpenAI, Anthropic)
-                model_params = {
-                    "model": args.model_string,
-                    "api_key": args.api_key,
-                    "max_tokens": args.max_tokens,
-                    "temperature": args.temperature
-                }
-                
-                # Get standard prompts with questionnaire role
-                user_prompts = get_bot_prompts(args.q_role)
-                
-                # Log partial API key for debugging
-                if args.api_key:
-                    masked_key = f"{'*' * (len(args.api_key) - 4)}{args.api_key[-4:]}" if len(args.api_key) > 4 else "****"
-                    logger.info(f"Session {session_number}: API key provided: {masked_key}")
+                # Use the original method for running bots with a single model
+                if args.model == "tinyllama":
+                    # For TinyLLaMA, use special handling
+                    logger.info(f"Session {session_number}: Using TinyLLaMA with optimized settings")
+                    
+                    # Check if server is running
+                    server_url = args.server_url or "http://localhost:8080"
+                    llamacpp_server_running = False
+                    try:
+                        import requests
+                        response = requests.get(f"{server_url}/health", timeout=5)
+                        if response.status_code == 200:
+                            llamacpp_server_running = True
+                            logger.info(f"Session {session_number}: llama.cpp server is running at {server_url}")
+                    except:
+                        logger.warning(f"Session {session_number}: llama.cpp server not detected at {server_url}")
+                    
+                    # Start server if needed
+                    if not llamacpp_server_running:
+                        logger.info(f"Session {session_number}: Starting llama.cpp server...")
+                        server_process = botex.start_llamacpp_server({
+                            "server_path": args.server_path,
+                            "local_llm_path": args.model_path,
+                            "server_url": server_url,
+                            "maximum_tokens_to_predict": args.max_tokens,
+                            "temperature": args.temperature,
+                            "top_p": 0.9,
+                            "top_k": 40,
+                            "repeat_penalty": 1.1
+                        })
+                        logger.info(f"Session {session_number}: llama.cpp server started")
+                    else:
+                        server_process = None
+                    
+                    # Get specialized TinyLLaMA prompts with questionnaire role
+                    user_prompts = get_tinyllama_prompts(args.q_role)
+                    modified_prompts, tinyllama_params = configure_tinyllama_params(args, user_prompts)
+
+                    # Run bots with optimized settings
+                    logger.info(f"Session {session_number}: Starting TinyLLaMA bots with optimized settings")
+                    botex.run_bots_on_session(
+                        session_id=otree_session_id,
+                        botex_db=botex_db,
+                        user_prompts=modified_prompts,
+                        throttle=throttle,
+                        model="llamacpp",
+                        api_base=server_url,
+                        **tinyllama_params
+                    )
+                    
+                    # Clean up llama.cpp server if we started it
+                    if server_process is not None:
+                        logger.info(f"Session {session_number}: Stopping llama.cpp server")
+                        botex.stop_llamacpp_server(server_process)
+                        logger.info(f"Session {session_number}: llama.cpp server stopped")
                 else:
-                    logger.warning(f"Session {session_number}: No API key provided")
-                
-                logger.info(f"Session {session_number}: Starting bot with {args.model_string}")
-                botex.run_bots_on_session(
-                    session_id=otree_session_id,
-                    botex_db=botex_db,
-                    user_prompts=user_prompts,
-                    throttle=throttle,
-                    **model_params
-                )
+                    # For API-based models (Gemini, OpenAI, Anthropic)
+                    model_params = {
+                        "model": args.model_string,
+                        "api_key": args.api_key,
+                        "max_tokens": args.max_tokens,
+                        "temperature": args.temperature
+                    }
+                    
+                    # Don't get questionnaire prompts if the role isn't explicitly set
+                    user_prompts = get_bot_prompts(args.q_role if args.q_role != "none" else None)
+                    
+                    # Log partial API key for debugging
+                    if args.api_key:
+                        masked_key = f"{'*' * (len(args.api_key) - 4)}{args.api_key[-4:]}" if len(args.api_key) > 4 else "****"
+                        logger.info(f"Session {session_number}: API key provided: {masked_key}")
+                    else:
+                        logger.warning(f"Session {session_number}: No API key provided")
+                    
+                    logger.info(f"Session {session_number}: Starting bot with {args.model_string}")
+                    botex.run_bots_on_session(
+                        session_id=otree_session_id,
+                        botex_db=botex_db,
+                        user_prompts=user_prompts,
+                        throttle=throttle,
+                        **model_params
+                    )
             
             logger.info(f"Session {session_number}: Bot completed")
             
@@ -658,7 +987,6 @@ def run_session(args, session_number):
             except Exception as e:
                 logger.warning(f"Session {session_number}: Error exporting responses: {str(e)}")
             
-            # Export oTree data
             logger.info(f"Session {session_number}: Exporting oTree data...")
             try:
                 botex.export_otree_data(
@@ -668,7 +996,13 @@ def run_session(args, session_number):
                     admin_password=os.environ.get('OTREE_ADMIN_PASSWORD')
                 )
                 logger.info(f"Session {session_number}: oTree data exported to {otree_wide_csv}")
-                
+            except Exception as e:
+                logger.error(f"Session {session_number}: Failed to export oTree data: {str(e)}")
+                # Don't attempt normalization if we couldn't export the data
+                return {"success": False, "error": f"Failed to export oTree data: {str(e)}"}
+
+            # Normalize the data in a separate try-except block
+            try:
                 # Normalize and export oTree data
                 logger.info(f"Session {session_number}: Normalizing oTree data...")
                 botex.normalize_otree_data(
@@ -679,7 +1013,8 @@ def run_session(args, session_number):
                 )
                 logger.info(f"Session {session_number}: oTree data normalized and exported")
             except Exception as e:
-                logger.error(f"Session {session_number}: Failed to export oTree data: {str(e)}")
+                logger.warning(f"Session {session_number}: Data normalization warning: {str(e)}")
+                logger.info(f"Session {session_number}: Raw data was still exported successfully to {otree_wide_csv}")
             
             # Create a summary file
             summary_file = os.path.join(output_dir, f"experiment_summary_{otree_session_id}{model_suffix}.txt")
@@ -688,7 +1023,13 @@ def run_session(args, session_number):
                 f.write("="*70 + "\n\n")
                 f.write(f"Session ID: {otree_session_id}\n")
                 f.write(f"Session Number: {session_number}\n")
-                f.write(f"Model used: {args.model} ({args.model_string})\n")
+                if player_models:
+                    f.write("Player-specific models used:\n")
+                    for player_id, model_name in player_models.items():
+                        provider = available_models[model_name]['provider']
+                        f.write(f"  Player {player_id}: {model_name} ({provider})\n")
+                else:
+                    f.write(f"Model used: {args.model} ({args.model_string})\n")
                 f.write(f"Questionnaire role: {args.q_role}\n")
                 f.write(f"Max tokens: {args.max_tokens}\n")
                 f.write(f"Temperature: {args.temperature}\n")
@@ -701,6 +1042,8 @@ def run_session(args, session_number):
                 f.write(f"- Bot participants: {os.path.basename(botex_participants_csv)}\n")
                 f.write(f"- Bot responses: {os.path.basename(botex_responses_csv)}\n")
                 f.write(f"- oTree wide data: {os.path.basename(otree_wide_csv)}\n")
+                if player_models:
+                    f.write(f"- Model assignments: model_assignments_{otree_session_id}.json\n")
             
             logger.info(f"Session {session_number}: Experiment completed successfully")
             return {"success": True, "session_id": otree_session_id, "output_dir": output_dir}
@@ -766,8 +1109,42 @@ def main():
     # Create output directory
     os.makedirs(args.output_dir, exist_ok=True)
     
+    # Load available models from environment
+    available_models = get_available_models()
+    logger.info(f"Available models: {list(available_models.keys())}")
+
+    # If using player-specific models, load and validate the mapping
+    player_models = None
+    if os.path.exists(args.model_mapping):
+        player_models = load_model_mapping(args.model_mapping, args.participants)
+        is_valid, error_msg = validate_player_models(
+            player_models, available_models, args.participants, args.humans
+        )
+        
+        if not is_valid:
+            logger.error(error_msg)
+            print(f"\nERROR: {error_msg}")
+            print("Please correct the model mapping file and try again.")
+            sys.exit(1)
+        
+        # Print the models for each player
+        if args.humans > 0:
+            print(f"\nPlayer model assignments ({args.participants - args.humans} bots, {args.humans} humans):")
+            print("Note: Model assignments for human participants will be ignored.")
+        else:
+            print(f"\nPlayer model assignments ({args.participants} bots):")
+            
+        for player_id in sorted(player_models.keys()):
+            model_name = player_models[player_id]
+            full_model = available_models[model_name]['full_name']
+            provider = available_models[model_name]['provider']
+            print(f"  Player {player_id}: {model_name} ({provider})")
+    
     # Log the configuration
-    logger.info(f"Starting experiment with {args.model} model ({args.model_string})")
+    if player_models:
+        logger.info(f"Starting experiment with player-specific models")
+    else:
+        logger.info(f"Starting experiment with {args.model} model ({args.model_string})")
     logger.info(f"Questionnaire role: {args.q_role}")
     logger.info(f"Number of sessions: {args.sessions}")
     logger.info(f"Max tokens: {args.max_tokens}")
@@ -800,7 +1177,7 @@ def main():
             logger.error(f"Failed to reset oTree database: {e}")
             sys.exit(1)
         
-        otree_process = botex.start_otree_server(project_path=".")
+        otree_process = botex.start_otree_server(project_path=".", timeout=15)
         logger.info(f"oTree server started at {args.otree_url}")
     else:
         otree_process = None

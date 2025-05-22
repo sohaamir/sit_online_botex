@@ -8,15 +8,23 @@ author = 'Aamir Sohail'
 
 doc = """
 Multiplayer version of the Social Influence Task (SIT) supporting any combination of human 
-participants and LLM bots using the `botex` package. Players are grouped in groups of 3 and
-make decisions in real-time.
+participants and LLM bots using the `botex` package. 
+
+Players are grouped in groups of 5 and make decisions in real-time. 
+
+The implementation supports models from multiple LLM providers including:
+
+- OpenAI (gpt-4.1, gpt-4.1-mini, gpt-4.1-nano, gpt-4.5-preview, gpt-4o)
+- Anthropic (claude-3.5-sonnet, claude-3-haiku, claude-3-opus, claude-3-sonnet)
+- Google (gemini-1.5, gemini-1.5-mini, gemini-1.5-nano)
+- Local LLMs (tinyllama)
 """
 
 # Constants for the experiment
 class C(BaseConstants):
     NAME_IN_URL = 'social_influence_task'
-    PLAYERS_PER_GROUP = 3  # Modified from 5 to 3 players
-    NUM_ROUNDS = 3  # 64 rounds as default (same as the original task)
+    PLAYERS_PER_GROUP = 3
+    NUM_ROUNDS = 2  # 64 rounds (same as the original task)
     
     # Reversal points
     REVERSAL_ROUNDS = [16, 33, 48]
@@ -211,25 +219,30 @@ class Player(BasePlayer):
     # Is this player a bot? Used for analysis
     is_bot = models.BooleanField()
     
-    # Virtual players' choices - First choice (only tracking 2 other players now, instead of 4)
+    # Virtual players' choices - First choice (tracking 4 other players)
     player1_choice_one = models.StringField()
     player2_choice_one = models.StringField()
-    
+
+
     # Virtual players' choices - Second choice
     player1_choice_two = models.StringField()
     player2_choice_two = models.StringField()
-    
+
+
     # Track accuracy of virtual players' choices - First choice
     player1_choice1_accuracy = models.BooleanField()
     player2_choice1_accuracy = models.BooleanField()
-    
+
+
     # Track accuracy of virtual players' choices - Second choice
     player1_choice2_accuracy = models.BooleanField()
     player2_choice2_accuracy = models.BooleanField()
-    
+
+
     # Track whether virtual players gained or lost points
     player1_loss_or_gain = models.IntegerField()
     player2_loss_or_gain = models.IntegerField()
+
 
     # determine if this player is a bot
     def set_bot_flag(self):
@@ -362,31 +375,33 @@ class Player(BasePlayer):
             self.choice2_sum_earnings = previous_player.choice2_sum_earnings + self.choice2_earnings
             self.bonus_payment_score = previous_player.bonus_payment_score + self.choice2_earnings
     
-    # Update the save_other_players_data method
+    # Save data about other players in the group
     def save_other_players_data(self):
         """Save data about other players in the group"""
         # Get other players
         other_players = [p for p in self.group.get_players() if p.id_in_group != self.id_in_group]
         
-        # Make sure we have the right number of players
-        if len(other_players) == 2:
-            # Save first player data (index 0)
-            if other_players[0].choice1 is not None:
-                self.player1_choice_one = other_players[0].choice1
-            if other_players[0].choice2 is not None:
-                self.player1_choice_two = other_players[0].choice2
-                self.player1_choice1_accuracy = other_players[0].choice1_accuracy
-                self.player1_choice2_accuracy = other_players[0].choice2_accuracy
-                self.player1_loss_or_gain = other_players[0].loss_or_gain
-            
-            # Save second player data (index 1)
-            if other_players[1].choice1 is not None:
-                self.player2_choice_one = other_players[1].choice1
-            if other_players[1].choice2 is not None:
-                self.player2_choice_two = other_players[1].choice2
-                self.player2_choice1_accuracy = other_players[1].choice1_accuracy
-                self.player2_choice2_accuracy = other_players[1].choice2_accuracy
-                self.player2_loss_or_gain = other_players[1].loss_or_gain
+        # Save data for up to 4 other players
+        for i, p in enumerate(other_players):
+            if i == 0:  # First player
+                if p.choice1 is not None:
+                    self.player1_choice_one = p.choice1
+                if p.choice2 is not None:
+                    self.player1_choice_two = p.choice2
+                    self.player1_choice1_accuracy = p.choice1_accuracy
+                    self.player1_choice2_accuracy = p.choice2_accuracy
+                    self.player1_loss_or_gain = p.loss_or_gain
+                    
+            elif i == 1:  # Second player
+                if p.choice1 is not None:
+                    self.player2_choice_one = p.choice1
+                if p.choice2 is not None:
+                    self.player2_choice_two = p.choice2
+                    self.player2_choice1_accuracy = p.choice1_accuracy
+                    self.player2_choice2_accuracy = p.choice2_accuracy
+                    self.player2_loss_or_gain = p.loss_or_gain
+                    
+
 
 
 # PAGES
@@ -395,7 +410,7 @@ class GroupingWaitPage(WaitPage):
     group_by_arrival_time = True
     title_text = "Waiting for Other Players"
     body_text = "Please wait while we form groups of 3 players..."
-    template_name = 'global/BotWaitPage.html'  # Use our custom template
+    template_name = 'global/BotWaitPage.html'  # Use the custom template, not the default WaitPage
     
     @staticmethod
     def is_displayed(player):

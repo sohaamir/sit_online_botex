@@ -71,8 +71,8 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_CONFIGS = [
      dict(
          name='social_influence_task',  # Unique identifier for this session configuration
-         app_sequence=['questionnaires'],  # Order of apps in the experiment
-         num_demo_participants=1,  # Number of demo participants, useful for testing
+         app_sequence=['task'],  # Order of apps in the experiment
+         num_demo_participants=5,  # Number of demo participants, useful for testing
          # use_browser_bots=True,  # Uncomment to use bots for testing
      ),
 ]
