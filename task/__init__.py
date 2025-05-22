@@ -263,17 +263,37 @@ class Player(BasePlayer):
             self.is_bot = False
     
     def set_model_assignment(self):
-        """Set the model assignment based on session config"""
+        """Set the model assignment based on actual bot status"""
+        participant_code = self.participant.code
         session_config = self.session.config
-        player_model_key = f'player_{self.id_in_group}_model'
         
-        if player_model_key in session_config:
-            self.assigned_model = session_config[player_model_key]
-        else:
-            self.assigned_model = "human"
+        # Method 1: Check for position-based bot assignment
+        position_model_key = f'bot_position_{self.id_in_group}_model'
+        if position_model_key in session_config:
+            self.assigned_model = session_config[position_model_key]
+            self.is_bot = True
+            print(f"Player {self.id_in_group} (participant {participant_code}): "
+                f"assigned_model={self.assigned_model} via position, is_bot={self.is_bot}")
+            return
         
-        # Set bot flag
-        self.is_bot = (self.assigned_model != "human")
+        # Method 2: Check intended model for this player position
+        intended_model_key = f'player_{self.id_in_group}_intended_model'
+        if intended_model_key in session_config:
+            intended_model = session_config[intended_model_key]
+            # Check if this participant is actually a bot by looking at other indicators
+            if (hasattr(self.participant, 'label') and self.participant.label and 'bot' in str(self.participant.label).lower()) or \
+            (hasattr(self.participant, 'vars') and 'is_bot' in self.participant.vars and self.participant.vars['is_bot']):
+                self.assigned_model = intended_model
+                self.is_bot = True
+                print(f"Player {self.id_in_group} (participant {participant_code}): "
+                    f"assigned_model={self.assigned_model} via intended model, is_bot={self.is_bot}")
+                return
+        
+        # Default: This participant is human
+        self.assigned_model = "human"
+        self.is_bot = False
+        print(f"Player {self.id_in_group} (participant {participant_code}): "
+            f"assigned_model={self.assigned_model}, is_bot={self.is_bot}")
     
     # Modify the calculate_first_choice_social_influence method
     def calculate_first_choice_social_influence(self):

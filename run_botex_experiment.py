@@ -61,31 +61,48 @@ def load_model_mapping(file_path, num_participants):
         num_participants (int): Expected number of participants
         
     Returns:
-        dict: Mapping of player IDs to model names, or None if file not found
+        tuple: (player_models dict, is_human list) or (None, None) if file not found
     """
     if not os.path.exists(file_path):
         logger.info(f"No player model mapping file found at {file_path}")
-        return None
+        return None, None
         
     player_models = {}
+    is_human_list = []
+    
     try:
         with open(file_path, 'r') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 player_id = int(row['player_id'])
                 model_name = row['model_name'].strip()
-                player_models[player_id] = model_name
-        
-        # Fill in missing players with default model (gemini-1.5-flash)
-        for player_id in range(1, num_participants + 1):
-            if player_id not in player_models:
-                player_models[player_id] = "gemini-1.5-flash"
-                logger.info(f"Player {player_id} not specified in mapping file, defaulting to gemini-1.5-flash")
                 
-        return player_models
+                # If model is "human", mark as human; otherwise it's a bot
+                if model_name.lower() == "human":
+                    player_models[player_id] = "human"
+                    is_human_list.append((player_id, True))
+                else:
+                    player_models[player_id] = model_name
+                    is_human_list.append((player_id, False))
+        
+        # Sort by player_id to ensure correct order
+        is_human_list.sort(key=lambda x: x[0])
+        
+        # Create the final is_human boolean list
+        is_human_boolean_list = [item[1] for item in is_human_list]
+        
+        # Fill in missing players with default behavior (human)
+        while len(is_human_boolean_list) < num_participants:
+            player_id = len(is_human_boolean_list) + 1
+            player_models[player_id] = "human"
+            is_human_boolean_list.append(True)
+            logger.info(f"Player {player_id} not specified in mapping file, defaulting to human")
+                
+        return player_models, is_human_boolean_list
+        
     except Exception as e:
         logger.error(f"Error loading model mapping: {str(e)}")
-        return None
+        return None, None
 
 def get_available_models():
     """
@@ -167,18 +184,26 @@ def validate_player_models(player_models, available_models, participants=None, h
         return True, None
         
     for player_id, model_name in player_models.items():
+        # Skip validation for human participants
+        if model_name.lower() == "human":
+            continue
+            
         if model_name not in available_models:
             return False, f"Player {player_id} is assigned model '{model_name}' which is not available in botex.env"
     
     # Enhanced validation when humans > 0
     if humans is not None and humans > 0 and participants is not None:
-        num_bots = participants - humans
-        if len(player_models) < participants:
-            logger.warning(f"Only {len(player_models)} models specified but {participants} participants. "
-                          f"With {humans} human(s), ensure you have models for at least {num_bots} players.")
+        # Count actual bots from the mapping
+        bot_count = sum(1 for model in player_models.values() if model.lower() != "human")
+        human_count = sum(1 for model in player_models.values() if model.lower() == "human")
         
-        logger.info(f"Note: {humans} participant(s) will be human and won't use the specified models. "
-                   f"Model assignments will only apply to the {num_bots} bot participants.")
+        logger.info(f"From CSV mapping: {human_count} humans, {bot_count} bots")
+        
+        if len(player_models) < participants:
+            logger.warning(f"Only {len(player_models)} models specified but {participants} participants expected.")
+        
+        if bot_count > 0:
+            logger.info(f"Model assignments will apply to {bot_count} bot participants.")
     
     return True, None
 
@@ -607,24 +632,37 @@ def run_session(args, session_number):
         # Load available models and player model mappings
         available_models = get_available_models()
         player_models = None
-        if os.path.exists(args.model_mapping):
-            player_models = load_model_mapping(args.model_mapping, args.participants)
-            is_valid, error_msg = validate_player_models(
-                player_models, available_models, args.participants, args.humans
-            )
-            if not is_valid:
-                return {"success": False, "error": error_msg}
+        is_human_list = None
         
-        # Calculate number of bots
-        n_bots = args.participants - args.humans
+        if os.path.exists(args.model_mapping):
+            player_models, is_human_list = load_model_mapping(args.model_mapping, args.participants)
+            if player_models:
+                # Calculate actual humans and bots from explicit assignment
+                if is_human_list:
+                    n_humans_actual = sum(1 for is_human in is_human_list if is_human)
+                    n_bots = sum(1 for is_human in is_human_list if not is_human)
+                    logger.info(f"Session {session_number}: Explicit assignment - {n_humans_actual} humans, {n_bots} bots")
+                else:
+                    n_humans_actual = args.humans
+                    n_bots = args.participants - args.humans
+                
+                is_valid, error_msg = validate_player_models(
+                    player_models, available_models, args.participants, n_humans_actual
+                )
+                if not is_valid:
+                    return {"success": False, "error": error_msg}
+        else:
+            # No explicit mapping, use command line arguments
+            n_bots = args.participants - args.humans
+            n_humans_actual = args.humans
         
         # Create simplified model suffix
         if player_models and n_bots > 0:
-            model_suffix = f"_mixed_nhumans{args.humans}_nbots{n_bots}_qrole{args.q_role}"
+            model_suffix = f"_mixed_nhumans{n_humans_actual}_nbots{n_bots}_qrole{args.q_role}"
         elif n_bots > 0:
-            model_suffix = f"_{args.model}_nhumans{args.humans}_nbots{n_bots}_qrole{args.q_role}"
+            model_suffix = f"_{args.model}_nhumans{n_humans_actual}_nbots{n_bots}_qrole{args.q_role}"
         else:
-            model_suffix = f"_humans_only_nhumans{args.humans}_qrole{args.q_role}"
+            model_suffix = f"_humans_only_nhumans{n_humans_actual}_qrole{args.q_role}"
         
         # Create session-specific output directory
         output_dir = os.path.join(args.output_dir, f"session_{session_id}{model_suffix}")
@@ -635,38 +673,61 @@ def run_session(args, session_number):
         
         logger.info(f"Session {session_number}: Output directory: {output_dir}")
         
-        # Create modified session config fields to pass model assignments
-        modified_session_config_fields = {}
+        # Pre-calculate model assignments
+        initial_session_config_fields = {}
 
         if player_models:
-            # Create a dictionary of player model assignments
-            for i in range(1, args.participants + 1):
-                if i in player_models:
-                    modified_session_config_fields[f'player_{i}_model'] = player_models[i]
-                else:
-                    modified_session_config_fields[f'player_{i}_model'] = 'human'
-        else:
-            # No player-specific models - assign based on human/bot status
-            for i in range(1, args.participants + 1):
-                if i <= args.participants - n_bots:
-                    modified_session_config_fields[f'player_{i}_model'] = 'human'
-                else:
-                    modified_session_config_fields[f'player_{i}_model'] = args.model_string
+            for player_id, model_name in player_models.items():
+                initial_session_config_fields[f'player_{player_id}_intended_model'] = model_name
+                
+                # If this player is explicitly a bot, store the bot assignment
+                if is_human_list and player_id <= len(is_human_list) and not is_human_list[player_id - 1]:
+                    initial_session_config_fields[f'bot_position_{player_id}_model'] = model_name
+            
+            # Fallback: If no explicit assignment, assume last positions are bots
+            if not is_human_list:
+                bot_positions = list(range(args.humans + 1, args.participants + 1))
+                for bot_position in bot_positions:
+                    if bot_position in player_models:
+                        initial_session_config_fields[f'bot_position_{bot_position}_model'] = player_models[bot_position]
 
-        # Initialize session with model assignments
-        session = botex.init_otree_session(
-            config_name=args.session_config,
-            npart=args.participants,
-            nhumans=args.humans,
-            botex_db=botex_db,
-            otree_server_url=args.otree_url,
-            otree_rest_key=args.otree_rest_key,
-            modified_session_config_fields=modified_session_config_fields
-        )
-        
-        # Get the session ID from the returned data
+        # Initialize session with explicit assignment
+        if is_human_list:
+            session = botex.init_otree_session(
+                config_name=args.session_config,
+                npart=args.participants,
+                is_human=is_human_list,  # Use explicit assignment
+                botex_db=botex_db,
+                otree_server_url=args.otree_url,
+                otree_rest_key=args.otree_rest_key,
+                modified_session_config_fields=initial_session_config_fields
+            )
+
+        # Get the session ID
         otree_session_id = session['session_id']
         logger.info(f"Session {session_number}: Initialized oTree session with ID: {otree_session_id}")
+
+        # Log the explicit assignments for verification
+        if player_models:
+            for i, is_human in enumerate(session['is_human']):
+                player_position = i + 1
+                participant_code = session['participant_code'][i]
+                if is_human:
+                    logger.info(f"Session {session_number}: Player {player_position} (participant {participant_code}) -> HUMAN")
+                else:
+                    if player_position in player_models:
+                        assigned_model = player_models[player_position]
+                        logger.info(f"Session {session_number}: Player {player_position} (participant {participant_code}) -> {assigned_model}")
+
+        # Log the actual bot assignments for verification
+        if player_models and session['bot_urls']:
+            for i, is_human in enumerate(session['is_human']):
+                if not is_human:
+                    participant_code = session['participant_code'][i]
+                    player_position = i + 1
+                    if player_position in player_models:
+                        assigned_model = player_models[player_position]
+                        logger.info(f"Session {session_number}: Bot participant {participant_code} (position {player_position}) -> {assigned_model}")
 
         # Get the monitor URL and open browser
         monitor_url = f"{args.otree_url}/SessionMonitor/{otree_session_id}"
@@ -1026,7 +1087,7 @@ def main():
     # If using player-specific models, load and validate the mapping
     player_models = None
     if os.path.exists(args.model_mapping):
-        player_models = load_model_mapping(args.model_mapping, args.participants)
+        player_models, is_human_list = load_model_mapping(args.model_mapping, args.participants)
         is_valid, error_msg = validate_player_models(
             player_models, available_models, args.participants, args.humans
         )
@@ -1064,15 +1125,6 @@ def main():
         import botex
     except ImportError:
         logger.error("Failed to import botex. Make sure it's installed: pip install botex")
-        sys.exit(1)
-    
-    # Start oTree server using botex
-    logger.info("Starting oTree server using botex...")
-    try:
-        subprocess.run(["otree", "resetdb", "--noinput"], check=True)
-        logger.info("oTree database reset successful")
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Failed to reset oTree database: {e}")
         sys.exit(1)
     
     otree_process = botex.start_otree_server(project_path=".", timeout=15)
