@@ -24,7 +24,7 @@ The implementation supports models from multiple LLM providers including:
 class C(BaseConstants):
     NAME_IN_URL = 'social_influence_task'
     PLAYERS_PER_GROUP = 3
-    NUM_ROUNDS = 2  # 64 rounds (same as the original task)
+    NUM_ROUNDS = 1  # 64 rounds (same as the original task)
     
     # Reversal points
     REVERSAL_ROUNDS = [16, 33, 48]
@@ -182,6 +182,9 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
+    # Model assignment tracking
+    assigned_model = models.StringField(initial="human")  # Records which model was assigned to this player
+
     # Choice and bet tracking variables
     choice1 = models.StringField(widget=widgets.RadioSelect, choices=['A', 'B'])     # Player's first choice ('A' or 'B')
     choice2 = models.StringField(widget=widgets.RadioSelect, choices=['A', 'B'])     # Player's second choice ('A' or 'B')
@@ -258,6 +261,19 @@ class Player(BasePlayer):
             self.is_bot = True
         else:
             self.is_bot = False
+    
+    def set_model_assignment(self):
+        """Set the model assignment based on session config"""
+        session_config = self.session.config
+        player_model_key = f'player_{self.id_in_group}_model'
+        
+        if player_model_key in session_config:
+            self.assigned_model = session_config[player_model_key]
+        else:
+            self.assigned_model = "human"
+        
+        # Set bot flag
+        self.is_bot = (self.assigned_model != "human")
     
     # Modify the calculate_first_choice_social_influence method
     def calculate_first_choice_social_influence(self):
@@ -433,6 +449,10 @@ class FirstDecisions(Page):
     
     @staticmethod
     def before_next_page(player, timeout_happened):
+        # Set model assignment on first round
+        if player.round_number == 1:
+            player.set_model_assignment()
+
         # Mark this player as having made their first choice
         player.group.check_all_first_choices_made()
 

@@ -1,6 +1,6 @@
 player_id,model_name
 1,gemini-1.5-flash
-2,claude-3-5-haiku-20241022 
-3,gpt-4.1-nano-2025-04-14
-4,gemini-1.5-pro
-5,tinyllama
+2,gemini-1.5-flash
+3,gemini-1.5-flash
+4,gemini-1.5-flash
+5,gemini-1.5-flash

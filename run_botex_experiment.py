@@ -158,6 +158,11 @@ def validate_player_models(player_models, available_models, participants=None, h
     Returns:
         tuple: (is_valid, error_message)
     """
+    # Check if all participants are human
+    if humans is not None and participants is not None and humans == participants:
+        logger.info(f"All {participants} participants are human - no model assignments needed")
+        return True, None
+    
     if not player_models:
         return True, None
         
@@ -590,7 +595,7 @@ def configure_tinyllama_params(args, user_prompts):
     return modified_prompts, additional_params
 
 def run_session(args, session_number):
-    """Run a single experimental session with a botex bot"""
+    """Run a single experimental session using standard botex workflow"""
     try:
         # Import botex here to ensure environment variables are loaded first
         import botex
@@ -613,243 +618,154 @@ def run_session(args, session_number):
         # Calculate number of bots
         n_bots = args.participants - args.humans
         
-        # Create model-specific suffix - update to reflect player-specific models if used
-        if player_models:
-            # Create a summary of models used
-            model_counts = {}
-            for model in player_models.values():
-                provider = available_models[model]['provider']
-                model_counts[provider] = model_counts.get(provider, 0) + 1
-            model_summary = "_".join([f"{provider}{count}" for provider, count in model_counts.items()])
-            model_suffix = f"_mixed_{model_summary}_nhumans{args.humans}_nbots{n_bots}_qrole{args.q_role}"
+        # Create simplified model suffix
+        if player_models and n_bots > 0:
+            model_suffix = f"_mixed_nhumans{args.humans}_nbots{n_bots}_qrole{args.q_role}"
+        elif n_bots > 0:
+            model_suffix = f"_{args.model}_nhumans{args.humans}_nbots{n_bots}_qrole{args.q_role}"
         else:
-            # Use original logic for single model
-            if args.model == "tinyllama":
-                model_full_name = "tinyllama"
-            else:
-                if '/' in args.model_string:
-                    model_full_name = args.model_string.split('/')[-1]
-                else:
-                    model_full_name = args.model_string
-            model_suffix = f"_{args.model}_nhumans{args.humans}_nbots{n_bots}_{model_full_name}_qrole{args.q_role}"
+            model_suffix = f"_humans_only_nhumans{args.humans}_qrole{args.q_role}"
         
-        # Create session-specific output directory with enhanced suffix
+        # Create session-specific output directory
         output_dir = os.path.join(args.output_dir, f"session_{session_id}{model_suffix}")
         os.makedirs(output_dir, exist_ok=True)
         
-        # Create session-specific database and log files with enhanced suffix
+        # Create session-specific database file
         botex_db = os.path.join(output_dir, f"botex_{session_id}{model_suffix}.sqlite3")
-        log_file = os.path.join(output_dir, f"experiment_log_{timestamp}{model_suffix}.txt")
-        bot_actions_log = os.path.join(output_dir, f"bot_actions_{timestamp}{model_suffix}.txt")
-        
-        # Set up session-specific logging
-        file_handler = logging.FileHandler(log_file)
-        file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-        file_handler.addFilter(LogFilter())
-        logger.addHandler(file_handler)
-        
-        bot_actions_handler = logging.FileHandler(bot_actions_log)
-        bot_actions_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-        bot_actions_handler.addFilter(LogFilter())
-        logger.addHandler(bot_actions_handler)
-        
-        # Dictionary to collect bot actions for JSON
-        bot_actions = []
-        
-        # Add a handler to capture actions for JSON
-        class JsonCaptureHandler(logging.Handler):
-            def emit(self, record):
-                message = self.format(record)
-                if "Bot's analysis of page" in message or "Bot has answered question" in message:
-                    bot_actions.append(message)
-        
-        json_handler = JsonCaptureHandler()
-        json_handler.setFormatter(logging.Formatter('%(message)s'))
-        logger.addHandler(json_handler)
         
         logger.info(f"Session {session_number}: Output directory: {output_dir}")
-        logger.info(f"Session {session_number}: Log file: {log_file}")
-        if player_models:
-            logger.info(f"Session {session_number}: Using player-specific models")
-        else:
-            logger.info(f"Session {session_number}: Using model: {args.model_string}")
-        logger.info(f"Session {session_number}: Questionnaire role: {args.q_role}")
         
-        # Initialize an oTree session
-        logger.info(f"Session {session_number}: Initializing oTree session with config: {args.session_config}")
+        # Create modified session config fields to pass model assignments
+        modified_session_config_fields = {}
+
+        if player_models:
+            # Create a dictionary of player model assignments
+            for i in range(1, args.participants + 1):
+                if i in player_models:
+                    modified_session_config_fields[f'player_{i}_model'] = player_models[i]
+                else:
+                    modified_session_config_fields[f'player_{i}_model'] = 'human'
+        else:
+            # No player-specific models - assign based on human/bot status
+            for i in range(1, args.participants + 1):
+                if i <= args.participants - n_bots:
+                    modified_session_config_fields[f'player_{i}_model'] = 'human'
+                else:
+                    modified_session_config_fields[f'player_{i}_model'] = args.model_string
+
+        # Initialize session with model assignments
         session = botex.init_otree_session(
             config_name=args.session_config,
             npart=args.participants,
             nhumans=args.humans,
             botex_db=botex_db,
             otree_server_url=args.otree_url,
-            otree_rest_key=args.otree_rest_key
+            otree_rest_key=args.otree_rest_key,
+            modified_session_config_fields=modified_session_config_fields
         )
         
         # Get the session ID from the returned data
         otree_session_id = session['session_id']
         logger.info(f"Session {session_number}: Initialized oTree session with ID: {otree_session_id}")
 
-        # After session initialization, log which participants are human vs bot
-        logger.info(f"Session {session_number}: Participant assignments:")
-        for i, is_human in enumerate(session['is_human']):
-            participant_type = "Human" if is_human else "Bot"
-            player_id = i + 1
-            if not is_human and player_models and player_id in player_models:
-                model_name = player_models[player_id]
-                logger.info(f"  Player {player_id}: {participant_type} (assigned model: {model_name})")
-            else:
-                logger.info(f"  Player {player_id}: {participant_type}")
-
-        # Warn about unused model assignments
-        if player_models and args.humans > 0:
-            unused_models = []
-            for player_id, model_name in player_models.items():
-                if player_id <= len(session['is_human']) and session['is_human'][player_id - 1]:
-                    unused_models.append((player_id, model_name))
-            
-            if unused_models:
-                logger.warning(f"The following model assignments are unused because those players are human:")
-                for player_id, model_name in unused_models:
-                    logger.warning(f"  Player {player_id}: {model_name}")
-        
-        # When exporting files, use the enhanced suffix:
-        botex_responses_csv = os.path.join(output_dir, f"botex_{otree_session_id}_responses{model_suffix}.csv")
-        botex_participants_csv = os.path.join(output_dir, f"botex_{otree_session_id}_participants{model_suffix}.csv")
-        otree_wide_csv = os.path.join(output_dir, f"otree_{otree_session_id}_wide{model_suffix}.csv")
-        
-        # Get the monitor URL for display
+        # Get the monitor URL and open browser
         monitor_url = f"{args.otree_url}/SessionMonitor/{otree_session_id}"
         logger.info(f"Session {session_number}: Monitor URL: {monitor_url}")
-        if player_models:
-            print(f"\nSession {session_number}: Starting bots with player-specific models (q-role: {args.q_role}). Monitor progress at {monitor_url}")
-        else:
-            print(f"\nSession {session_number}: Starting bot with {args.model_string} (q-role: {args.q_role}). Monitor progress at {monitor_url}")
-
+        
+        # Display session info
+        if session['human_urls']:
+            print(f"\nSession {session_number}: Human participant URLs:")
+            for i, url in enumerate(session['human_urls'], 1):
+                print(f"  Participant {i}: {url}")
+        
+        if session['bot_urls']:
+            if player_models:
+                print(f"\nSession {session_number}: Starting {len(session['bot_urls'])} bots with player-specific models (q-role: {args.q_role})")
+            else:
+                print(f"\nSession {session_number}: Starting {len(session['bot_urls'])} bots with {args.model_string} (q-role: {args.q_role})")
+        
+        if n_bots == 0:
+            print(f"\nSession {session_number}: All {args.participants} participants are human")
+        
+        print(f"Monitor progress at: {monitor_url}")
+        
         # Automatically open Chrome with the monitor URL
         open_chrome_browser(monitor_url)
         
-        # Run the bot only if bot URLs are available
+        # Run bots if there are any
         if session['bot_urls']:
-            # Configure throttling
-            throttle = not args.no_throttle
-            
             # Check if we're using player-specific models
             if player_models:
-                logger.info(f"Session {session_number}: Using player-specific models")
+                logger.info(f"Session {session_number}: Running bots with player-specific models")
                 
-                # Map bot URLs to player IDs
-                bot_urls_by_player = {}
-                bot_idx = 0
-                for i, is_human in enumerate(session['is_human']):
-                    if not is_human:
-                        # This is a bot - assign the next bot URL
-                        player_id = i + 1  # oTree player IDs are 1-indexed
-                        bot_urls_by_player[player_id] = session['bot_urls'][bot_idx]
-                        bot_idx += 1
-                
-                # Check if any player uses a local model and start server if needed
+                # Start llama.cpp server if any local models are used
                 use_local_model = any(available_models[player_models[player_id]]['provider'] == 'local' 
-                                      for player_id in bot_urls_by_player.keys() if player_id in player_models)
+                                      for player_id in range(1, args.participants + 1) 
+                                      if player_id in player_models and not session['is_human'][player_id - 1])
                 
                 server_process = None
                 if use_local_model:
                     logger.info(f"Session {session_number}: Starting llama.cpp server for local models")
                     server_url = args.server_url or "http://localhost:8080"
                     
-                    # Check if server is already running
-                    llamacpp_server_running = False
                     try:
                         import requests
                         response = requests.get(f"{server_url}/health", timeout=5)
-                        if response.status_code == 200:
-                            llamacpp_server_running = True
-                            logger.info(f"Session {session_number}: llama.cpp server is running at {server_url}")
+                        if response.status_code != 200:
+                            raise Exception("Server not running")
+                        logger.info(f"Session {session_number}: llama.cpp server already running at {server_url}")
                     except:
-                        logger.warning(f"Session {session_number}: llama.cpp server not detected at {server_url}")
-                    
-                    # Start server if needed
-                    if not llamacpp_server_running:
                         server_process = botex.start_llamacpp_server({
                             "server_path": args.server_path,
                             "local_llm_path": args.model_path,
                             "server_url": server_url,
                             "maximum_tokens_to_predict": args.max_tokens,
                             "temperature": args.temperature,
-                            "top_p": 0.9,
-                            "top_k": 40,
-                            "repeat_penalty": 1.1
                         })
                         logger.info(f"Session {session_number}: llama.cpp server started")
                 
-                # Start each bot with its assigned model
+                # Run bots individually with assigned models
                 bot_threads = []
-                model_data = {}  # Store model info for later
+                bot_idx = 0
                 
-                for player_id, url in bot_urls_by_player.items():
-                    # Get the model for this player
-                    if player_id in player_models:
-                        model_name = player_models[player_id]
-                        model_info = available_models[model_name]
+                for i, is_human in enumerate(session['is_human']):
+                    if not is_human:
+                        player_id = i + 1
+                        url = session['bot_urls'][bot_idx]
+                        bot_idx += 1
                         
-                        # Store model data for output file
-                        model_data[player_id] = {
-                            'model_name': model_name,
-                            'full_name': model_info['full_name'],
-                            'provider': model_info['provider']
-                        }
-                        
-                        # Get API key if needed
-                        api_key = None
-                        if model_info['api_key_env']:
-                            api_key = os.environ.get(model_info['api_key_env'])
-                        
-                        # Configure prompts based on model
-                        if model_info['provider'] == 'local':
-                            user_prompts = get_tinyllama_prompts(args.q_role if args.q_role != "none" else None)
-                            modified_prompts, tinyllama_params = configure_tinyllama_params(args, user_prompts)
-                            user_prompts = modified_prompts
-                        else:
-                            user_prompts = get_bot_prompts(args.q_role if args.q_role != "none" else None)
-                        
-                        # Log which model is used for this player
-                        logger.info(f"Session {session_number}: Player {player_id} using {model_name} ({model_info['provider']})")
-                        
-                        # Start the bot with its assigned model
-                        thread = botex.run_single_bot(
-                            url=url,
-                            session_id=otree_session_id,
-                            participant_id=f"P{player_id}",
-                            botex_db=botex_db,
-                            model=model_info['full_name'],
-                            api_key=api_key,
-                            user_prompts=user_prompts,
-                            temperature=args.temperature,
-                            max_tokens=args.max_tokens,
-                            throttle=throttle,
-                            wait=False
-                        )
-                        bot_threads.append(thread)
-                        thread.start()
-                    else:
-                        # Use default model if no specific model assigned (shouldn't happen with our logic)
-                        logger.info(f"Session {session_number}: Player {player_id} using default model {args.model_string}")
-                        
-                        thread = botex.run_single_bot(
-                            url=url,
-                            session_id=otree_session_id,
-                            participant_id=f"P{player_id}",
-                            botex_db=botex_db,
-                            model=args.model_string,
-                            api_key=args.api_key,
-                            user_prompts=get_bot_prompts(args.q_role if args.q_role != "none" else None),
-                            temperature=args.temperature,
-                            max_tokens=args.max_tokens,
-                            throttle=throttle,
-                            wait=False
-                        )
-                        bot_threads.append(thread)
-                        thread.start()
+                        if player_id in player_models:
+                            model_name = player_models[player_id]
+                            model_info = available_models[model_name]
+                            
+                            api_key = None
+                            if model_info['api_key_env']:
+                                api_key = os.environ.get(model_info['api_key_env'])
+                            
+                            if model_info['provider'] == 'local':
+                                user_prompts = get_tinyllama_prompts(args.q_role if args.q_role != "none" else None)
+                                modified_prompts, tinyllama_params = configure_tinyllama_params(args, user_prompts)
+                                user_prompts = modified_prompts
+                            else:
+                                user_prompts = get_bot_prompts(args.q_role if args.q_role != "none" else None)
+                            
+                            logger.info(f"Session {session_number}: Player {player_id} using {model_name} ({model_info['provider']})")
+                            
+                            thread = botex.run_single_bot(
+                                url=url,
+                                session_id=otree_session_id,
+                                participant_id=f"P{player_id}",
+                                botex_db=botex_db,
+                                model=model_info['full_name'],
+                                api_key=api_key,
+                                user_prompts=user_prompts,
+                                temperature=args.temperature,
+                                max_tokens=args.max_tokens,
+                                throttle=not args.no_throttle,
+                                wait=False
+                            )
+                            bot_threads.append(thread)
+                            thread.start()
                 
                 # Wait for all bots to finish
                 for thread in bot_threads:
@@ -859,38 +775,20 @@ def run_session(args, session_number):
                 if server_process is not None:
                     logger.info(f"Session {session_number}: Stopping llama.cpp server")
                     botex.stop_llamacpp_server(server_process)
-                    logger.info(f"Session {session_number}: llama.cpp server stopped")
-                
-                # Save model assignment data
-                model_assignment_file = os.path.join(output_dir, f"model_assignments_{otree_session_id}.json")
-                with open(model_assignment_file, 'w') as f:
-                    json.dump({
-                        'session_id': otree_session_id,
-                        'player_models': model_data
-                    }, f, indent=2)
-                    
-                logger.info(f"Session {session_number}: Player model assignments saved to {model_assignment_file}")
                 
             else:
-                # Use the original method for running bots with a single model
+                # Use single model for all bots
                 if args.model == "tinyllama":
-                    # For TinyLLaMA, use special handling
-                    logger.info(f"Session {session_number}: Using TinyLLaMA with optimized settings")
-                    
-                    # Check if server is running
                     server_url = args.server_url or "http://localhost:8080"
-                    llamacpp_server_running = False
+                    
                     try:
                         import requests
                         response = requests.get(f"{server_url}/health", timeout=5)
-                        if response.status_code == 200:
-                            llamacpp_server_running = True
-                            logger.info(f"Session {session_number}: llama.cpp server is running at {server_url}")
+                        if response.status_code != 200:
+                            raise Exception("Server not running")
+                        logger.info(f"Session {session_number}: llama.cpp server already running")
+                        server_process = None
                     except:
-                        logger.warning(f"Session {session_number}: llama.cpp server not detected at {server_url}")
-                    
-                    # Start server if needed
-                    if not llamacpp_server_running:
                         logger.info(f"Session {session_number}: Starting llama.cpp server...")
                         server_process = botex.start_llamacpp_server({
                             "server_path": args.server_path,
@@ -898,173 +796,185 @@ def run_session(args, session_number):
                             "server_url": server_url,
                             "maximum_tokens_to_predict": args.max_tokens,
                             "temperature": args.temperature,
-                            "top_p": 0.9,
-                            "top_k": 40,
-                            "repeat_penalty": 1.1
                         })
                         logger.info(f"Session {session_number}: llama.cpp server started")
-                    else:
-                        server_process = None
                     
-                    # Get specialized TinyLLaMA prompts with questionnaire role
-                    user_prompts = get_tinyllama_prompts(args.q_role)
+                    user_prompts = get_tinyllama_prompts(args.q_role if args.q_role != "none" else None)
                     modified_prompts, tinyllama_params = configure_tinyllama_params(args, user_prompts)
 
-                    # Run bots with optimized settings
-                    logger.info(f"Session {session_number}: Starting TinyLLaMA bots with optimized settings")
                     botex.run_bots_on_session(
                         session_id=otree_session_id,
                         botex_db=botex_db,
                         user_prompts=modified_prompts,
-                        throttle=throttle,
+                        throttle=not args.no_throttle,
                         model="llamacpp",
                         api_base=server_url,
                         **tinyllama_params
                     )
                     
-                    # Clean up llama.cpp server if we started it
                     if server_process is not None:
                         logger.info(f"Session {session_number}: Stopping llama.cpp server")
                         botex.stop_llamacpp_server(server_process)
-                        logger.info(f"Session {session_number}: llama.cpp server stopped")
                 else:
-                    # For API-based models (Gemini, OpenAI, Anthropic)
-                    model_params = {
-                        "model": args.model_string,
-                        "api_key": args.api_key,
-                        "max_tokens": args.max_tokens,
-                        "temperature": args.temperature
-                    }
-                    
-                    # Don't get questionnaire prompts if the role isn't explicitly set
+                    # API-based models
                     user_prompts = get_bot_prompts(args.q_role if args.q_role != "none" else None)
                     
-                    # Log partial API key for debugging
-                    if args.api_key:
-                        masked_key = f"{'*' * (len(args.api_key) - 4)}{args.api_key[-4:]}" if len(args.api_key) > 4 else "****"
-                        logger.info(f"Session {session_number}: API key provided: {masked_key}")
-                    else:
-                        logger.warning(f"Session {session_number}: No API key provided")
-                    
-                    logger.info(f"Session {session_number}: Starting bot with {args.model_string}")
                     botex.run_bots_on_session(
                         session_id=otree_session_id,
                         botex_db=botex_db,
+                        model=args.model_string,
+                        api_key=args.api_key,
                         user_prompts=user_prompts,
-                        throttle=throttle,
-                        **model_params
+                        max_tokens=args.max_tokens,
+                        temperature=args.temperature,
+                        throttle=not args.no_throttle
                     )
             
-            logger.info(f"Session {session_number}: Bot completed")
+            logger.info(f"Session {session_number}: Bots completed")
+        else:
+            # Human-only session - wait for completion
+            logger.info(f"Session {session_number}: No bots to run - waiting for human participants to complete")
             
-            # Save bot actions to JSON
-            bot_actions_json = os.path.join(output_dir, f"bot_actions_{timestamp}{model_suffix}.json")
-            with open(bot_actions_json, 'w') as f:
-                json.dump(bot_actions, f, indent=2)
-            logger.info(f"Session {session_number}: Bot actions saved to JSON: {bot_actions_json}")
+            print(f"\nWaiting for all {args.humans} human participants to complete the experiment...")
+            print(f"You can monitor progress at: {monitor_url}")
+            print(f"Press Ctrl+C to stop early and export current data.\n")
             
-            # Export botex participant data
-            logger.info(f"Session {session_number}: Exporting botex participant data...")
+            try:
+                import time
+                import requests
+                
+                # Wait for human participants to complete
+                while True:
+                    try:
+                        time.sleep(20)  # Check every 20 seconds
+                        
+                        # Get session status from oTree
+                        session_data = botex.call_otree_api(
+                            requests.get, 'sessions', otree_session_id,
+                            otree_server_url=args.otree_url, 
+                            otree_rest_key=args.otree_rest_key
+                        )
+                        
+                        participants = session_data.get('participants', [])
+                        total_participants = len(participants)
+                        
+                        # Only count participants with explicit finished=True flag
+                        completed_count = 0
+                        for p in participants:
+                            participant_code = p.get('code', 'unknown')
+                            finished_flag = p.get('finished', False)
+                            current_page = p.get('_current_page_name', 'unknown')
+                            current_app = p.get('_current_app_name', 'unknown')
+                            
+                            if finished_flag:
+                                completed_count += 1
+                                logger.info(f"  {participant_code}: COMPLETED")
+                            else:
+                                logger.info(f"  {participant_code}: IN PROGRESS ({current_app}.{current_page})")
+                        
+                        logger.info(f"Session {session_number}: {completed_count}/{total_participants} participants explicitly finished")
+                        
+                        # Only proceed when ALL participants have finished=True
+                        if completed_count >= total_participants and total_participants > 0:
+                            logger.info(f"Session {session_number}: All human participants completed!")
+                            print(f"All participants have completed the experiment. Proceeding to data export...")
+                            break
+                            
+                    except KeyboardInterrupt:
+                        logger.info(f"Session {session_number}: Manual interruption - proceeding to data export")
+                        print(f"Manual interruption. Exporting current data...")
+                        break
+                    except Exception as api_error:
+                        logger.warning(f"Session {session_number}: Could not check session status: {str(api_error)}")
+                        # Continue waiting
+                        
+            except Exception as e:
+                logger.error(f"Session {session_number}: Error while waiting for human completion: {str(e)}")
+                print(f"Error while waiting. Proceeding to data export...")
+        
+        # Export data using botex standard functions
+        logger.info(f"Session {session_number}: Exporting data...")
+        
+        # Export oTree data
+        otree_wide_csv = os.path.join(output_dir, f"otree_{otree_session_id}_wide{model_suffix}.csv")
+        try:
+            botex.export_otree_data(
+                otree_wide_csv,
+                server_url=args.otree_url,
+                admin_name='admin',
+                admin_password=os.environ.get('OTREE_ADMIN_PASSWORD')
+            )
+            logger.info(f"Session {session_number}: oTree data exported")
+        except Exception as e:
+            logger.error(f"Session {session_number}: Failed to export oTree data: {str(e)}")
+        
+        # Normalize oTree data
+        try:
+            botex.normalize_otree_data(
+                otree_wide_csv, 
+                store_as_csv=True,
+                data_exp_path=output_dir,
+                exp_prefix=f"otree_{otree_session_id}{model_suffix}"
+            )
+            logger.info(f"Session {session_number}: oTree data normalized")
+        except Exception as e:
+            logger.warning(f"Session {session_number}: Data normalization warning: {str(e)}")
+        
+        # Export botex data
+        if n_bots > 0:
             try:
                 botex.export_participant_data(
-                    botex_participants_csv,
+                    os.path.join(output_dir, f"botex_{otree_session_id}_participants{model_suffix}.csv"),
                     botex_db=botex_db,
                     session_id=otree_session_id
                 )
-                logger.info(f"Session {session_number}: Participant data exported to {botex_participants_csv}")
+                logger.info(f"Session {session_number}: Botex participant data exported")
             except Exception as e:
-                logger.warning(f"Session {session_number}: Could not export participant data: {str(e)}")
+                logger.warning(f"Session {session_number}: Could not export botex participant data: {str(e)}")
             
-            # Export botex response data with custom ordering
-            logger.info(f"Session {session_number}: Exporting botex response data...")
             try:
                 export_ordered_response_data(
-                    botex_responses_csv,
+                    os.path.join(output_dir, f"botex_{otree_session_id}_responses{model_suffix}.csv"),
                     botex_db=botex_db,
                     session_id=otree_session_id
                 )
-                logger.info(f"Session {session_number}: Response data exported to {botex_responses_csv}")
+                logger.info(f"Session {session_number}: Botex response data exported")
             except Exception as e:
-                logger.warning(f"Session {session_number}: Error exporting responses: {str(e)}")
+                logger.warning(f"Session {session_number}: Error exporting botex responses: {str(e)}")
+        
+        # Create summary file
+        summary_file = os.path.join(output_dir, f"experiment_summary_{otree_session_id}{model_suffix}.txt")
+        with open(summary_file, 'w') as f:
+            f.write(f"Social Influence Task Experiment Summary - {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("="*70 + "\n\n")
+            f.write(f"Session ID: {otree_session_id}\n")
+            f.write(f"Session Number: {session_number}\n")
+            f.write(f"Participants: {args.participants} total ({args.humans} human, {n_bots} bots)\n")
+            f.write(f"Questionnaire role: {args.q_role}\n\n")
             
-            logger.info(f"Session {session_number}: Exporting oTree data...")
-            try:
-                botex.export_otree_data(
-                    otree_wide_csv,
-                    server_url=args.otree_url,
-                    admin_name='admin',
-                    admin_password=os.environ.get('OTREE_ADMIN_PASSWORD')
-                )
-                logger.info(f"Session {session_number}: oTree data exported to {otree_wide_csv}")
-            except Exception as e:
-                logger.error(f"Session {session_number}: Failed to export oTree data: {str(e)}")
-                # Don't attempt normalization if we couldn't export the data
-                return {"success": False, "error": f"Failed to export oTree data: {str(e)}"}
-
-            # Normalize the data in a separate try-except block
-            try:
-                # Normalize and export oTree data
-                logger.info(f"Session {session_number}: Normalizing oTree data...")
-                botex.normalize_otree_data(
-                    otree_wide_csv, 
-                    store_as_csv=True,
-                    data_exp_path=output_dir,
-                    exp_prefix=f"otree_{otree_session_id}{model_suffix}"
-                )
-                logger.info(f"Session {session_number}: oTree data normalized and exported")
-            except Exception as e:
-                logger.warning(f"Session {session_number}: Data normalization warning: {str(e)}")
-                logger.info(f"Session {session_number}: Raw data was still exported successfully to {otree_wide_csv}")
+            if session['human_urls']:
+                f.write("Human participant URLs:\n")
+                for i, url in enumerate(session['human_urls'], 1):
+                    f.write(f"  Participant {i}: {url}\n")
             
-            # Create a summary file
-            summary_file = os.path.join(output_dir, f"experiment_summary_{otree_session_id}{model_suffix}.txt")
-            with open(summary_file, 'w') as f:
-                f.write(f"Social Influence Task Experiment Summary - {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write("="*70 + "\n\n")
-                f.write(f"Session ID: {otree_session_id}\n")
-                f.write(f"Session Number: {session_number}\n")
-                if player_models:
-                    f.write("Player-specific models used:\n")
-                    for player_id, model_name in player_models.items():
-                        provider = available_models[model_name]['provider']
-                        f.write(f"  Player {player_id}: {model_name} ({provider})\n")
-                else:
-                    f.write(f"Model used: {args.model} ({args.model_string})\n")
-                f.write(f"Questionnaire role: {args.q_role}\n")
-                f.write(f"Max tokens: {args.max_tokens}\n")
-                f.write(f"Temperature: {args.temperature}\n")
-                f.write(f"Number of participants: {args.participants}\n")
-                f.write(f"Number of human participants: {args.humans}\n\n")
-                f.write("Files generated:\n")
-                f.write(f"- Log file: {os.path.basename(log_file)}\n")
-                f.write(f"- Bot actions log: {os.path.basename(bot_actions_log)}\n")
-                f.write(f"- Bot actions JSON: {os.path.basename(bot_actions_json)}\n")
-                f.write(f"- Bot participants: {os.path.basename(botex_participants_csv)}\n")
-                f.write(f"- Bot responses: {os.path.basename(botex_responses_csv)}\n")
-                f.write(f"- oTree wide data: {os.path.basename(otree_wide_csv)}\n")
-                if player_models:
-                    f.write(f"- Model assignments: model_assignments_{otree_session_id}.json\n")
-            
-            logger.info(f"Session {session_number}: Experiment completed successfully")
-            return {"success": True, "session_id": otree_session_id, "output_dir": output_dir}
-        else:
-            logger.warning(f"Session {session_number}: No bot URLs found")
-            return {"success": False, "error": "No bot URLs found"}
+            if player_models and n_bots > 0:
+                f.write("\nBot model assignments:\n")
+                bot_idx = 0
+                for i, is_human in enumerate(session['is_human']):
+                    if not is_human:
+                        player_id = i + 1
+                        if player_id in player_models:
+                            model_name = player_models[player_id]
+                            provider = available_models[model_name]['provider']
+                            f.write(f"  Player {player_id}: {model_name} ({provider})\n")
+                        bot_idx += 1
+        
+        logger.info(f"Session {session_number}: Session completed successfully")
+        return {"success": True, "session_id": otree_session_id, "output_dir": output_dir}
     
     except Exception as e:
         logger.error(f"Session {session_number}: Error: {str(e)}", exc_info=True)
         return {"success": False, "error": str(e)}
-    
-    finally:
-        # Clean up logging handlers
-        if 'file_handler' in locals():
-            logger.removeHandler(file_handler)
-            file_handler.close()
-        if 'bot_actions_handler' in locals():
-            logger.removeHandler(bot_actions_handler)
-            bot_actions_handler.close()
-        if 'json_handler' in locals():
-            logger.removeHandler(json_handler)
 
 def open_chrome_browser(url, max_attempts=5):
     """Open the specified URL in a browser with retry logic"""
@@ -1136,9 +1046,9 @@ def main():
             
         for player_id in sorted(player_models.keys()):
             model_name = player_models[player_id]
-            full_model = available_models[model_name]['full_name']
-            provider = available_models[model_name]['provider']
-            print(f"  Player {player_id}: {model_name} ({provider})")
+            if model_name in available_models:
+                provider = available_models[model_name]['provider']
+                print(f"  Player {player_id}: {model_name} ({provider})")
     
     # Log the configuration
     if player_models:
@@ -1156,31 +1066,17 @@ def main():
         logger.error("Failed to import botex. Make sure it's installed: pip install botex")
         sys.exit(1)
     
-    # Start oTree server if not already running
-    otree_server_running = False
+    # Start oTree server using botex
+    logger.info("Starting oTree server using botex...")
     try:
-        import requests
-        response = requests.get(f"{args.otree_url}/")
-        if response.status_code == 200:
-            otree_server_running = True
-            logger.info(f"oTree server is running at {args.otree_url}")
-    except:
-        logger.warning(f"oTree server not detected at {args.otree_url}")
+        subprocess.run(["otree", "resetdb", "--noinput"], check=True)
+        logger.info("oTree database reset successful")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to reset oTree database: {e}")
+        sys.exit(1)
     
-    # Start oTree server if needed
-    if not otree_server_running:
-        logger.info("Starting oTree server...")
-        try:
-            subprocess.run(["otree", "resetdb", "--noinput"], check=True)
-            logger.info("oTree database reset successful")
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to reset oTree database: {e}")
-            sys.exit(1)
-        
-        otree_process = botex.start_otree_server(project_path=".", timeout=15)
-        logger.info(f"oTree server started at {args.otree_url}")
-    else:
-        otree_process = None
+    otree_process = botex.start_otree_server(project_path=".", timeout=15)
+    logger.info(f"oTree server started at {args.otree_url}")
     
     try:
         # Run the sessions
@@ -1215,11 +1111,10 @@ def main():
                 print(f"\nCompleted {successes} out of {args.sessions} sessions successfully")
     
     finally:
-        # Stop oTree server if we started it
-        if otree_process is not None:
-            logger.info("Stopping oTree server...")
-            botex.stop_otree_server(otree_process)
-            logger.info("oTree server stopped")
+        # Stop oTree server using botex
+        logger.info("Stopping oTree server...")
+        botex.stop_otree_server(otree_process)
+        logger.info("oTree server stopped")
 
 if __name__ == "__main__":
     main()
