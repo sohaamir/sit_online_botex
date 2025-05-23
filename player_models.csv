@@ -1,4 +1,4 @@
 player_id,model_name
-1,gemini-1.5-flash
+1,human
 2,human
-3,human
+3,gemini-1.5-flash

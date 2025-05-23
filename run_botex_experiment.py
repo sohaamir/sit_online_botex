@@ -702,6 +702,16 @@ def run_session(args, session_number):
                 otree_rest_key=args.otree_rest_key,
                 modified_session_config_fields=initial_session_config_fields
             )
+        else:
+            session = botex.init_otree_session(
+                config_name=args.session_config,
+                npart=args.participants,
+                nhumans=args.humans,
+                botex_db=botex_db,
+                otree_server_url=args.otree_url,
+                otree_rest_key=args.otree_rest_key,
+                modified_session_config_fields=initial_session_config_fields
+            )
 
         # Get the session ID
         otree_session_id = session['session_id']
@@ -718,16 +728,6 @@ def run_session(args, session_number):
                     if player_position in player_models:
                         assigned_model = player_models[player_position]
                         logger.info(f"Session {session_number}: Player {player_position} (participant {participant_code}) -> {assigned_model}")
-
-        # Log the actual bot assignments for verification
-        if player_models and session['bot_urls']:
-            for i, is_human in enumerate(session['is_human']):
-                if not is_human:
-                    participant_code = session['participant_code'][i]
-                    player_position = i + 1
-                    if player_position in player_models:
-                        assigned_model = player_models[player_position]
-                        logger.info(f"Session {session_number}: Bot participant {participant_code} (position {player_position}) -> {assigned_model}")
 
         # Get the monitor URL and open browser
         monitor_url = f"{args.otree_url}/SessionMonitor/{otree_session_id}"
@@ -755,6 +755,7 @@ def run_session(args, session_number):
         
         # Run bots if there are any
         if session['bot_urls']:
+            # [Bot running code remains the same...]
             # Check if we're using player-specific models
             if player_models:
                 logger.info(f"Session {session_number}: Running bots with player-specific models")
@@ -892,11 +893,12 @@ def run_session(args, session_number):
                     )
             
             logger.info(f"Session {session_number}: Bots completed")
-        else:
-            # Human-only session - wait for completion
-            logger.info(f"Session {session_number}: No bots to run - waiting for human participants to complete")
+        
+        # NEW: Wait for human participants regardless of whether there were bots
+        if session['human_urls']:  # If there are any human participants
+            logger.info(f"Session {session_number}: Waiting for {len(session['human_urls'])} human participants to complete")
             
-            print(f"\nWaiting for all {args.humans} human participants to complete the experiment...")
+            print(f"\nWaiting for {len(session['human_urls'])} human participants to complete the experiment...")
             print(f"You can monitor progress at: {monitor_url}")
             print(f"Press Ctrl+C to stop early and export current data.\n")
             
@@ -917,27 +919,41 @@ def run_session(args, session_number):
                         )
                         
                         participants = session_data.get('participants', [])
-                        total_participants = len(participants)
                         
-                        # Only count participants with explicit finished=True flag
+                        # Count completed participants (both human and bot)
                         completed_count = 0
-                        for p in participants:
+                        human_completed = 0
+                        bot_completed = 0
+                        
+                        for i, p in enumerate(participants):
                             participant_code = p.get('code', 'unknown')
                             finished_flag = p.get('finished', False)
                             current_page = p.get('_current_page_name', 'unknown')
                             current_app = p.get('_current_app_name', 'unknown')
                             
+                            # Determine if this participant is human or bot
+                            is_human_participant = session['is_human'][i] if i < len(session['is_human']) else True
+                            
                             if finished_flag:
                                 completed_count += 1
-                                logger.info(f"  {participant_code}: COMPLETED")
+                                if is_human_participant:
+                                    human_completed += 1
+                                    logger.info(f"  {participant_code} (HUMAN): COMPLETED")
+                                else:
+                                    bot_completed += 1
+                                    logger.info(f"  {participant_code} (BOT): COMPLETED")
                             else:
-                                logger.info(f"  {participant_code}: IN PROGRESS ({current_app}.{current_page})")
+                                if is_human_participant:
+                                    logger.info(f"  {participant_code} (HUMAN): IN PROGRESS ({current_app}.{current_page})")
+                                else:
+                                    logger.info(f"  {participant_code} (BOT): IN PROGRESS ({current_app}.{current_page})")
                         
-                        logger.info(f"Session {session_number}: {completed_count}/{total_participants} participants explicitly finished")
+                        logger.info(f"Session {session_number}: {completed_count}/{len(participants)} participants completed "
+                                   f"({human_completed} humans, {bot_completed} bots)")
                         
-                        # Only proceed when ALL participants have finished=True
-                        if completed_count >= total_participants and total_participants > 0:
-                            logger.info(f"Session {session_number}: All human participants completed!")
+                        # Only proceed when ALL participants have finished
+                        if completed_count >= len(participants) and len(participants) > 0:
+                            logger.info(f"Session {session_number}: All participants completed!")
                             print(f"All participants have completed the experiment. Proceeding to data export...")
                             break
                             
@@ -950,8 +966,11 @@ def run_session(args, session_number):
                         # Continue waiting
                         
             except Exception as e:
-                logger.error(f"Session {session_number}: Error while waiting for human completion: {str(e)}")
+                logger.error(f"Session {session_number}: Error while waiting for completion: {str(e)}")
                 print(f"Error while waiting. Proceeding to data export...")
+        else:
+            # All participants were bots and have already completed
+            logger.info(f"Session {session_number}: All bot participants have completed")
         
         # Export data using botex standard functions
         logger.info(f"Session {session_number}: Exporting data...")
@@ -1010,7 +1029,7 @@ def run_session(args, session_number):
             f.write("="*70 + "\n\n")
             f.write(f"Session ID: {otree_session_id}\n")
             f.write(f"Session Number: {session_number}\n")
-            f.write(f"Participants: {args.participants} total ({args.humans} human, {n_bots} bots)\n")
+            f.write(f"Participants: {args.participants} total ({n_humans_actual} human, {n_bots} bots)\n")
             f.write(f"Questionnaire role: {args.q_role}\n\n")
             
             if session['human_urls']:
