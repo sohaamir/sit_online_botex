@@ -49,14 +49,14 @@ def get_available_models():
     available_models = {}
     
     # Gemini models
-    gemini_models_str = os.environ.get('GEMINI_MODELS', 'gemini-1.5-flash')  # Default fallback
-    gemini_models = [m.strip() for m in gemini_models_str.split(',') if m.strip()]
-    for model in gemini_models:
+    google_models_str = os.environ.get('GOOGLE_MODELS', 'gemini-1.5-flash')  # Default fallback
+    google_models = [m.strip() for m in google_models_str.split(',') if m.strip()]
+    for model in google_models:
         model_name = model.strip()
         available_models[model_name] = {
             'full_name': f"gemini/{model_name}", 
             'provider': 'gemini',
-            'api_key_env': 'GEMINI_API_KEY'
+            'api_key_env': 'GOOGLE_API_KEY'
         }
     
     # OpenAI models
@@ -78,7 +78,7 @@ def get_available_models():
         for model in anthropic_models:
             model_name = model.strip()
             available_models[model_name] = {
-                'full_name': model_name,
+                'full_name': f"anthropic/{model_name}",
                 'provider': 'anthropic',
                 'api_key_env': 'ANTHROPIC_API_KEY'
             }
