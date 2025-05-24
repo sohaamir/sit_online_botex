@@ -12,6 +12,8 @@ Usage:
     python run.py --validate-only
     python run.py --dry-run
 """
+# Import the instructor patch for Groq models
+import groq_instructor_patch
 
 import sys
 import os

@@ -7,3 +7,6 @@ botex
 cmake 
 scikit-build 
 setuptools
+
+# LLM providers
+groq

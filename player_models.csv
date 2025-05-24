@@ -1,4 +1,4 @@
 player_id,model_name
 1,human
 2,human
-3,gemma-3-27b-it
+3,deepseek-r1-distill-llama-70b

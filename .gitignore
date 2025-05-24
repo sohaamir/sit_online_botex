@@ -73,3 +73,6 @@ bot_prompts.csv
 
 # Botex data
 botex_source_code_copy/
+
+# Large json files
+*.json

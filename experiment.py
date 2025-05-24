@@ -18,191 +18,17 @@ import requests
 import botex
 import litellm
 
+# Import prompt functions from separate module
+from prompts import (
+    get_general_instructions,
+    get_questionnaire_instructions,
+    get_task_instructions,
+    get_questionnaire_role_instructions,
+    get_bot_prompts,
+    get_tinyllama_prompts
+)
+
 logger = logging.getLogger("sit_experiment")
-
-
-def get_general_instructions():
-    """General instructions that apply to both questionnaires and task"""
-    return """You are participating in an online research study that may include questionnaires and/or experimental tasks, potentially involving other human or artificial participants. 
-
-    GENERAL PARTICIPATION GUIDELINES:
-    - Respond honestly and thoughtfully to all questions and tasks
-    - Follow the instructions provided on each page carefully  
-    - If compensation information is mentioned, consider it as applying to you
-    - Be patient during waiting periods - this is normal in multiplayer experiments
-    - Always respond in valid JSON format when requested
-    
-    The study consists of different components:
-    - Questionnaires asking about your thoughts, feelings, and behaviors
-    - Experimental tasks that may involve decisions and interactions with others
-    
-    Each component has its own specific instructions which will be provided."""
-
-
-def get_questionnaire_instructions():
-    """Specific instructions for questionnaire components"""
-    return """QUESTIONNAIRE COMPLETION INSTRUCTIONS:
-    
-    If you encounter questionnaire pages:
-    - Read each question carefully and completely
-    - Consider your genuine thoughts, feelings, and typical behaviors
-    - Answer based on your assigned role and psychological state
-    - Don't overthink individual items - respond intuitively
-    - Be consistent in your responses throughout all questionnaires
-    - There are no right or wrong answers - just answer honestly from your perspective
-    
-    The questionnaires assess various psychological and social aspects such as:
-    - Social anxiety and avoidance behaviors
-    - Mood and emotional experiences  
-    - Social interaction patterns
-    - Personality characteristics
-    - Cognitive and perceptual experiences"""
-
-
-def get_task_instructions():
-    """Specific instructions for experimental task components"""
-    return """EXPERIMENTAL TASK INSTRUCTIONS:
-    
-    If you encounter experimental task pages:
-    - In the very first round, choose randomly between the two options (A) and (B). Do not arbitrarily choose option A over option B
-    - Read all instructions carefully before making decisions
-    - Pay attention to information about other participants' choices
-    - Make decisions that align with your goals in the task
-    - Consider both your own experiences and social information when making choices
-    - Wait patiently when other participants are making their decisions
-    - Follow any specific formatting requirements for your responses"""
-
-
-def get_questionnaire_role_instructions(role="typical"):
-    """Generate role-specific instructions for questionnaire completion"""
-    
-    if role == "patient":
-        return """YOUR ROLE - Individual with Psychopathology:
-        
-        You are someone who is currently experiencing significant psychological difficulties. Your responses should reflect the perspective of someone dealing with mental health challenges.
-        
-        Your psychological profile:
-        - You experience persistent feelings of sadness, hopelessness, or emptiness
-        - You have high levels of anxiety, particularly in social situations
-        - You often feel isolated and disconnected from others
-        
-        When answering questionnaires:
-        - Reflect these ongoing psychological difficulties in your responses
-        - Be honest about the severity of your symptoms"""
-        
-    else:  # typical (neurotypical)
-        return """YOUR ROLE - Neurotypical Individual:
-        
-        You are someone with typical psychological functioning and mental health. Your responses should reflect the perspective of a psychologically healthy individual.
-        
-        Your psychological profile:
-        - You experience normal variations in mood but generally feel emotionally stable
-        - You have typical levels of anxiety that don't significantly impair your functioning
-        - You feel connected to others and maintain healthy social relationships
-        
-        When answering questionnaires:
-        - Reflect normal, healthy psychological functioning
-        - Answer from the perspective of someone who is mentally well-adjusted"""
-
-
-def get_bot_prompts(q_role=None):
-    """Create the complete prompt system with all components"""
-    
-    # Combine all instructions - but make questionnaire instructions optional
-    general_instructions = get_general_instructions()
-    task_instructions = get_task_instructions()
-    
-    # Create the system prompt, starting with just general and task instructions
-    system_prompt = f"""{general_instructions}
-
-{task_instructions}"""
-    
-    # Only add questionnaire instructions and role instructions if a role is specified
-    if q_role in ["patient", "typical"]:
-        questionnaire_instructions = get_questionnaire_instructions() 
-        role_instructions = get_questionnaire_role_instructions(q_role)
-        
-        system_prompt += f"""
-
-{questionnaire_instructions}
-
-{role_instructions}"""
-    
-    # Add the final reminder
-    system_prompt += """
-
-Remember: Always analyze each page carefully and respond in valid JSON format when requested."""
-
-    # Create the page analysis prompt - modify to conditionally include questionnaire guidance
-    analyze_prompt = """Perfect. This is your summary of the study so far: 
-
-{summary} 
-
-You have now proceeded to the next page. This is the body text of the web page: 
-
-{body} 
-
-I need you to answer {nr_q} question(s) and update your summary.
-
-RESPONSE FORMATTING:
-For each question, provide:
-- 'reason': Your reasoning or thought process leading to your response
-- 'answer': Your final answer to the question
-"""
-
-    # Only add questionnaire-specific instructions if a role is specified
-    if q_role in ["patient", "typical"]:
-        analyze_prompt += """
-QUESTIONNAIRE RESPONSES:
-- Answer according to your assigned psychological role and profile
-- Be consistent with your established character throughout
-- Provide brief reasoning that explains your perspective
-"""
-
-    # Always include task responses guidance
-    analyze_prompt += """
-TASK RESPONSES:  
-- Consider the specific instructions provided in the task
-- Reference relevant information about other participants if applicable
-- Explain your decision-making process clearly
-
-The following JSON string contains the questions: {questions_json}
-
-Respond with this format: {{"answers": {{"question_id": {{"reason": "Your reasoning", "answer": "Your answer"}}}}, "summary": "Updated summary of the study", "confused": false}}"""
-
-    return {
-        "system": system_prompt,
-        "analyze_page_q": analyze_prompt
-    }
-
-
-def get_tinyllama_prompts(q_role="typical"):
-    """Return simplified prompts optimized for TinyLLaMA"""
-    
-    # Simplified role instruction
-    if q_role == "patient":
-        role_context = "You have mental health difficulties. Answer questionnaires reflecting psychological problems. "
-    else:
-        role_context = "You are mentally healthy. Answer questionnaires as a typical person. "
-    
-    # Very simplified system prompt
-    system_prompt = f"""You are in a research study. {role_context}Answer in JSON format only. Keep responses brief."""
-    
-    # Simplified analysis prompt  
-    analyze_prompt = """Summary: {summary}
-
-Page: {body}
-
-Answer {nr_q} questions: {questions_json}
-
-JSON format: {{"answers": {{...}}, "summary": "Brief summary", "confused": false}}
-
-Keep all text very short."""
-    
-    return {
-        "system": system_prompt,
-        "analyze_page_q": analyze_prompt
-    }
 
 
 def configure_tinyllama_params(args, user_prompts):
@@ -330,6 +156,7 @@ def open_chrome_browser(url, max_attempts=5):
     
     logger.error(f"Failed to open browser after {max_attempts} attempts")
     return False
+
 
 def log_actual_model_used():
     """

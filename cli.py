@@ -82,6 +82,18 @@ def get_available_models():
                 'provider': 'anthropic',
                 'api_key_env': 'ANTHROPIC_API_KEY'
             }
+
+    # Groq models  
+    groq_models_str = os.environ.get('GROQ_MODELS', '')
+    if groq_models_str:
+        groq_models = [m.strip() for m in groq_models_str.split(',') if m.strip()]
+        for model in groq_models:
+            model_name = model.strip()
+            available_models[model_name] = {
+                'full_name': f"groq/{model_name}",
+                'provider': 'groq', 
+                'api_key_env': 'GROQ_API_KEY'
+            }
     
     # Local models
     local_models_str = os.environ.get('LOCAL_LLM_MODELS', '')
