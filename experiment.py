@@ -342,6 +342,7 @@ def run_session(args, session_number, player_models, is_human_list, available_mo
                                 user_prompts = get_tinyllama_prompts(args.q_role if args.q_role != "none" else None)
                                 modified_prompts, tinyllama_params = configure_tinyllama_params(args, user_prompts)
                                 user_prompts = modified_prompts
+
                             else:
                                 user_prompts = get_bot_prompts(args.q_role if args.q_role != "none" else None)
                             

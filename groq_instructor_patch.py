@@ -35,41 +35,35 @@ def initialize_groq_instructor():
     global groq_instructor_client
     
     print(f"🔍 GROQ DEBUG: Initializing Groq instructor client...")
-    print(f"🔍 GROQ DEBUG: GROQ_AVAILABLE = {GROQ_AVAILABLE}")
     
     if not GROQ_AVAILABLE:
         print("❌ GROQ DEBUG: Groq package not available")
-        logger.warning("Groq package not installed. Install with: pip install groq")
         return False
     
     groq_api_key = os.environ.get('GROQ_API_KEY')
-    print(f"🔍 GROQ DEBUG: API key found = {bool(groq_api_key)}")
-    
     if not groq_api_key:
         print("❌ GROQ DEBUG: No API key found in environment")
-        logger.warning("GROQ_API_KEY not found in environment variables")
         return False
-    
-    if len(groq_api_key) < 10:  # Basic sanity check
-        print(f"❌ GROQ DEBUG: API key too short ({len(groq_api_key)} characters)")
-        logger.warning("GROQ_API_KEY appears to be invalid (too short)")
-        return False
-    
-    print(f"🔍 GROQ DEBUG: API key length = {len(groq_api_key)} characters")
     
     try:
         print("🔍 GROQ DEBUG: Creating Groq client...")
         groq_client = Groq(api_key=groq_api_key)
+        
         print("🔍 GROQ DEBUG: Creating instructor client...")
-        groq_instructor_client = instructor.from_groq(groq_client, mode=instructor.Mode.JSON)
-        print("✅ GROQ DEBUG: Groq instructor client initialized successfully")
+        # Try different modes - JSON mode sometimes causes tool call issues
+        try:
+            groq_instructor_client = instructor.from_groq(groq_client, mode=instructor.Mode.TOOLS)
+            print("✅ GROQ DEBUG: Groq instructor client initialized with TOOLS mode")
+        except:
+            # Fallback to JSON mode
+            groq_instructor_client = instructor.from_groq(groq_client, mode=instructor.Mode.JSON)
+            print("✅ GROQ DEBUG: Groq instructor client initialized with JSON mode")
+        
         logger.info("✅ Groq instructor client initialized successfully")
         return True
     except Exception as e:
         print(f"❌ GROQ DEBUG: Failed to initialize Groq instructor client: {e}")
         logger.error(f"Failed to initialize Groq instructor client: {e}")
-        import traceback
-        traceback.print_exc()
         return False
 
 def groq_instructor_completion(**kwargs):
@@ -100,8 +94,9 @@ def groq_instructor_completion(**kwargs):
     print(f"🔍 GROQ DEBUG: Final kwargs keys = {list(kwargs.keys())}")
     print(f"🔍 GROQ DEBUG: Response format type = {type(response_format)}")
     
+    # Try instructor approach first
     try:
-        print(f"🤖 GROQ DEBUG: Using Groq instructor for model: {kwargs['model']}")
+        print(f"🤖 GROQ DEBUG: Attempting Groq instructor for model: {kwargs['model']}")
         logger.info(f"🤖 Using Groq instructor for model: {kwargs['model']}")
         
         # Use response_model instead of response_format for Groq instructor
@@ -124,12 +119,77 @@ def groq_instructor_completion(**kwargs):
         print(f"🔍 GROQ DEBUG: Result keys = {list(result.keys())}")
         return result
         
-    except Exception as e:
-        print(f"❌ GROQ DEBUG: Groq instructor completion failed: {e}")
-        logger.error(f"Groq instructor completion failed: {e}")
-        import traceback
-        traceback.print_exc()
-        raise e
+    except Exception as instructor_error:
+        print(f"⚠️ GROQ DEBUG: Instructor approach failed: {instructor_error}")
+        logger.warning(f"Groq instructor failed, trying fallback: {instructor_error}")
+        
+        # Fallback: Use regular Groq completion and extract JSON
+        try:
+            print(f"🔄 GROQ DEBUG: Attempting fallback with regular Groq completion")
+            
+            # Create a direct Groq client for fallback
+            groq_api_key = os.environ.get('GROQ_API_KEY')
+            if not groq_api_key:
+                raise Exception("GROQ_API_KEY not available for fallback")
+            
+            from groq import Groq
+            fallback_client = Groq(api_key=groq_api_key)
+            
+            # Modify the last message to be more explicit about JSON-only response
+            messages = kwargs.get('messages', [])
+            if messages:
+                last_message = messages[-1].copy()
+                last_message['content'] += "\n\n🚨 CRITICAL: Respond with ONLY the JSON object. No explanations, no tool calls, no markdown. Start immediately with { and end with }."
+                modified_messages = messages[:-1] + [last_message]
+            else:
+                modified_messages = messages
+            
+            fallback_response = fallback_client.chat.completions.create(
+                messages=modified_messages,
+                model=kwargs['model'],
+                temperature=kwargs.get('temperature', 0.7),
+                max_tokens=kwargs.get('max_tokens', 2048),
+            )
+            
+            content = fallback_response.choices[0].message.content.strip()
+            print(f"🔍 GROQ DEBUG: Fallback response content: {content[:200]}...")
+            
+            # Extract JSON from the response
+            import json
+            import re
+            
+            # Try to find and extract JSON object
+            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(0)
+                print(f"🔍 GROQ DEBUG: Extracted JSON: {json_str[:100]}...")
+                
+                # Validate it's proper JSON
+                try:
+                    parsed_json = json.loads(json_str)
+                    print(f"✅ GROQ DEBUG: JSON validation successful")
+                    
+                    result = {
+                        'resp_str': json_str,
+                        'finish_reason': 'stop'
+                    }
+                    
+                    print(f"✅ GROQ DEBUG: Fallback completion successful")
+                    return result
+                    
+                except json.JSONDecodeError as json_error:
+                    print(f"❌ GROQ DEBUG: Invalid JSON extracted: {json_error}")
+                    raise Exception(f"Invalid JSON in fallback response: {json_error}")
+            else:
+                print(f"❌ GROQ DEBUG: No JSON found in fallback response")
+                raise Exception("No valid JSON found in fallback response")
+                
+        except Exception as fallback_error:
+            print(f"❌ GROQ DEBUG: Fallback also failed: {fallback_error}")
+            logger.error(f"Both Groq instructor and fallback failed: {fallback_error}")
+            
+            # Re-raise the original instructor error
+            raise instructor_error
 
 def patch_botex_for_groq():
     """
@@ -138,14 +198,67 @@ def patch_botex_for_groq():
     print(f"🔍 GROQ DEBUG: Starting to patch botex...")
     
     try:
-        import botex.completion
-        print(f"🔍 GROQ DEBUG: botex.completion imported successfully")
+        # Import botex to access its completion functions
+        import botex
+        print(f"🔍 GROQ DEBUG: botex imported successfully")
         
-        # Store the original completion function
-        original_completion = botex.completion.completion
-        original_model_supports_schema = botex.completion.model_supports_response_schema
+        # Try different ways to access the completion module
+        completion_module = None
+        completion_function = None
+        model_supports_function = None
         
-        print(f"🔍 GROQ DEBUG: Original functions stored")
+        # Method 1: Try accessing as submodule
+        try:
+            from botex import completion as completion_module
+            completion_function = completion_module.completion
+            model_supports_function = completion_module.model_supports_response_schema
+            print(f"🔍 GROQ DEBUG: Accessed completion via submodule import")
+        except (ImportError, AttributeError):
+            pass
+        
+        # Method 2: Try accessing directly from botex
+        if completion_function is None:
+            try:
+                completion_function = botex.completion
+                print(f"🔍 GROQ DEBUG: Accessed completion function directly from botex")
+                # For model_supports_response_schema, we might need to access it differently
+                if hasattr(botex, 'model_supports_response_schema'):
+                    model_supports_function = botex.model_supports_response_schema
+                else:
+                    # Create a default function that works for most cases
+                    def default_model_supports_response_schema(model: str, custom_llm_provider: str = None) -> bool:
+                        if model == "llamacpp": 
+                            return True
+                        if model and "/" in model and model.split("/")[0].lower() == "groq":
+                            return False
+                        if custom_llm_provider and custom_llm_provider.lower() == "groq":
+                            return False
+                        # Default to True for other models
+                        return True
+                    model_supports_function = default_model_supports_response_schema
+                    print(f"🔍 GROQ DEBUG: Using default model_supports_response_schema function")
+            except AttributeError:
+                pass
+        
+        # Method 3: Try importing the completion module directly
+        if completion_function is None:
+            try:
+                import botex.completion as completion_module
+                completion_function = completion_module.completion
+                model_supports_function = completion_module.model_supports_response_schema
+                print(f"🔍 GROQ DEBUG: Accessed completion via direct module import")
+            except (ImportError, AttributeError):
+                pass
+        
+        if completion_function is None:
+            raise Exception("Could not find completion function in botex")
+        
+        print(f"🔍 GROQ DEBUG: Found completion function: {completion_function}")
+        print(f"🔍 GROQ DEBUG: Found model_supports function: {model_supports_function}")
+        
+        # Store the original functions
+        original_completion = completion_function
+        original_model_supports_schema = model_supports_function
         
         def patched_model_supports_response_schema(model: str, custom_llm_provider: str = None) -> bool:
             """
@@ -165,9 +278,13 @@ def patch_botex_for_groq():
                 return False
             
             # Use original function for non-Groq models
-            result = original_model_supports_schema(model, custom_llm_provider)
-            print(f"🔍 GROQ DEBUG: Non-Groq model {model} schema support = {result}")
-            return result
+            if original_model_supports_schema:
+                result = original_model_supports_schema(model, custom_llm_provider)
+                print(f"🔍 GROQ DEBUG: Non-Groq model {model} schema support = {result}")
+                return result
+            else:
+                # Fallback logic
+                return True
         
         def patched_completion(**kwargs):
             """
@@ -192,11 +309,19 @@ def patch_botex_for_groq():
             # Use original completion for non-Groq models
             return original_completion(**kwargs)
         
-        # Apply the patches
-        botex.completion.model_supports_response_schema = patched_model_supports_response_schema
-        botex.completion.completion = patched_completion
+        # Apply the patches based on how we accessed the functions
+        if completion_module:
+            # We have the module, patch it directly
+            completion_module.model_supports_response_schema = patched_model_supports_response_schema
+            completion_module.completion = patched_completion
+            print("✅ GROQ DEBUG: Successfully patched completion module functions")
+        else:
+            # We accessed functions directly from botex, patch them there
+            botex.completion = patched_completion
+            if hasattr(botex, 'model_supports_response_schema'):
+                botex.model_supports_response_schema = patched_model_supports_response_schema
+            print("✅ GROQ DEBUG: Successfully patched botex functions directly")
         
-        print("✅ GROQ DEBUG: Successfully patched botex functions")
         logger.info("✅ GROQ PATCH: Successfully patched botex for Groq compatibility")
         return True
         
