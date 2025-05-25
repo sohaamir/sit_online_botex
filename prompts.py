@@ -6,7 +6,6 @@ This module contains all prompt-related functions for configuring LLM bots
 in the social influence task, including role-based instructions and formatting.
 """
 
-
 def get_general_instructions():
     """General instructions that apply to both questionnaires and task"""
     return """You are participating in an online research study that may include questionnaires and/or experimental tasks, potentially involving other human or artificial participants. 
@@ -120,22 +119,6 @@ def get_bot_prompts(q_role=None):
 CRITICAL RESPONSE FORMAT:
 You must ALWAYS respond in valid JSON format only. No text before or after the JSON.
 
-JSON STRUCTURE REQUIRED:
-{{
-  "answers": {{
-    "question_id_1": {{
-      "reason": "Your reasoning for this answer",
-      "answer": "Your actual answer"
-    }},
-    "question_id_2": {{
-      "reason": "Your reasoning for this answer", 
-      "answer": "Your actual answer"
-    }}
-  }},
-  "summary": "Brief summary of this page and the study so far",
-  "confused": false
-}}
-
 IMPORTANT FORMATTING RULES:
 - Always use double quotes for strings
 - Answer values must match the question type exactly
@@ -147,7 +130,7 @@ IMPORTANT FORMATTING RULES:
 
 Remember: Always analyze each page carefully and respond in valid JSON format when requested."""
 
-    # Create the page analysis prompt with explicit examples (ESCAPED BRACES)
+    # Create the page analysis prompt with explicit examples
     analyze_prompt = """Perfect. This is your summary of the study so far: 
 
 {summary} 
@@ -158,41 +141,7 @@ You have now proceeded to the next page. This is the body text of the web page:
 
 I need you to answer {nr_q} question(s) and update your summary.
 
-The questions are: {questions_json}
-
-RESPONSE FORMAT EXAMPLES:
-
-Example 1 - Choice and Bet Questions:
-{{
-  "answers": {{
-    "id_choice2": {{
-      "reason": "Based on other players choosing mostly A, and my previous experience, I believe A is more likely to be rewarded",
-      "answer": "A"
-    }},
-    "id_bet2": {{
-      "reason": "I'm moderately confident in this choice given the social information",
-      "answer": 2
-    }}
-  }},
-  "summary": "In round 3 of the social influence task. Other players initially chose A (2 players) and B (1 player). I decided to stick with A and bet 2 points reflecting moderate confidence.",
-  "confused": false
-}}
-
-Example 2 - Questionnaire Questions:
-{{
-  "answers": {{
-    "id_anxiety_scale": {{
-      "reason": "I experience moderate social anxiety in group situations",
-      "answer": "Somewhat agree"
-    }},
-    "id_mood_rating": {{
-      "reason": "My mood has been generally stable lately",
-      "answer": "4"
-    }}
-  }},
-  "summary": "Completed anxiety and mood questionnaires, reporting moderate social anxiety and stable mood",
-  "confused": false
-}}"""
+The questions are: {questions_json}"""
 
     # Only add questionnaire-specific instructions if a role is specified
     if q_role in ["patient", "typical"]:
@@ -229,38 +178,22 @@ def get_tinyllama_prompts(q_role="typical"):
     else:
         role_context = "You are mentally healthy. Answer questionnaires as a typical person."
     
-    # Very simplified system prompt with JSON examples (ESCAPED BRACES)
+    # Very simplified system prompt with JSON examples
     system_prompt = f"""You are in a research study. {role_context}
 
 CRITICAL: Always respond in JSON format only. No other text.
-
-Required JSON structure:
-{{{{
-  "answers": {{{{"question_id": {{{{"reason": "brief reason", "answer": "your answer"}}}}}}}},
-  "summary": "very brief summary",
-  "confused": false
-}}}}
 
 Examples:
 - Choice: "answer": "A" or "answer": "B"
 - Bet: "answer": 1 or "answer": 2 or "answer": 3
 - Keep all text very short."""
     
-    # Simplified analysis prompt with explicit format (ESCAPED BRACES)
+    # Simplified analysis prompt with explicit format
     analyze_prompt = """Summary: {summary}
 
 Page: {body}
 
 Questions: {questions_json}
-
-Respond in JSON format:
-{{{{
-  "answers": {{{{
-    "question_id": {{{{"reason": "brief reason", "answer": "your answer"}}}}
-  }}}},
-  "summary": "brief summary",
-  "confused": false
-}}}}
 
 Keep everything very short. Valid JSON only."""
     
