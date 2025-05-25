@@ -10,3 +10,6 @@ setuptools
 
 # LLM providers
 groq
+
+# Patching
+baml-py
