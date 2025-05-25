@@ -13,7 +13,10 @@ Usage:
     python run.py --dry-run
 """
 # Import the instructor patch for Groq models
-#import groq_instructor_patch
+# import groq_instructor_patch
+
+# Import the DeepSeek patch
+# import deepseek_patch
 
 import sys
 import os
