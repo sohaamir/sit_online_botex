@@ -16,6 +16,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
 
+# Load environment variables from botex.env
+load_dotenv("botex.env")
+
 # Import experiment execution functions
 from experiment import run_session
 
@@ -93,6 +96,18 @@ def get_available_models():
                 'full_name': f"groq/{model_name}",
                 'provider': 'groq', 
                 'api_key_env': 'GROQ_API_KEY'
+            }
+
+    # In get_available_models() function, add:
+    deepseek_models_str = os.environ.get('DEEPSEEK_MODELS', '')
+    if deepseek_models_str:
+        deepseek_models = [m.strip() for m in deepseek_models_str.split(',') if m.strip()]
+        for model in deepseek_models:
+            model_name = model.strip()
+            available_models[model_name] = {
+                'full_name': f"deepseek/{model_name}",
+                'provider': 'deepseek',
+                'api_key_env': 'DEEPSEEK_API_KEY'
             }
     
     # Local models
