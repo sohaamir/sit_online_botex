@@ -63,13 +63,13 @@ run_tinyllama.sh
 run_llama_server.sh 
 install_llama_cpp.sh 
 download_model.sh 
-check_response_format_support.py
-test_models.py 
-pip_list.txt 
 long_prompts.txt 
-estimate_tokens.py 
 botex_env.txt 
-bot_prompts.csv
+broadcast_message.py
+
+# Patches
+deepseek_patch.py
+groq_instructor_patch.py
 
 # Botex data
 botex_source_code_copy/
