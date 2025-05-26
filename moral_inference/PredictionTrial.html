@@ -1,0 +1,50 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+Prediction Trial {{ trial_number }} - {{ agent_type }} Agent
+{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header bg-warning text-white">
+        <h4>Make Your Prediction - Trial {{ trial_number }}</h4>
+    </div>
+    <div class="card-body">
+        <p>The <strong>{{ agent_type }} Agent</strong> must choose between two options:</p>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h5>Option A</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Decider gets:</strong> ${{ decider_profit_a }}</p>
+                        <p><strong>Receiver gets:</strong> {{ receiver_shocks_a }} shocks</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card border-secondary">
+                    <div class="card-header bg-secondary text-white">
+                        <h5>Option B</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Decider gets:</strong> ${{ decider_profit_b }}</p>
+                        <p><strong>Receiver gets:</strong> {{ receiver_shocks_b }} shocks</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <h5>Which option do you think the {{ agent_type }} Agent will choose?</h5>
+            {% formfield player.prediction_choice %}
+        </div>
+    </div>
+</div>
+
+{% next_button %}
+{% endblock %}

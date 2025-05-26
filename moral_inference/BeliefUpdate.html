@@ -1,0 +1,29 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+Update Your Beliefs - {{ agent_type }} Agent
+{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header bg-info text-white">
+        <h4>Update Your Beliefs - After {{ trial_number }} Trials</h4>
+    </div>
+    <div class="card-body">
+        <p>Based on what you've learned so far about the <strong>{{ agent_type }} Agent</strong>, please update your beliefs:</p>
+        
+        <div class="form-group">
+            <h5>How would you now rate this agent's moral character?</h5>
+            {% formfield player.current_moral_belief %}
+        </div>
+        
+        <div class="form-group">
+            <h5>How certain are you about this assessment?</h5>
+            {% formfield player.current_certainty %}
+        </div>
+    </div>
+</div>
+
+{% next_button %}
+{% endblock %}

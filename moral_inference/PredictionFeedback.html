@@ -1,0 +1,51 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+Feedback - Trial {{ trial_number }}
+{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header {% if is_correct %}bg-success{% else %}bg-danger{% endif %} text-white">
+        <h4>Trial {{ trial_number }} - {% if is_correct %}Correct!{% else %}Incorrect{% endif %}</h4>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h5>Option A</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Decider gets:</strong> ${{ decider_profit_a }}</p>
+                        <p><strong>Receiver gets:</strong> {{ receiver_shocks_a }} shocks</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card border-secondary">
+                    <div class="card-header bg-secondary text-white">
+                        <h5>Option B</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Decider gets:</strong> ${{ decider_profit_b }}</p>
+                        <p><strong>Receiver gets:</strong> {{ receiver_shocks_b }} shocks</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <div class="alert {% if is_correct %}alert-success{% else %}alert-danger{% endif %}">
+                <p><strong>Your prediction:</strong> Option {{ your_prediction }}</p>
+                <p><strong>Agent's actual choice:</strong> Option {{ correct_answer }}</p>
+                <p><strong>Result:</strong> {% if is_correct %}Correct!{% else %}Incorrect{% endif %}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% next_button %}
+{% endblock %}
