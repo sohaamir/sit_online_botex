@@ -76,3 +76,6 @@ botex_source_code_copy/
 
 # Large json files
 *.json
+
+# Apps
+moral_inference/
