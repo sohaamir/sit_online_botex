@@ -127,27 +127,49 @@ def get_available_models():
 
 def load_model_mapping(file_path):
     """
-    Load player-model mapping from a CSV file.
+    Load player-model mapping with optional role assignments from CSV file.
     
     Args:
         file_path (str): Path to the CSV file
         
     Returns:
-        tuple: (player_models dict, is_human list, total_participants) or (None, None, 0) if file not found
+        tuple: (player_models dict, player_q_roles dict, player_t_roles dict, is_human list, total_participants) or (None, None, None, None, 0) if file not found
     """
     if not os.path.exists(file_path):
         logger.error(f"Model mapping file not found at {file_path}")
-        return None, None, 0
+        return None, None, None, None, 0
         
     player_models = {}
+    player_q_roles = {}
+    player_t_roles = {}
     participant_assignments = []
     
     try:
         with open(file_path, 'r') as f:
             reader = csv.DictReader(f)
+            fieldnames = reader.fieldnames
+            
+            # Check if role columns exist
+            has_q_role_column = 'q_role' in fieldnames
+            has_t_role_column = 't_role' in fieldnames
+            
             for row in reader:
                 player_id = int(row['player_id'])
                 model_name = row['model_name'].strip()
+                
+                # Handle q_role assignment (optional column)
+                q_role = None
+                if has_q_role_column and row.get('q_role'):
+                    q_role = row['q_role'].strip()
+                    if q_role and q_role.lower() not in ['none', '']:
+                        player_q_roles[player_id] = q_role
+                
+                # Handle t_role assignment (optional column)
+                t_role = None
+                if has_t_role_column and row.get('t_role'):
+                    t_role = row['t_role'].strip()
+                    if t_role and t_role.lower() not in ['none', '']:
+                        player_t_roles[player_id] = t_role
                 
                 participant_assignments.append((player_id, model_name))
                 player_models[player_id] = model_name
@@ -161,12 +183,16 @@ def load_model_mapping(file_path):
         total_participants = len(participant_assignments)
         
         logger.info(f"Loaded {total_participants} participant assignments from {file_path}")
+        if player_q_roles:
+            logger.info(f"Found questionnaire role assignments for players: {list(player_q_roles.keys())}")
+        if player_t_roles:
+            logger.info(f"Found task role assignments for players: {list(player_t_roles.keys())}")
         
-        return player_models, is_human_list, total_participants
+        return player_models, player_q_roles, player_t_roles, is_human_list, total_participants
         
     except Exception as e:
         logger.error(f"Error loading model mapping: {str(e)}")
-        return None, None, 0
+        return None, None, None, None, 0
 
 
 def validate_player_models(player_models, available_models):
@@ -211,9 +237,6 @@ Examples:
   
   # Run multiple sessions with custom token limit
   python run.py --sessions 3 -m 1024
-  
-  # Run with custom CSV file and specific questionnaire role
-  python run.py --sessions 2 --model-mapping custom_players.csv -q patient
   
   # Validate configuration without running
   python run.py --validate-only
@@ -331,7 +354,7 @@ Examples:
     )
 
     parser.add_argument(
-        "--temperature", 
+        "-t", "--temperature", 
         type=float, 
         default=None,
         help="""Model temperature for response randomness.
@@ -353,27 +376,6 @@ Examples:
     )
 
     # === EXPERIMENT DESIGN ===
-    parser.add_argument(
-        "-q", "--q-role", 
-        default="none",
-        choices=["none", "typical", "patient"],
-        help="""Role assignment for questionnaire responses.
-        
-        Affects how bots respond to psychological questionnaires/scales.
-        
-        Options:
-          'none'     # No specific role instructions
-          'typical'  # Neurotypical/healthy individual responses
-          'patient'  # Responses reflecting psychological difficulties
-        
-        Default: none
-        Use cases:
-          -q typical     # Healthy population simulation
-          -q patient     # Clinical population simulation
-          -q none        # Pure task behavior (no questionnaires)
-        """
-    )
-
     parser.add_argument(
         "--session-config", 
         default="social_influence_task",

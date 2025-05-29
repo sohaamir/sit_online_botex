@@ -12,11 +12,6 @@ Usage:
     python run.py --validate-only
     python run.py --dry-run
 """
-# Import the instructor patch for Groq models
-# import groq_instructor_patch
-
-# Import the DeepSeek patch
-# import deepseek_patch
 
 import sys
 import os
@@ -67,7 +62,6 @@ def display_configuration_summary(args, player_models, human_participants, bot_p
 ║ Human participants: {human_participants:<56} ║
 ║ Bot participants:   {bot_participants:<56} ║
 ║ Sessions to run:    {args.sessions:<56} ║
-║ Questionnaire role: {args.q_role:<56} ║
 ║ Max tokens:         {args.max_tokens:<56} ║
 ║ Temperature:        {args.temperature:<56} ║
 ║ Output directory:   {args.output_dir:<56} ║
@@ -201,13 +195,13 @@ def handle_validation_only(args, player_models, available_models):
         return False
 
 
-def run_multiple_sessions(args, player_models, is_human_list, available_models):
+def run_multiple_sessions(args, player_models, is_human_list, player_q_roles, player_t_roles, available_models):
     """Run multiple sessions concurrently"""
     print(f"\nStarting {args.sessions} concurrent sessions...")
     
     with ThreadPoolExecutor(max_workers=args.sessions) as executor:
         futures = [
-            executor.submit(run_session, args, i+1, player_models, is_human_list, available_models) 
+            executor.submit(run_session, args, i+1, player_models, player_q_roles, player_t_roles, is_human_list, available_models) 
             for i in range(args.sessions)
         ]
         
@@ -293,7 +287,7 @@ Available models: human, gemini-1.5-flash, gemini-1.5-pro, gpt-4o-mini, gpt-4o,
     
     # Load model mapping
     logger.info(f"Loading participant assignments from: {args.model_mapping}")
-    player_models, is_human_list, total_participants = load_model_mapping(args.model_mapping)
+    player_models, player_q_roles, player_t_roles, is_human_list, total_participants = load_model_mapping(args.model_mapping)
     
     if player_models is None:
         logger.error("Failed to load participant assignments")
@@ -359,7 +353,7 @@ Available models: human, gemini-1.5-flash, gemini-1.5-pro, gpt-4o-mini, gpt-4o,
             if args.sessions == 1:
                 # Run a single session
                 print(f"\nStarting single experimental session...")
-                result = run_session(args, 1, player_models, is_human_list, available_models)
+                result = run_session(args, 1, player_models, player_q_roles, player_t_roles, is_human_list, available_models)
                 
                 if result["success"]:
                     print(f"\n✓ Session completed successfully!")

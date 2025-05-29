@@ -6,6 +6,7 @@ This module contains all the logic for running individual experimental sessions,
 configuring bots, managing prompts, and exporting data.
 """
 
+from prompts import *
 import datetime
 import logging
 import os
@@ -17,18 +18,11 @@ import csv
 import requests
 import botex
 import litellm
+import sqlite3
+import json
 
-# Import prompt functions from separate module
-from prompts import (
-    get_general_instructions,
-    get_questionnaire_instructions,
-    get_task_instructions,
-    get_questionnaire_role_instructions,
-    get_bot_prompts,
-    get_tinyllama_prompts
-)
 
-logger = logging.getLogger("sit_experiment")
+logger = logging.getLogger("sit_botex")
 
 
 def configure_tinyllama_params(args, user_prompts):
@@ -57,60 +51,107 @@ def configure_tinyllama_params(args, user_prompts):
     return modified_prompts, additional_params
 
 
-def export_ordered_response_data(csv_file, botex_db, session_id):
-    """Export botex response data with comprehension questions at the top and specific ordering"""
+def export_response_data(csv_file, botex_db, session_id):
+    """Export botex response data with summary and prompt information included"""
     try:
-        # Use botex's built-in function to get the raw responses
-        responses = botex.read_responses_from_botex_db(botex_db=botex_db, session_id=session_id)
         
-        if not responses:
-            logger.warning(f"No responses found for session {session_id}")
-            with open(csv_file, 'w', newline='') as f:
-                f.write("session_id,participant_id,round,question_id,answer,reason\n")
-                f.write(f"# No responses found for session {session_id}\n")
-            return
-            
-        logger.info(f"Found {len(responses)} responses for session {session_id}")
+        # Connect to botex database
+        conn = sqlite3.connect(botex_db)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
         
-        # Separate comprehension questions from other responses
-        comprehension_responses = []
-        task_responses = []
+        # Get conversations for this session
+        cursor.execute("SELECT * FROM conversations")
+        conversations = [dict(row) for row in cursor.fetchall()]
         
-        for response in responses:
-            question_id = response.get('question_id', '')
-            # Identify comprehension questions
-            if ('comprehension' in question_id.lower() or 
-                question_id.lower().startswith('q') or
-                response['round'] == 1):  # Round 1 is typically comprehension checks
-                comprehension_responses.append(response)
-            else:
-                task_responses.append(response)
+        # Filter by session_id if provided
+        if session_id:
+            conversations = [
+                c for c in conversations 
+                if json.loads(c['bot_parms'])['session_id'] == session_id
+            ]
         
-        # Define the desired order of task questions
-        order_map = {
-            'id_choice1': 1,
-            'id_bet1': 2,
-            'id_choice2': 3,
-            'id_bet2': 4,
-        }
+        enhanced_responses = []
         
-        # Sort task responses by round and question_id order
-        task_responses.sort(key=lambda x: (int(x['round']), order_map.get(x['question_id'], 999)))
+        for conversation in conversations:
+            try:
+                bot_parms = json.loads(conversation['bot_parms'])
+                participant_id = conversation['id']
+                
+                # Parse the conversation messages
+                messages = json.loads(conversation['conversation'])
+                
+                # Process each round of conversation
+                round_num = 1
+                current_prompt = ""
+                
+                for i, message in enumerate(messages):
+                    if message.get('role') == 'user':
+                        # This is a prompt to the bot
+                        current_prompt = message.get('content', '')
+                    
+                    elif message.get('role') == 'assistant':
+                        # This is a bot response
+                        try:
+                            response_data = json.loads(message.get('content', '{}'))
+                            
+                            # Extract summary if available
+                            summary = response_data.get('summary', '')
+                            
+                            # Extract answers
+                            answers = response_data.get('answers', {})
+                            
+                            for question_id, answer_data in answers.items():
+                                if question_id == 'round':
+                                    continue
+                                    
+                                enhanced_responses.append({
+                                    'session_id': bot_parms.get('session_id', ''),
+                                    'participant_id': participant_id,
+                                    'round': round_num,
+                                    'question_id': question_id,
+                                    'answer': answer_data.get('answer', ''),
+                                    'reason': answer_data.get('reason', ''),
+                                    'summary': summary,
+                                    'prompt': current_prompt
+                                })
+                            
+                            round_num += 1
+                            
+                        except json.JSONDecodeError:
+                            # Skip malformed responses
+                            continue
+                            
+            except (json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Error processing conversation {conversation.get('id', 'unknown')}: {str(e)}")
+                continue
         
-        # Combine with comprehension questions at the top
-        ordered_responses = comprehension_responses + task_responses
+        # Sort responses by round and participant
+        enhanced_responses.sort(key=lambda x: (int(x['round']), x['participant_id'], x['question_id']))
         
-        # Write to CSV with the correct order
-        with open(csv_file, 'w', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=['session_id', 'participant_id', 'round', 'question_id', 'answer', 'reason'])
-            writer.writeheader()
-            writer.writerows(ordered_responses)
-            logger.info(f"Successfully wrote {len(ordered_responses)} responses to {csv_file}")
-            
+        # Write to CSV
+        if enhanced_responses:
+            fieldnames = ['session_id', 'participant_id', 'round', 'question_id', 'answer', 'reason', 'summary', 'prompt']
+            with open(csv_file, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(enhanced_responses)
+            logger.info(f"Successfully wrote {len(enhanced_responses)} enhanced responses to {csv_file}")
+        else:
+            # Write empty file with headers
+            fieldnames = ['session_id', 'participant_id', 'round', 'question_id', 'answer', 'reason', 'summary', 'prompt']
+            with open(csv_file, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+            logger.warning(f"No enhanced responses found for session {session_id}")
+        
+        cursor.close()
+        conn.close()
+        
     except Exception as e:
-        logger.error(f"Error in export_ordered_response_data: {str(e)}")
+        logger.error(f"Error in export_response_data: {str(e)}")
         
-        # Fallback to standard export
+        # Fallback to standard botex export
         try:
             logger.info(f"Trying standard botex export function...")
             botex.export_response_data(
@@ -121,9 +162,20 @@ def export_ordered_response_data(csv_file, botex_db, session_id):
             logger.info(f"Standard export successful")
         except Exception as e2:
             logger.warning(f"Standard export also failed: {str(e2)}")
-            with open(csv_file, 'w', newline='') as f:
-                f.write("session_id,participant_id,round,question_id,answer,reason\n")
-                f.write(f"# Error exporting responses: {str(e)}\n")
+            fieldnames = ['session_id', 'participant_id', 'round', 'question_id', 'answer', 'reason', 'summary', 'prompt']
+            with open(csv_file, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerow({
+                    'session_id': session_id or 'unknown',
+                    'participant_id': 'error',
+                    'round': 1,
+                    'question_id': 'export_error',
+                    'answer': f'Export failed: {str(e)}',
+                    'reason': 'System error during data export',
+                    'summary': 'Error occurred during data export process',
+                    'prompt': 'N/A'
+                })
 
 
 def open_chrome_browser(url, max_attempts=5):
@@ -192,7 +244,7 @@ def log_actual_model_used():
     litellm.completion = logged_completion
 
 
-def run_session(args, session_number, player_models, is_human_list, available_models):
+def run_session(args, session_number, player_models, player_q_roles, player_t_roles, is_human_list, available_models):
     """Run a single experimental session using standard botex workflow"""
     try:
 
@@ -208,12 +260,21 @@ def run_session(args, session_number, player_models, is_human_list, available_mo
         n_bots = args.participants - n_humans_actual
         
         # Create simplified model suffix
+        role_suffix = ""
+        if player_q_roles or player_t_roles:
+            q_roles_used = set(player_q_roles.values()) if player_q_roles else set()
+            t_roles_used = set(player_t_roles.values()) if player_t_roles else set()
+            if q_roles_used:
+                role_suffix += f"_q{'_'.join(sorted(q_roles_used))}"
+            if t_roles_used:
+                role_suffix += f"_t{'_'.join(sorted(t_roles_used))}"
+
         if player_models and n_bots > 0:
-            model_suffix = f"_mixed_nhumans{n_humans_actual}_nbots{n_bots}_qrole{args.q_role}"
+            model_suffix = f"_mixed_nhumans{n_humans_actual}_nbots{n_bots}{role_suffix}"
         elif n_bots > 0:
-            model_suffix = f"_bots_nhumans{n_humans_actual}_nbots{n_bots}_qrole{args.q_role}"
+            model_suffix = f"_bots_nhumans{n_humans_actual}_nbots{n_bots}{role_suffix}"
         else:
-            model_suffix = f"_humans_only_nhumans{n_humans_actual}_qrole{args.q_role}"
+            model_suffix = f"_humans_only_nhumans{n_humans_actual}{role_suffix}"
         
         # Create session-specific output directory
         output_dir = os.path.join(args.output_dir, f"session_{session_id}{model_suffix}")
@@ -230,6 +291,14 @@ def run_session(args, session_number, player_models, is_human_list, available_mo
         if player_models:
             for player_id, model_name in player_models.items():
                 initial_session_config_fields[f'player_{player_id}_intended_model'] = model_name
+                
+                # Add q_role if assigned
+                if player_id in player_q_roles:
+                    initial_session_config_fields[f'player_{player_id}_q_role'] = player_q_roles[player_id]
+                
+                # Add t_role if assigned
+                if player_id in player_t_roles:
+                    initial_session_config_fields[f'player_{player_id}_t_role'] = player_t_roles[player_id]
                 
                 # If this player is explicitly a bot, store the bot assignment
                 if is_human_list and player_id <= len(is_human_list) and not is_human_list[player_id - 1]:
@@ -326,12 +395,17 @@ def run_session(args, session_number, player_models, is_human_list, available_mo
                     url = session['bot_urls'][bot_idx]
                     bot_idx += 1
                     
+                    # Check if the player has a model assigned
                     if player_id in player_models:
                         model_name = player_models[player_id]
                         model_info = available_models[model_name]
                         
+                        # Get role assignments for this player
+                        q_role = player_q_roles.get(player_id, None)
+                        t_role = player_t_roles.get(player_id, None)
+                        
                         # Log bot assignment attempt
-                        logger.info(f"🔄 ATTEMPTING TO ASSIGN: Player {player_id} → {model_name}")
+                        logger.info(f"🔄 ATTEMPTING TO ASSIGN: Player {player_id} → {model_name} (q_role: {q_role}, t_role: {t_role})")
                         
                         try:
                             api_key = None
@@ -339,12 +413,11 @@ def run_session(args, session_number, player_models, is_human_list, available_mo
                                 api_key = os.environ.get(model_info['api_key_env'])
                             
                             if model_info['provider'] == 'local':
-                                user_prompts = get_tinyllama_prompts(args.q_role if args.q_role != "none" else None)
+                                user_prompts = get_tinyllama_prompts(q_role, t_role)
                                 modified_prompts, tinyllama_params = configure_tinyllama_params(args, user_prompts)
                                 user_prompts = modified_prompts
-
                             else:
-                                user_prompts = get_bot_prompts(args.q_role if args.q_role != "none" else None)
+                                user_prompts = get_bot_prompts(q_role, t_role)
                             
                             thread = botex.run_single_bot(
                                 url=url,
@@ -495,14 +568,14 @@ def run_session(args, session_number, player_models, is_human_list, available_mo
                 logger.warning(f"Session {session_number}: Could not export botex participant data: {str(e)}")
             
             try:
-                export_ordered_response_data(
+                export_response_data(
                     os.path.join(output_dir, f"botex_{otree_session_id}_responses{model_suffix}.csv"),
                     botex_db=botex_db,
                     session_id=otree_session_id
                 )
-                logger.info(f"Session {session_number}: Botex response data exported")
+                logger.info(f"Session {session_number}: Enhanced botex response data exported")
             except Exception as e:
-                logger.warning(f"Session {session_number}: Error exporting botex responses: {str(e)}")
+                logger.warning(f"Session {session_number}: Error exporting enhanced botex responses: {str(e)}")
         
         # Create summary file
         summary_file = os.path.join(output_dir, f"experiment_summary_{otree_session_id}{model_suffix}.txt")
@@ -512,7 +585,15 @@ def run_session(args, session_number, player_models, is_human_list, available_mo
             f.write(f"Session ID: {otree_session_id}\n")
             f.write(f"Session Number: {session_number}\n")
             f.write(f"Participants: {args.participants} total ({n_humans_actual} human, {n_bots} bots)\n")
-            f.write(f"Questionnaire role: {args.q_role}\n\n")
+            
+            # Write role summary if any roles are assigned
+            if player_q_roles or player_t_roles:
+                f.write("Role assignments:\n")
+                if player_q_roles:
+                    f.write(f"  Questionnaire roles: {dict(player_q_roles)}\n")
+                if player_t_roles:
+                    f.write(f"  Task roles: {dict(player_t_roles)}\n")
+            f.write("\n")
             
             if session['human_urls']:
                 f.write("Human participant URLs:\n")
