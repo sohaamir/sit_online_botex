@@ -24,7 +24,7 @@ The implementation supports models from multiple LLM providers including:
 class C(BaseConstants):
     NAME_IN_URL = 'social_influence_task'
     PLAYERS_PER_GROUP = 3
-    NUM_ROUNDS = 1  # 64 rounds (same as the original task)
+    NUM_ROUNDS = 3  # 64 rounds (same as the original task)
     
     # Reversal points
     REVERSAL_ROUNDS = [16, 33, 48]
@@ -182,8 +182,12 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
-    # Model assignment tracking
+    # Model assignment
     assigned_model = models.StringField(initial="human")  # Records which model was assigned to this player
+
+    # Strategy assignment across both questionnaires and tasks
+    q_strategy = models.StringField(blank=True)  # Questionnaire strategy
+    t_strategy = models.StringField(blank=True)  # Task strategy
 
     # Choice and bet tracking variables
     choice1 = models.StringField(widget=widgets.RadioSelect, choices=['A', 'B'])     # Player's first choice ('A' or 'B')
@@ -246,8 +250,24 @@ class Player(BasePlayer):
     player1_loss_or_gain = models.IntegerField()
     player2_loss_or_gain = models.IntegerField()
 
+    # Set the strategy assignments for questionnaire and task roles
+    def set_strategy_assignments(self):
+        """Set the strategy assignments based on session config"""
+        # Check for q_role in session config
+        if hasattr(self.session, 'config') and f'player_{self.id_in_group}_q_role' in self.session.config:
+            self.q_strategy = self.session.config[f'player_{self.id_in_group}_q_role']
+        else:
+            self.q_strategy = ""  # No questionnaire strategy
+        
+        # Check for t_role in session config
+        if hasattr(self.session, 'config') and f'player_{self.id_in_group}_t_role' in self.session.config:
+            self.t_strategy = self.session.config[f'player_{self.id_in_group}_t_role']
+        else:
+            self.t_strategy = ""  # No task strategy
+        
+        print(f"Player {self.id_in_group}: q_strategy = {self.q_strategy}, t_strategy = {self.t_strategy}")
 
-    # determine if this player is a bot
+    # Determine if the player is a bot
     def set_bot_flag(self):
         """Set the is_bot flag based on participant.label"""
         # botex sets participant.label for bots
@@ -469,9 +489,10 @@ class FirstDecisions(Page):
     
     @staticmethod
     def before_next_page(player, timeout_happened):
-        # Set model assignment on first round
+        # Set model assignment and strategy on first round
         if player.round_number == 1:
             player.set_model_assignment()
+            player.set_strategy_assignments() 
 
         # Mark this player as having made their first choice
         player.group.check_all_first_choices_made()
