@@ -1,4 +1,4 @@
-player_id,model_name
-1,human
-2,human
-3,deepseek-chat
+player_id,model_name,q_role,t_role
+1,gpt-4.1-nano-2025-04-14,patient,risk-averse
+2,claude-3-haiku-20240307,none,risk-prone
+3,gemini-1.5-flash,typical,none
