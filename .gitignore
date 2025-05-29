@@ -59,23 +59,12 @@ botexenv/
 ,cache*
 
 # Misc scripts and txt files
-run_tinyllama.sh 
-run_llama_server.sh 
-install_llama_cpp.sh 
-download_model.sh 
 long_prompts.txt 
 botex_env.txt 
 broadcast_message.py
-
-# Patches
-deepseek_patch.py
-groq_instructor_patch.py
 
 # Botex data
 botex_source_code_copy/
 
 # Large json files
 *.json
-
-# Apps
-moral_inference/
