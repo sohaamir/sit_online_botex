@@ -24,7 +24,7 @@ The implementation supports models from multiple LLM providers including:
 class C(BaseConstants):
     NAME_IN_URL = 'social_influence_task'
     PLAYERS_PER_GROUP = 3
-    NUM_ROUNDS = 3  # 64 rounds (same as the original task)
+    NUM_ROUNDS = 2  # 64 rounds (same as the original task)
     
     # Reversal points
     REVERSAL_ROUNDS = [16, 33, 48]
@@ -149,7 +149,6 @@ class Group(BaseGroup):
         if self.reversal_happened:
             print(f"REVERSAL occurred at round {self.round_number}")
     
-    # Update the get_other_players_first_choices method
     def get_other_players_first_choices(self, current_player_id):
         """Get the first choices of all other players in the group"""
         other_players = [p for p in self.get_players() if p.id_in_group != current_player_id]
@@ -173,22 +172,9 @@ class Group(BaseGroup):
                 return False
         self.all_second_choices_made = True
         return True
-    
-    def get_other_players_first_choices(self, current_player_id):
-        """Get the first choices of all other players in the group"""
-        other_players = [p for p in self.get_players() if p.id_in_group != current_player_id]
-        return {p.id_in_group: p.field_maybe_none('choice1') for p in other_players}
-
 
 
 class Player(BasePlayer):
-    # Model assignment
-    assigned_model = models.StringField(initial="human")  # Records which model was assigned to this player
-
-    # Strategy assignment across both questionnaires and tasks
-    q_strategy = models.StringField(blank=True)  # Questionnaire strategy
-    t_strategy = models.StringField(blank=True)  # Task strategy
-
     # Choice and bet tracking variables
     choice1 = models.StringField(widget=widgets.RadioSelect, choices=['A', 'B'])     # Player's first choice ('A' or 'B')
     choice2 = models.StringField(widget=widgets.RadioSelect, choices=['A', 'B'])     # Player's second choice ('A' or 'B')
@@ -223,65 +209,26 @@ class Player(BasePlayer):
     choice2_sum_earnings = models.IntegerField(initial=0)  # Sum of choice2_earnings over trials
     bonus_payment_score = models.IntegerField(initial=0)  # Total bonus points earned
 
-    # Is this player a bot? Used for analysis
-    is_bot = models.BooleanField()
-    
-    # Virtual players' choices - First choice (tracking 4 other players)
+    # Virtual players' choices - First choice (tracking other players)
     player1_choice_one = models.StringField()
     player2_choice_one = models.StringField()
-
 
     # Virtual players' choices - Second choice
     player1_choice_two = models.StringField()
     player2_choice_two = models.StringField()
 
-
     # Track accuracy of virtual players' choices - First choice
     player1_choice1_accuracy = models.BooleanField()
     player2_choice1_accuracy = models.BooleanField()
-
 
     # Track accuracy of virtual players' choices - Second choice
     player1_choice2_accuracy = models.BooleanField()
     player2_choice2_accuracy = models.BooleanField()
 
-
     # Track whether virtual players gained or lost points
     player1_loss_or_gain = models.IntegerField()
     player2_loss_or_gain = models.IntegerField()
 
-    # Set the strategy assignments for questionnaire and task roles
-    def set_strategy_assignments(self):
-        """Set the strategy assignments based on session config"""
-        # Check for q_role in session config
-        if hasattr(self.session, 'config') and f'player_{self.id_in_group}_q_role' in self.session.config:
-            self.q_strategy = self.session.config[f'player_{self.id_in_group}_q_role']
-        else:
-            self.q_strategy = ""  # No questionnaire strategy
-        
-        # Check for t_role in session config
-        if hasattr(self.session, 'config') and f'player_{self.id_in_group}_t_role' in self.session.config:
-            self.t_strategy = self.session.config[f'player_{self.id_in_group}_t_role']
-        else:
-            self.t_strategy = ""  # No task strategy
-        
-        print(f"Player {self.id_in_group}: q_strategy = {self.q_strategy}, t_strategy = {self.t_strategy}")
-
-    # Determine if the player is a bot
-    def set_bot_flag(self):
-        """Set the is_bot flag based on participant.label"""
-        # botex sets participant.label for bots
-        if self.participant.label and 'bot' in self.participant.label.lower():
-            self.is_bot = True
-        # Or check if participant was created by botex
-        elif hasattr(self.participant, '_is_bot') and self.participant._is_bot:
-            self.is_bot = True
-        # Alternative check using participant vars
-        elif 'is_bot' in self.participant.vars and self.participant.vars['is_bot']:
-            self.is_bot = True
-        else:
-            self.is_bot = False
-    
     def set_model_assignment(self):
         """Set the model assignment based on actual bot status"""
         participant_code = self.participant.code
@@ -290,32 +237,60 @@ class Player(BasePlayer):
         # Method 1: Check for position-based bot assignment
         position_model_key = f'bot_position_{self.id_in_group}_model'
         if position_model_key in session_config:
-            self.assigned_model = session_config[position_model_key]
-            self.is_bot = True
+            self.participant.vars['assigned_model'] = session_config[position_model_key]
+            self.participant.vars['is_bot'] = True
             print(f"Player {self.id_in_group} (participant {participant_code}): "
-                f"assigned_model={self.assigned_model} via position, is_bot={self.is_bot}")
+                f"assigned_model={self.participant.vars['assigned_model']} via position, is_bot={self.participant.vars['is_bot']}")
             return
         
         # Method 2: Check intended model for this player position
         intended_model_key = f'player_{self.id_in_group}_intended_model'
         if intended_model_key in session_config:
             intended_model = session_config[intended_model_key]
-            # Check if this participant is actually a bot by looking at other indicators
             if (hasattr(self.participant, 'label') and self.participant.label and 'bot' in str(self.participant.label).lower()) or \
             (hasattr(self.participant, 'vars') and 'is_bot' in self.participant.vars and self.participant.vars['is_bot']):
-                self.assigned_model = intended_model
-                self.is_bot = True
+                self.participant.vars['assigned_model'] = intended_model
+                self.participant.vars['is_bot'] = True
                 print(f"Player {self.id_in_group} (participant {participant_code}): "
-                    f"assigned_model={self.assigned_model} via intended model, is_bot={self.is_bot}")
+                    f"assigned_model={self.participant.vars['assigned_model']} via intended model, is_bot={self.participant.vars['is_bot']}")
                 return
         
         # Default: This participant is human
-        self.assigned_model = "human"
-        self.is_bot = False
+        self.participant.vars['assigned_model'] = "human"
+        self.participant.vars['is_bot'] = False
         print(f"Player {self.id_in_group} (participant {participant_code}): "
-            f"assigned_model={self.assigned_model}, is_bot={self.is_bot}")
+            f"assigned_model={self.participant.vars['assigned_model']}, is_bot={self.participant.vars['is_bot']}")
+
+    def set_strategy_assignments(self):
+        """Set the strategy assignments based on session config"""
+        # Check for q_role in session config
+        if hasattr(self.session, 'config') and f'player_{self.id_in_group}_q_role' in self.session.config:
+            self.participant.vars['q_strategy'] = self.session.config[f'player_{self.id_in_group}_q_role']
+        else:
+            self.participant.vars['q_strategy'] = ""
+        
+        # Check for t_role in session config
+        if hasattr(self.session, 'config') and f'player_{self.id_in_group}_t_role' in self.session.config:
+            self.participant.vars['t_strategy'] = self.session.config[f'player_{self.id_in_group}_t_role']
+        else:
+            self.participant.vars['t_strategy'] = ""
+        
+        print(f"Player {self.id_in_group}: q_strategy = {self.participant.vars['q_strategy']}, t_strategy = {self.participant.vars['t_strategy']}")
+
+    def set_bot_flag(self):
+        """Set the is_bot flag based on participant.label - legacy method, now uses participant.vars"""
+        # botex sets participant.label for bots
+        if self.participant.label and 'bot' in self.participant.label.lower():
+            self.participant.vars['is_bot'] = True
+        # Or check if participant was created by botex
+        elif hasattr(self.participant, '_is_bot') and self.participant._is_bot:
+            self.participant.vars['is_bot'] = True
+        # Alternative check using participant vars
+        elif 'is_bot' in self.participant.vars and self.participant.vars['is_bot']:
+            self.participant.vars['is_bot'] = True
+        else:
+            self.participant.vars['is_bot'] = False
     
-    # Modify the calculate_first_choice_social_influence method
     def calculate_first_choice_social_influence(self):
         """Calculate the percentage of others who made same/different first choices"""
         # Get my choice safely using field_maybe_none
@@ -340,7 +315,6 @@ class Player(BasePlayer):
             self.choice1_with = 0
             self.choice1_against = 0
 
-    # Modify the calculate_second_choice_social_influence method too
     def calculate_second_choice_social_influence(self):
         """Calculate the percentage of others who made same/different second choices"""
         other_players = [p for p in self.group.get_players() if p.id_in_group != self.id_in_group]
@@ -431,13 +405,12 @@ class Player(BasePlayer):
             self.choice2_sum_earnings = previous_player.choice2_sum_earnings + self.choice2_earnings
             self.bonus_payment_score = previous_player.bonus_payment_score + self.choice2_earnings
     
-    # Save data about other players in the group
     def save_other_players_data(self):
         """Save data about other players in the group"""
         # Get other players
         other_players = [p for p in self.group.get_players() if p.id_in_group != self.id_in_group]
         
-        # Save data for up to 4 other players
+        # Save data for up to 2 other players (since groups of 3)
         for i, p in enumerate(other_players):
             if i == 0:  # First player
                 if p.choice1 is not None:
@@ -456,8 +429,6 @@ class Player(BasePlayer):
                     self.player2_choice1_accuracy = p.choice1_accuracy
                     self.player2_choice2_accuracy = p.choice2_accuracy
                     self.player2_loss_or_gain = p.loss_or_gain
-                    
-
 
 
 # PAGES
