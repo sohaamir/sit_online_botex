@@ -13,3 +13,6 @@ groq
 
 # Patching
 baml-py
+
+# Other
+pandas
