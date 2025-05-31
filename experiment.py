@@ -20,6 +20,7 @@ import botex
 import litellm
 import sqlite3
 import json
+import pandas as pd
 
 
 logger = logging.getLogger("sit_botex")
@@ -51,10 +52,72 @@ def configure_tinyllama_params(args, user_prompts):
     return modified_prompts, additional_params
 
 
-def export_response_data(csv_file, botex_db, session_id):
-    """Export botex response data with summary and prompt information included"""
+def remove_redundant_otree_builtin_fields(csv_file_path):
+    """
+    Remove redundant built-in oTree fields that don't change across rounds.
+    Keeps payoff (which should vary) but removes redundant id_in_group and role.
+    """
     try:
+        # Read the wide CSV
+        df = pd.read_csv(csv_file_path)
         
+        # Identify built-in oTree fields that are round-invariant
+        builtin_fields_to_check = ['id_in_group', 'role']  # Don't include payoff - it should vary
+        
+        columns_to_remove = []
+        columns_to_rename = {}
+        
+        for field in builtin_fields_to_check:
+            # Find all columns for this field across rounds
+            field_columns = [col for col in df.columns if col.endswith(f'.player.{field}')]
+            
+            if len(field_columns) > 1:
+                # Check if all columns have identical values
+                first_col = field_columns[0]
+                is_invariant = True
+                
+                for participant_row in range(len(df)):
+                    first_value = df.loc[participant_row, first_col]
+                    
+                    for col_name in field_columns[1:]:
+                        if df.loc[participant_row, col_name] != first_value:
+                            # Handle NaN comparisons
+                            if not (pd.isna(first_value) and pd.isna(df.loc[participant_row, col_name])):
+                                is_invariant = False
+                                break
+                    
+                    if not is_invariant:
+                        break
+                
+                if is_invariant:
+                    # Keep only the first column, rename it to remove round number
+                    new_name = f"task.player.{field}"  # Remove round number
+                    columns_to_rename[first_col] = new_name
+                    columns_to_remove.extend(field_columns[1:])  # Remove the rest
+        
+        # Remove redundant columns
+        if columns_to_remove:
+            df_clean = df.drop(columns=columns_to_remove)
+            
+            # Rename the kept columns
+            if columns_to_rename:
+                df_clean.rename(columns=columns_to_rename, inplace=True)
+            
+            # Save the cleaned CSV
+            df_clean.to_csv(csv_file_path, index=False)
+            
+            logger.info(f"Removed {len(columns_to_remove)} redundant built-in oTree columns")
+            logger.debug(f"Removed columns: {columns_to_remove}")
+        else:
+            logger.info("No redundant built-in oTree columns found")
+            
+    except Exception as e:
+        logger.warning(f"Error removing redundant built-in fields: {str(e)}. Keeping original CSV.")
+
+
+def export_response_data(csv_file, botex_db, session_id):
+    """Export botex response data with proper round tracking"""
+    try:
         # Connect to botex database
         conn = sqlite3.connect(botex_db)
         conn.row_factory = sqlite3.Row
@@ -81,65 +144,80 @@ def export_response_data(csv_file, botex_db, session_id):
                 # Parse the conversation messages
                 messages = json.loads(conversation['conversation'])
                 
-                # Process each round of conversation
-                round_num = 1
-                current_prompt = ""
+                # Track the current round based on the conversation flow
+                current_round = 1
+                questions_in_current_round = 0
                 
                 for i, message in enumerate(messages):
                     if message.get('role') == 'user':
-                        # This is a prompt to the bot
-                        current_prompt = message.get('content', '')
+                        # This is a prompt to the bot - check if it mentions a round
+                        prompt_content = message.get('content', '')
+                        
+                        # Look for round indicators in the prompt
+                        import re
+                        round_match = re.search(r'Round (\d+)', prompt_content)
+                        if round_match:
+                            detected_round = int(round_match.group(1))
+                            current_round = detected_round
                     
                     elif message.get('role') == 'assistant':
                         # This is a bot response
                         try:
                             response_data = json.loads(message.get('content', '{}'))
                             
-                            # Extract summary if available
+                            # Extract summary and answers
                             summary = response_data.get('summary', '')
-                            
-                            # Extract answers
                             answers = response_data.get('answers', {})
+                            
+                            # Get the corresponding user prompt
+                            prompt_content = ""
+                            if i > 0 and messages[i-1].get('role') == 'user':
+                                prompt_content = messages[i-1].get('content', '')
                             
                             for question_id, answer_data in answers.items():
                                 if question_id == 'round':
                                     continue
-                                    
+                                
                                 enhanced_responses.append({
                                     'session_id': bot_parms.get('session_id', ''),
                                     'participant_id': participant_id,
-                                    'round': round_num,
+                                    'round': current_round,
                                     'question_id': question_id,
                                     'answer': answer_data.get('answer', ''),
                                     'reason': answer_data.get('reason', ''),
                                     'summary': summary,
-                                    'prompt': current_prompt
+                                    'prompt': prompt_content
                                 })
+                                
+                                questions_in_current_round += 1
                             
-                            round_num += 1
-                            
+                            # If we've answered questions in this exchange, 
+                            # check if we should increment the round for next time
+                            if len(answers) > 0:
+                                # Heuristic: if we see 4+ questions answered, we might be moving to next round
+                                # This is approximate - the round detection from prompts is more reliable
+                                pass
+                        
                         except json.JSONDecodeError:
-                            # Skip malformed responses
                             continue
                             
             except (json.JSONDecodeError, KeyError) as e:
                 logger.warning(f"Error processing conversation {conversation.get('id', 'unknown')}: {str(e)}")
                 continue
         
-        # Sort responses by round and participant
+        # Sort responses by round, participant, and question
         enhanced_responses.sort(key=lambda x: (int(x['round']), x['participant_id'], x['question_id']))
         
         # Write to CSV
+        fieldnames = ['session_id', 'participant_id', 'round', 'question_id', 'answer', 'reason', 'summary', 'prompt']
+        
         if enhanced_responses:
-            fieldnames = ['session_id', 'participant_id', 'round', 'question_id', 'answer', 'reason', 'summary', 'prompt']
             with open(csv_file, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.DictWriter(f, fieldnames=fieldnames)
                 writer.writeheader()
                 writer.writerows(enhanced_responses)
             logger.info(f"Successfully wrote {len(enhanced_responses)} enhanced responses to {csv_file}")
         else:
-            # Write empty file with headers
-            fieldnames = ['session_id', 'participant_id', 'round', 'question_id', 'answer', 'reason', 'summary', 'prompt']
             with open(csv_file, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.DictWriter(f, fieldnames=fieldnames)
                 writer.writeheader()
@@ -153,29 +231,14 @@ def export_response_data(csv_file, botex_db, session_id):
         
         # Fallback to standard botex export
         try:
-            logger.info(f"Trying standard botex export function...")
-            botex.export_response_data(
-                csv_file,
-                botex_db=botex_db,
-                session_id=session_id
-            )
-            logger.info(f"Standard export successful")
+            botex.export_response_data(csv_file, botex_db=botex_db, session_id=session_id)
+            logger.info(f"Used standard botex export as fallback")
         except Exception as e2:
-            logger.warning(f"Standard export also failed: {str(e2)}")
-            fieldnames = ['session_id', 'participant_id', 'round', 'question_id', 'answer', 'reason', 'summary', 'prompt']
+            logger.warning(f"Both custom and standard export failed: {str(e2)}")
+            # Create empty file with headers
             with open(csv_file, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.DictWriter(f, fieldnames=fieldnames)
                 writer.writeheader()
-                writer.writerow({
-                    'session_id': session_id or 'unknown',
-                    'participant_id': 'error',
-                    'round': 1,
-                    'question_id': 'export_error',
-                    'answer': f'Export failed: {str(e)}',
-                    'reason': 'System error during data export',
-                    'summary': 'Error occurred during data export process',
-                    'prompt': 'N/A'
-                })
 
 
 def open_chrome_browser(url, max_attempts=5):
@@ -259,22 +322,13 @@ def run_session(args, session_number, player_models, player_q_roles, player_t_ro
         n_humans_actual = sum(1 for is_human in is_human_list if is_human)
         n_bots = args.participants - n_humans_actual
         
-        # Create simplified model suffix
-        role_suffix = ""
-        if player_q_roles or player_t_roles:
-            q_roles_used = set(player_q_roles.values()) if player_q_roles else set()
-            t_roles_used = set(player_t_roles.values()) if player_t_roles else set()
-            if q_roles_used:
-                role_suffix += f"_q{'_'.join(sorted(q_roles_used))}"
-            if t_roles_used:
-                role_suffix += f"_t{'_'.join(sorted(t_roles_used))}"
-
+        # Create simplified model suffix (without roles)
         if player_models and n_bots > 0:
-            model_suffix = f"_mixed_nhumans{n_humans_actual}_nbots{n_bots}{role_suffix}"
+            model_suffix = f"_mixed_nhumans{n_humans_actual}_nbots{n_bots}"
         elif n_bots > 0:
-            model_suffix = f"_bots_nhumans{n_humans_actual}_nbots{n_bots}{role_suffix}"
+            model_suffix = f"_bots_nhumans{n_humans_actual}_nbots{n_bots}"
         else:
-            model_suffix = f"_humans_only_nhumans{n_humans_actual}{role_suffix}"
+            model_suffix = f"_humans_only_nhumans{n_humans_actual}"
         
         # Create session-specific output directory
         output_dir = os.path.join(args.output_dir, f"session_{session_id}{model_suffix}")
@@ -342,10 +396,21 @@ def run_session(args, session_number, player_models, player_q_roles, player_t_ro
                 print(f"  Participant {i}: {url}")
         
         if session['bot_urls']:
+            # Create role summary
+            role_summary = []
+            if player_q_roles:
+                q_roles_used = set(player_q_roles.values())
+                role_summary.append(f"q-roles: {', '.join(sorted(q_roles_used))}")
+            if player_t_roles:
+                t_roles_used = set(player_t_roles.values())
+                role_summary.append(f"t-roles: {', '.join(sorted(t_roles_used))}")
+            
+            role_text = f" ({'; '.join(role_summary)})" if role_summary else ""
+            
             if player_models:
-                print(f"\nSession {session_number}: Starting {len(session['bot_urls'])} bots with player-specific models (q-role: {args.q_role})")
+                print(f"\nSession {session_number}: Starting {len(session['bot_urls'])} bots with player-specific models{role_text}")
             else:
-                print(f"\nSession {session_number}: Starting {len(session['bot_urls'])} bots (q-role: {args.q_role})")
+                print(f"\nSession {session_number}: Starting {len(session['bot_urls'])} bots{role_text}")
         
         if n_bots == 0:
             print(f"\nSession {session_number}: All {args.participants} participants are human")
@@ -542,16 +607,21 @@ def run_session(args, session_number, player_models, player_q_roles, player_t_ro
             logger.info(f"Session {session_number}: oTree data exported")
         except Exception as e:
             logger.error(f"Session {session_number}: Failed to export oTree data: {str(e)}")
-        
-        # Normalize oTree data
+
+        # Normalize oTree data first
         try:
             botex.normalize_otree_data(
-                otree_wide_csv, 
+                otree_wide_csv,
                 store_as_csv=True,
                 data_exp_path=output_dir,
                 exp_prefix=f"otree_{otree_session_id}{model_suffix}"
             )
             logger.info(f"Session {session_number}: oTree data normalized")
+            
+            # Then clean up the wide CSV
+            remove_redundant_otree_builtin_fields(otree_wide_csv)  # ✅ AFTER NORMALIZATION
+            logger.info(f"Session {session_number}: Redundant columns removed from wide CSV")
+            
         except Exception as e:
             logger.warning(f"Session {session_number}: Data normalization warning: {str(e)}")
         
@@ -585,7 +655,7 @@ def run_session(args, session_number, player_models, player_q_roles, player_t_ro
             f.write(f"Session ID: {otree_session_id}\n")
             f.write(f"Session Number: {session_number}\n")
             f.write(f"Participants: {args.participants} total ({n_humans_actual} human, {n_bots} bots)\n")
-            
+
             # Write role summary if any roles are assigned
             if player_q_roles or player_t_roles:
                 f.write("Role assignments:\n")
